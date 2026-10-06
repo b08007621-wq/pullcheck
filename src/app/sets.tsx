@@ -4,6 +4,8 @@ import { SectionList, type SectionListData, StyleSheet, Text, View } from 'react
 
 import { DetailLayout } from '@/components/DetailLayout';
 import { EmptyState } from '@/components/EmptyState';
+import { JapaneseSetList } from '@/components/JapaneseSetList';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { ErrorState } from '@/components/ErrorState';
 import { rowPosition } from '@/components/ListRow';
 import { LoadingState } from '@/components/LoadingState';
@@ -15,6 +17,7 @@ import { useSets } from '@/hooks/useSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { type AppTheme, spacing, typography } from '@/theme';
+import type { Market } from '@/types/sealed';
 import type { SetInfo } from '@/types/set';
 import { listProgress, type SetListProgress } from '@/utils/setProgress';
 
@@ -30,6 +33,7 @@ export default function SetsScreen() {
   const { items } = useCollection();
   const { sets, error, retry } = useSets();
   const [query, setQuery] = useState('');
+  const [market, setMarket] = useState<Market>('en');
 
   const progress = useMemo(() => (sets ? listProgress(items, sets) : new Map<string, SetListProgress>()), [items, sets]);
   const sections = useMemo(() => (sets ? buildSections(sets, progress, query) : []), [sets, progress, query]);
@@ -63,6 +67,8 @@ export default function SetsScreen() {
     [styles.sectionTitle],
   );
 
+  if (market === 'jp') return <JapaneseSetList onMarket={setMarket} />;
+
   if (!sets) {
     return (
       <DetailLayout centered>
@@ -91,9 +97,12 @@ export default function SetsScreen() {
           windowSize={11}
           ListHeaderComponent={
             <View style={styles.header}>
-              <Text style={styles.title} accessibilityRole="header">
-                Sets
-              </Text>
+              <View style={styles.titleRow}>
+                <Text style={styles.title} accessibilityRole="header">
+                  Sets
+                </Text>
+                <LanguageToggle value={market} onChange={setMarket} />
+              </View>
               <Text style={styles.subtitle}>
                 {started === 0
                   ? `${sets.length} sets · add cards to start tracking`
@@ -149,6 +158,11 @@ function createStyles(theme: AppTheme) {
     header: {
       gap: spacing.sm,
       marginBottom: spacing.xs,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     title: {
       ...typography.title,

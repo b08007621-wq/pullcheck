@@ -38,17 +38,34 @@ const RISING_FLOOR = 3;
 const RISING_MIN_CHANGE = 0.03;
 const RISING_WINDOW_DAYS = 7;
 
-export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {
+async function pickCandidates(signal?: AbortSignal): Promise<SetInfo[]> {
   const today = dayStamp();
-  const candidates = (await loadSets(signal))
+  return (await loadSets(signal))
     .filter((set) => set.total >= MIN_SET_SIZE && !SKIP_SET.test(set.name) && !SKIP_SERIES.test(set.series))
     .filter((set) => set.releaseDate.replace(/\//g, '-') <= today)
     .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate))
     .slice(0, CANDIDATE_SETS);
+}
+
+export async function loadRisingExtra(signal?: AbortSignal): Promise<DiscoverPick[]> {
+  const older = (await pickCandidates(signal)).slice(NEWEST_SETS);
+  const settled = await Promise.allSettled(older.map((set) => getSetCards(set.id, signal)));
+  const picks = settled
+    .flatMap((result) => (result.status === 'fulfilled' ? result.value.value : []))
+    .flatMap((card) => {
+      const price = getMarketPrice(card);
+      return price?.currency === 'USD' ? [{ card, price: price.amount, change: null }] : [];
+    });
+  return findRising(picks, new Map());
+}
+
+export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {
+  const today = dayStamp();
+  const candidates = await pickCandidates(signal);
 
   const pricedAll: DiscoverPick[] = [];
   const pricedSets = new Set<string>();
-  for (let start = 0; start < candidates.length; start += NEWEST_SETS) {
+  for (let start = 0; start < candidates.length && pricedSets.size < NEWEST_SETS; start += NEWEST_SETS) {
     const batch = candidates.slice(start, start + NEWEST_SETS);
     const settled = await Promise.allSettled(batch.map((set) => getSetCards(set.id, signal)));
     const loaded = settled.flatMap((result) => (result.status === 'fulfilled' ? result.value.value : []));
@@ -120,7 +137,7 @@ function marketMomentum(card: Card): number | undefined {
   return Math.max(...bases.map((base) => (recent - base) / base));
 }
 
-function findRising(priced: DiscoverPick[], changes: Map<string, number>): DiscoverPick[] {
+export function findRising(priced: DiscoverPick[], changes: Map<string, number>): DiscoverPick[] {
   return priced
     .flatMap((pick) => {
       const change = changes.get(pick.card.id) ?? marketMomentum(pick.card);
