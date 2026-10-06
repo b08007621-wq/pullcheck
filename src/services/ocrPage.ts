@@ -5,6 +5,9 @@ const CDN = 'https://cdn.jsdelivr.net/npm';
 const INDEX_URL = `https://cdn.jsdelivr.net/gh/b08007621-wq/pullcheck@card-index/v${CARD_VISION_VERSION}/`;
 const INDEX_REFRESH_MS = 3 * 24 * 60 * 60 * 1000;
 const MATCH_RESULTS = 12;
+const FINE_RESULTS = 6;
+const FINE_CACHE = 400;
+const FINE_TIMEOUT_MS = 3000;
 
 export const OCR_BASE_URL = `${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/`;
 
@@ -82,12 +85,57 @@ export const OCR_PAGE_HTML = `<!doctype html>
     });
   };
   var usable = function (entry) {
-    return !!(entry && entry.meta && entry.vectors && entry.meta.dims === PullVision.DIMS &&
+    return !!(entry && entry.meta && entry.meta.series && entry.vectors && entry.meta.dims === PullVision.DIMS &&
       entry.vectors.byteLength === entry.meta.ids.length * entry.meta.dims);
   };
   var visionIndex = null;
   var adopt = function (entry) {
-    visionIndex = { ids: entry.meta.ids, dims: entry.meta.dims, count: entry.meta.ids.length, data: new Int8Array(entry.vectors) };
+    visionIndex = {
+      ids: entry.meta.ids,
+      series: entry.meta.series || {},
+      dims: entry.meta.dims,
+      count: entry.meta.ids.length,
+      data: new Int8Array(entry.vectors)
+    };
+  };
+
+  var fineCache = new Map();
+  var imageFor = function (key) {
+    var split = key.indexOf(':');
+    var lang = key.slice(0, split), id = key.slice(split + 1);
+    var dash = id.lastIndexOf('-');
+    var set = id.slice(0, dash);
+    var series = visionIndex.series[lang + ':' + set];
+    return series ? 'https://assets.tcgdex.net/' + lang + '/' + series + '/' + set + '/' + id.slice(dash + 1) + '/low.webp' : null;
+  };
+  var fineFor = function (key) {
+    if (fineCache.has(key)) return fineCache.get(key);
+    var url = imageFor(key);
+    var job = !url ? Promise.resolve(null) : new Promise(function (resolve) {
+      var done = false;
+      var finish = function (value) { if (!done) { done = true; resolve(value); } };
+      var picture = new Image();
+      picture.crossOrigin = 'anonymous';
+      picture.onload = function () {
+        try {
+          var surface = document.createElement('canvas');
+          surface.width = picture.naturalWidth;
+          surface.height = picture.naturalHeight;
+          var context = surface.getContext('2d', { willReadFrequently: true });
+          context.drawImage(picture, 0, 0);
+          finish(PullVision.fineReference(context.getImageData(0, 0, surface.width, surface.height)));
+        } catch (error) {
+          finish(null);
+        }
+      };
+      picture.onerror = function () { finish(null); };
+      setTimeout(function () { finish(null); }, ${FINE_TIMEOUT_MS});
+      picture.src = url;
+    });
+    fineCache.set(key, job);
+    job.then(function (value) { if (!value) fineCache.delete(key); });
+    if (fineCache.size > ${FINE_CACHE}) fineCache.delete(fineCache.keys().next().value);
+    return job;
   };
   var indexReady = stored('readonly', function (store) { return store.get(INDEX_KEY); })
     .catch(function () { return null; })
@@ -181,14 +229,24 @@ export const OCR_PAGE_HTML = `<!doctype html>
       context.drawImage(image, 0, 0, width, height);
       var query = PullVision.describeQuery(context.getImageData(0, 0, width, height), margin);
       var ranked = PullVision.rank(visionIndex.data, visionIndex.dims, visionIndex.count, query.descriptors, ${MATCH_RESULTS});
-      send({
-        type: 'match',
-        id: id,
-        best: ranked.best,
-        gap: ranked.gap,
-        results: ranked.results.map(function (result) {
-          return { key: visionIndex.ids[result.index], score: result.score, same: result.same };
-        })
+      var checked = ranked.results.slice(0, ${FINE_RESULTS});
+      return Promise.all(checked.map(function (result) { return fineFor(visionIndex.ids[result.index]); })).then(function (refs) {
+        var scored = ranked.results.map(function (result, i) {
+          var ref = i < refs.length ? refs[i] : null;
+          return { index: result.index, score: result.score, fine: ref ? PullVision.fineScore(query.fine, ref) : null };
+        });
+        var final = PullVision.regroup(visionIndex.data, visionIndex.dims, scored);
+        send({
+          type: 'match',
+          id: id,
+          best: final.best,
+          gap: final.gap,
+          fine: final.fine,
+          fineGap: final.fineGap,
+          results: final.results.map(function (result) {
+            return { key: visionIndex.ids[result.index], score: result.score, fine: result.fine, same: result.same };
+          })
+        });
       });
     }).catch(function (error) {
       send({ type: 'error', id: id, message: describe(error) });

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -9,6 +10,7 @@ import { formatPrice, variantLabel } from '@/utils/price';
 import { CARD_RATIO } from '@/utils/scanFrame';
 
 type Props = {
+  media?: ReactNode;
   name: string;
   image: string | null;
   setName: string;
@@ -19,28 +21,32 @@ type Props = {
 
 const IMAGE_HEIGHT = 236;
 
-export function ScanResultBody({ name, image, setName, number, card, failed }: Props) {
+export function ScanResultBody({ media, name, image, setName, number, card, failed }: Props) {
   const theme = useTheme();
   const version = card ? defaultVersion(card) : null;
   const price = card && version ? cardVersionPrice(card, version) : null;
   const priceCaption = price
-    ? ['TCGplayer market', version?.variant ? variantLabel(version.variant) : null].filter(Boolean).join(' · ')
+    ? [price.currency === 'EUR' ? 'Cardmarket trend' : 'TCGplayer market', version?.variant ? variantLabel(version.variant) : null]
+        .filter(Boolean)
+        .join(' · ')
     : null;
 
   return (
     <View style={styles.body}>
-      <View style={[styles.imageFrame, { backgroundColor: theme.colors.surfaceRaised }]}>
-        {image ? (
-          <Image
-            source={image}
-            style={styles.image}
-            contentFit="cover"
-            transition={180}
-            recyclingKey={image}
-            accessibilityLabel={name}
-          />
-        ) : null}
-      </View>
+      {media ?? (
+        <View style={[styles.imageFrame, { backgroundColor: theme.colors.surfaceRaised }]}>
+          {image ? (
+            <Image
+              source={image}
+              style={styles.image}
+              contentFit="cover"
+              transition={180}
+              recyclingKey={image}
+              accessibilityLabel={name}
+            />
+          ) : null}
+        </View>
+      )}
       <View style={styles.text}>
         <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={2}>
           {name}

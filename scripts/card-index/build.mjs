@@ -101,13 +101,18 @@ async function main() {
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
   const ids = cards.map((card) => card.key).filter((key) => vectors.has(key));
+  const series = {};
+  for (const card of cards) {
+    const parts = card.image.split('/');
+    series[`${card.lang}:${parts[parts.length - 2]}`] = parts[parts.length - 3];
+  }
   const packed = new Int8Array(ids.length * vision.DIMS);
   ids.forEach((key, index) => packed.set(vectors.get(key), index * vision.DIMS));
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, 'vectors.bin'), Buffer.from(packed.buffer));
   await fs.writeFile(
     path.join(dir, 'meta.json'),
-    JSON.stringify({ version: CARD_VISION_VERSION, dims: vision.DIMS, built: new Date().toISOString(), ids }),
+    JSON.stringify({ version: CARD_VISION_VERSION, dims: vision.DIMS, built: new Date().toISOString(), series, ids }),
   );
   console.log(`Wrote ${ids.length} cards (${failed} failed) to ${dir}`);
 }

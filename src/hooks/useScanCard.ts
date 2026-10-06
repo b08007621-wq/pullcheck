@@ -14,16 +14,17 @@ const FALLBACK_TIMEOUT_MS = 6000;
 export function useScanCard(candidate: ScanCandidate | null) {
   const key = candidate ? `${candidate.language}:${candidate.card.id}` : 'scan:none';
   const load = useCallback(
-    async (signal: AbortSignal): Promise<Card | null> => {
-      if (!candidate) return null;
-      const card = await fillGaps(await dexToCard(candidate.card, candidate.language, signal), signal);
-      rememberCards([card]);
-      return card;
-    },
+    (signal: AbortSignal): Promise<Card | null> => (candidate ? loadScanCard(candidate, signal) : Promise.resolve(null)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key],
   );
   return useResource(key, load);
+}
+
+export async function loadScanCard(candidate: ScanCandidate, signal?: AbortSignal): Promise<Card> {
+  const card = await fillGaps(await dexToCard(candidate.card, candidate.language, signal), signal);
+  rememberCards([card]);
+  return card;
 }
 
 export function useLocalizedCards(candidate: ScanCandidate | null): LocalizedCard[] {
@@ -36,7 +37,7 @@ export function useLocalizedCards(candidate: ScanCandidate | null): LocalizedCar
   return data ?? [];
 }
 
-async function fillGaps(card: Card, signal: AbortSignal): Promise<Card> {
+async function fillGaps(card: Card, signal?: AbortSignal): Promise<Card> {
   const missingImage = !card.images.large;
   const missingPrice = !card.tcgplayer?.prices;
   if (isDexCardId(card.id) || (!missingImage && !missingPrice)) return card;

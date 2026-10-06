@@ -10,12 +10,15 @@ export type OcrRegion = {
 export type VisionResult = {
   key: string;
   score: number;
+  fine: number | null;
   same: boolean;
 };
 
 export type VisionMatch = {
   best: number;
   gap: number;
+  fine: number | null;
+  fineGap: number;
   results: VisionResult[];
 };
 
@@ -54,7 +57,7 @@ type Pending = {
 
 const LOAD_TIMEOUT_MS = 8000;
 const READ_TIMEOUT_MS = 15000;
-const MATCH_TIMEOUT_MS = 8000;
+const MATCH_TIMEOUT_MS = 10000;
 
 export type OcrBridge = ReturnType<typeof createOcrBridge>;
 
@@ -114,7 +117,8 @@ export function createOcrBridge(run: (script: string) => void, onState: (state: 
     else if (message.type === 'loaded') settle(message.id, { value: { width: message.width, height: message.height } });
     else if (message.type === 'text') settle(message.id, { value: message.text });
     else if (message.type === 'match') {
-      settle(message.id, { value: { best: message.best, gap: message.gap, results: message.results } });
+      const { best, gap, fine, fineGap, results } = message;
+      settle(message.id, { value: { best, gap, fine, fineGap, results } });
     } else if (message.type === 'error') settle(message.id, { error: message.message ?? 'Card reader error' });
   };
 

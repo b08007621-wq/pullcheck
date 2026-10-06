@@ -14,7 +14,7 @@ import {
 import type { AutoScanResult } from '@/hooks/useAutoScan';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useLocalizedCards, useScanCard } from '@/hooks/useScanCard';
+import { loadScanCard, useLocalizedCards, useScanCard } from '@/hooks/useScanCard';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
 import { previewCard } from '@/services/tcgdex';
@@ -26,6 +26,7 @@ import type { DexLanguage } from '@/types/tcgdex';
 import { binderLabel } from '@/utils/binder';
 import { cardVersionPrice, defaultVersion, resolveVersion } from '@/utils/cardVersion';
 
+import { CandidateCarousel } from './CandidateCarousel';
 import { GlassSurface } from './GlassSurface';
 import { LanguagePills } from './LanguagePills';
 import { PagerDots } from './PagerDots';
@@ -39,16 +40,26 @@ type Props = {
   onClose: () => void;
   onOpenCard: (card: Card) => void;
   onAddPull: (card: Card) => void;
+  onAdded?: (key: string) => void;
+  onSearch?: (name: string) => void;
 };
 
 const DISMISS_DISTANCE = 110;
 const DISMISS_VELOCITY = 1.1;
-const PAGE_DISTANCE = 60;
 const CLOSE_AFTER_ADD_MS = 650;
-const RIP_AUTO_ADD_MS = 1100;
 const BIG_PULL_USD = 20;
+const IMAGE_HEIGHT = 236;
 
-export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenCard, onAddPull }: Props) {
+export function ScanResultSheet({
+  result,
+  ripping,
+  bottomInset,
+  onClose,
+  onOpenCard,
+  onAddPull,
+  onAdded,
+  onSearch,
+}: Props) {
   const theme = useTheme();
   const haptics = useHaptics();
   const { height } = useWindowDimensions();
@@ -57,6 +68,7 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
   const [index, setIndex] = useState(0);
   const [language, setLanguage] = useState<DexLanguage>(result.language ?? 'en');
   const [added, setAdded] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [offset] = useState(() => new Animated.Value(height));
   const closingRef = useRef(false);
   const dragRef = useRef({ x: 0, y: 0, lastY: 0, lastT: 0, velocity: 0 });
@@ -84,15 +96,14 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
     }).start(() => onClose());
   }, [offset, height, onClose]);
 
-  const page = useCallback(
-    (delta: number) => {
-      setIndex((value) => {
-        const next = Math.min(Math.max(value + delta, 0), count - 1);
-        if (next !== value) haptics.selection();
-        return next;
-      });
+  const pick = useCallback(
+    (next: number) => {
+      if (next === index) return;
+      haptics.selection();
+      setIndex(next);
+      setLanguage(result.language ?? 'en');
     },
-    [count, haptics],
+    [index, haptics, result.language],
   );
 
   const settle = () => {
@@ -107,7 +118,8 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
 
   const wantsDrag = (event: GestureResponderEvent) => {
     const { pageX, pageY } = event.nativeEvent;
-    return Math.abs(pageY - dragRef.current.y) > 8 || Math.abs(pageX - dragRef.current.x) > 14;
+    const dy = pageY - dragRef.current.y;
+    return dy > 8 && Math.abs(dy) > Math.abs(pageX - dragRef.current.x) * 1.2;
   };
 
   const moveDrag = (event: GestureResponderEvent) => {
@@ -122,37 +134,41 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
   };
 
   const endDrag = (event: GestureResponderEvent) => {
-    const { pageX, pageY } = event.nativeEvent;
-    const drag = dragRef.current;
-    const dx = pageX - drag.x;
-    const dy = pageY - drag.y;
-    const vertical = Math.abs(dy) >= Math.abs(dx);
-    if (vertical && (dy > DISMISS_DISTANCE || drag.velocity > DISMISS_VELOCITY)) {
+    const dy = event.nativeEvent.pageY - dragRef.current.y;
+    if (dy > DISMISS_DISTANCE || dragRef.current.velocity > DISMISS_VELOCITY) {
       close();
       return;
     }
     settle();
-    if (!vertical && Math.abs(dx) > PAGE_DISTANCE) page(dx < 0 ? 1 : -1);
   };
 
   const add = useCallback(
-    (binder: Binder | null) => {
-      if (!card || added) return;
-      const version = resolveVersion(card, defaultVersion(card));
-      const price = cardVersionPrice(card, version);
-      if (price && price.currency === 'USD' && price.amount >= BIG_PULL_USD) haptics.hit();
-      else haptics.collect();
-      if (ripping) {
-        onAddPull(card);
-        setAdded('Added to pull');
-        return;
+    async (binder: Binder | null) => {
+      if (!candidate || added || adding) return;
+      setAdding(true);
+      try {
+        const target = card ?? (await loadScanCard(candidate));
+        const version = resolveVersion(target, defaultVersion(target));
+        const price = cardVersionPrice(target, version);
+        if (price && price.currency === 'USD' && price.amount >= BIG_PULL_USD) haptics.hit();
+        else haptics.collect();
+        if (ripping) {
+          onAddPull(target);
+          setAdded('Added to pull');
+        } else {
+          addCard(target, version);
+          if (binder) setBinder(cardKey(target.id, version), binder);
+          fulfill([target.id]);
+          setAdded(binder ? `Added to ${binderLabel(binder)}` : 'Added to collection');
+        }
+        onAdded?.(`${candidate.language}:${candidate.card.id}`);
+      } catch {
+        haptics.remove();
+      } finally {
+        setAdding(false);
       }
-      addCard(card, version);
-      if (binder) setBinder(cardKey(card.id, version), binder);
-      fulfill([card.id]);
-      setAdded(binder ? `Added to ${binderLabel(binder)}` : 'Added to collection');
     },
-    [card, added, ripping, haptics, onAddPull, addCard, setBinder, fulfill],
+    [candidate, added, adding, card, ripping, haptics, onAddPull, addCard, setBinder, fulfill, onAdded],
   );
 
   useEffect(() => {
@@ -161,14 +177,14 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
     return () => clearTimeout(timer);
   }, [added, close]);
 
-  useEffect(() => {
-    if (!ripping || !result.confirmed || !card || added) return;
-    const timer = setTimeout(() => add(null), RIP_AUTO_ADD_MS);
-    return () => clearTimeout(timer);
-  }, [ripping, result.confirmed, card, added, add]);
-
   const shown = localized.find((entry) => entry.language === language) ?? null;
-  const fallbackImage = candidate?.card.image ? `${candidate.card.image}/high.png` : null;
+  const images = result.candidates.map((entry, position) =>
+    position === index
+      ? (shown?.image ?? (card?.images.large || (entry.card.image ? `${entry.card.image}/high.webp` : null)))
+      : entry.card.image
+        ? `${entry.card.image}/high.webp`
+        : null,
+  );
   const backdrop = offset.interpolate({ inputRange: [0, height], outputRange: [1, 0], extrapolate: 'clamp' });
 
   return (
@@ -202,8 +218,13 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
           ) : null}
           {candidate ? (
             <ScanResultBody
+              media={
+                <View style={styles.bleed}>
+                  <CandidateCarousel images={images} index={index} height={IMAGE_HEIGHT} onIndex={pick} />
+                </View>
+              }
               name={shown?.name ?? card?.name ?? candidate.card.name}
-              image={shown?.image ?? (card?.images.large || fallbackImage)}
+              image={images[index] ?? null}
               setName={shown?.setName ?? card?.set.name ?? candidate.card.set.name}
               number={card?.number ?? preview?.number ?? candidate.card.localId}
               card={card ?? preview}
@@ -218,17 +239,34 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
             />
           </View>
           <ScanResultActions
-            ready={card !== null}
+            ready={!adding}
             added={added}
             primaryLabel={ripping ? 'Add to pull' : 'Add to collection'}
             onAdd={add}
-            onOpen={() => {
-              if (!card) return;
+            onOpen={async () => {
+              if (!candidate || adding) return;
+              setAdding(true);
+              const target = card ?? (await loadScanCard(candidate).catch(() => null));
+              setAdding(false);
+              if (!target) return;
               closingRef.current = true;
-              onOpenCard(card);
+              onOpenCard(target);
             }}
             showBinder={!ripping}
           />
+          {onSearch && (count > 1 || !result.confirmed) ? (
+            <Pressable
+              onPress={() => {
+                closingRef.current = true;
+                onSearch(candidate?.card.name ?? '');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="None of these, search instead"
+              style={styles.searchLink}
+            >
+              <Text style={[styles.searchText, { color: theme.colors.textMuted }]}>None of these? Search instead</Text>
+            </Pressable>
+          ) : null}
         </GlassSurface>
       </Animated.View>
     </Modal>
@@ -273,5 +311,17 @@ const styles = StyleSheet.create({
   languages: {
     alignItems: 'center',
     minHeight: 4,
+  },
+  bleed: {
+    alignSelf: 'stretch',
+    marginHorizontal: -spacing.lg,
+  },
+  searchLink: {
+    alignSelf: 'center',
+    paddingVertical: spacing.xs,
+  },
+  searchText: {
+    ...typography.caption,
+    fontSize: 14,
   },
 });

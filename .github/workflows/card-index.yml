@@ -9,6 +9,7 @@ on:
     paths:
       - src/services/cardVisionSource.ts
       - scripts/card-index/**
+      - .github/workflows/card-index.yml
 
 permissions:
   contents: write
@@ -38,6 +39,10 @@ jobs:
           fi
       - name: Describe new cards
         run: node scripts/card-index/build.mjs data
+      - name: Map product art
+        run: node scripts/card-index/assets.mjs data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish
         run: |
           cd data
@@ -48,3 +53,8 @@ jobs:
           git commit -q -m "Card index $(date -u +%F)"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" card-index
           du -sh .
+      - name: Refresh CDN
+        run: |
+          for file in data/assets.json data/v*/*; do
+            curl -s -o /dev/null "https://purge.jsdelivr.net/gh/${{ github.repository }}@card-index/${file#data/}" || true
+          done

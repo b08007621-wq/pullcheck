@@ -5,7 +5,8 @@
 ## Open items
 - Graded section: fixed 2026-10-06 (the key line in `.env.local` was missing its `POKEPRICE_API_KEY=` name). Check `http://localhost:8081/api/pokeprice?id=517045` if it goes blank again.
 - Daily price collector (`.github/workflows/price-history.yml` + `scripts/price-history/collect.mjs`) is on `main` since 2026-10-06 and runs nightly at 21:43 UTC. It publishes to the `price-history` branch, read by `src/services/priceHistory.ts` via jsDelivr.
-- Auto scan (on-device OCR + TCGdex) is built but not yet tested on an iPhone. Design in `SCANNER_ARCHITECTURE.md`.
+- Scanner: picture matching + close-up check on the phone, "Is this it?" preview with Not it / Yes, add. Design in `SCANNER_ARCHITECTURE.md`. Real iPhone frames land in `scan-log/` while the dev server runs; check them before tuning.
+- Product art: official transparent renders from github.com/1niceroli/ptcg-assets (booster boxes, ETBs, bundles, packs, mini tins, collections) via `src/services/productAssets.ts`. The nightly `card-index` workflow publishes `assets.json` (set → files, from the repo tree + README tables) to the `card-index` branch. `ProductImage` uses render → dev-server cutout → TCGplayer photo.
 - "Heating up" needs 2+ days of collector data (or fresh Cardmarket averages).
 - PokemonPriceTracker free plan: no history (3 days max), 100 credits/day, TCGplayer numeric ids only. Used for graded eBay prices only via `src/app/api/pokeprice+api.ts`.
 - TCGCSV price archive is offline; history only builds forward from 2026-10-06.

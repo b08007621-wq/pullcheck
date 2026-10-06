@@ -42,3 +42,6 @@ yarn-error.*
 
 # blender backups
 *.blend1
+
+# scanner frames saved by the dev server
+scan-log/

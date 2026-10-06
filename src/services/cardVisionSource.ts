@@ -347,17 +347,86 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     return [at(dx, dy), at(1 - dx, dy), at(1 - dx, 1 - dy), at(dx, 1 - dy)];
   };
 
+  var FINE_W = 60;
+  var FINE_H = 84;
+  var FINE_SHIFT = 2;
+  var FINE_RADIUS = 4;
+
+  var localContrast = function (rgb, w, h) {
+    var n = w * h;
+    var gray = new Float32Array(n);
+    for (var p = 0; p < n; p += 1) gray[p] = 0.299 * rgb[p * 3] + 0.587 * rgb[p * 3 + 1] + 0.114 * rgb[p * 3 + 2];
+    var sum = new Float64Array((w + 1) * (h + 1)), sq = new Float64Array((w + 1) * (h + 1));
+    for (var y = 0; y < h; y += 1) {
+      var rs = 0, rq = 0;
+      for (var x = 0; x < w; x += 1) {
+        var v = gray[y * w + x];
+        rs += v; rq += v * v;
+        sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + rs;
+        sq[(y + 1) * (w + 1) + x + 1] = sq[y * (w + 1) + x + 1] + rq;
+      }
+    }
+    var out = new Float32Array(n);
+    for (var j = 0; j < h; j += 1) {
+      var y0 = Math.max(0, j - FINE_RADIUS), y1 = Math.min(h, j + FINE_RADIUS + 1);
+      for (var i = 0; i < w; i += 1) {
+        var x0 = Math.max(0, i - FINE_RADIUS), x1 = Math.min(w, i + FINE_RADIUS + 1);
+        var area = (x1 - x0) * (y1 - y0);
+        var s = sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0];
+        var q = sq[y1 * (w + 1) + x1] - sq[y0 * (w + 1) + x1] - sq[y1 * (w + 1) + x0] + sq[y0 * (w + 1) + x0];
+        var mean = s / area;
+        var sd = Math.sqrt(Math.max(0, q / area - mean * mean));
+        out[j * w + i] = (gray[j * w + i] - mean) / (sd + 6);
+      }
+    }
+    return out;
+  };
+
+  var fineFrom = function (work, quad) {
+    return localContrast(warp(work, quad, FINE_W, FINE_H), FINE_W, FINE_H);
+  };
+
+  var fineReference = function (img) {
+    var work = shrink(img, WORK_WIDTH);
+    return fineFrom(work, [[0, 0], [work.width, 0], [work.width, work.height], [0, work.height]]);
+  };
+
+  var fineScore = function (queries, ref) {
+    var best = -1;
+    var m = FINE_SHIFT + 1;
+    for (var h = 0; h < queries.length; h += 1) {
+      var q = queries[h];
+      for (var dy = -FINE_SHIFT; dy <= FINE_SHIFT; dy += 1) {
+        for (var dx = -FINE_SHIFT; dx <= FINE_SHIFT; dx += 1) {
+          var s = 0, qq = 0, rr = 0;
+          for (var y = m; y < FINE_H - m; y += 1) {
+            var row = y * FINE_W, rrow = (y + dy) * FINE_W + dx;
+            for (var x = m; x < FINE_W - m; x += 1) {
+              var a = q[row + x], b = ref[rrow + x];
+              s += a * b; qq += a * a; rr += b * b;
+            }
+          }
+          var c = s / Math.sqrt(qq * rr + 1e-9);
+          if (c > best) best = c;
+        }
+      }
+    }
+    return best;
+  };
+
   var HYPOTHESES = [[0, 0], [0.025, 0.0175], [-0.035, -0.025]];
 
   var describeQuery = function (img, margin) {
     var work = shrink(img, WORK_WIDTH);
     var found = locate(work, margin);
     var base = found && found.lines > 0.18 ? found.quad : guideQuad(work, margin);
-    var out = [];
+    var out = [], fine = [];
     for (var i = 0; i < HYPOTHESES.length; i += 1) {
-      out.push(describeRaster(warp(work, scaleQuad(base, HYPOTHESES[i][0], HYPOTHESES[i][1]), RASTER_W, RASTER_H)));
+      var quad = scaleQuad(base, HYPOTHESES[i][0], HYPOTHESES[i][1]);
+      out.push(describeRaster(warp(work, quad, RASTER_W, RASTER_H)));
+      fine.push(fineFrom(work, quad));
     }
-    return { descriptors: out, quad: base, found: found };
+    return { descriptors: out, fine: fine, quad: base, found: found };
   };
 
   var describeReference = function (img) {
@@ -422,9 +491,45 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
   };
 
 
+  var FINE_WEIGHT = 2;
+
+  var regroup = function (index, dims, results) {
+    if (results.length === 0) return { results: [], best: 0, gap: 0, fine: null, fineGap: 0 };
+    var norm = function (n) {
+      var s = 0;
+      for (var d = 0; d < dims; d += 1) s += index[n * dims + d] * index[n * dims + d];
+      return Math.sqrt(s) || 1;
+    };
+    var combined = function (r) { return r.fine === null ? r.score - 10 : r.score + FINE_WEIGHT * r.fine; };
+    var sorted = results.slice().sort(function (a, b) { return combined(b) - combined(a); });
+    var first = sorted[0].index, firstNorm = norm(first), other = null, otherFine = null;
+    var out = sorted.map(function (r, i) {
+      var same = i === 0;
+      if (!same) {
+        var s = 0;
+        for (var d = 0; d < dims; d += 1) s += index[first * dims + d] * index[r.index * dims + d];
+        same = s / (firstNorm * norm(r.index)) >= SAME_PICTURE;
+      }
+      if (!same && (other === null || r.score > other)) other = r.score;
+      if (!same && r.fine !== null && (otherFine === null || r.fine > otherFine)) otherFine = r.fine;
+      return { index: r.index, score: r.score, fine: r.fine, same: same };
+    });
+    var top = out[0];
+    return {
+      results: out,
+      best: top.score,
+      gap: top.score - (other === null ? 0 : other),
+      fine: top.fine,
+      fineGap: top.fine === null ? 0 : top.fine - (otherFine === null ? 0 : otherFine)
+    };
+  };
+
   return {
     DIMS: DIMS,
+    regroup: regroup,
     rank: rank,
+    fineReference: fineReference,
+    fineScore: fineScore,
     shrink: shrink,
     warp: warp,
     locate: locate,

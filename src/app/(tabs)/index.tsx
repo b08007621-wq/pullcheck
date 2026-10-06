@@ -29,18 +29,14 @@ import { useRip } from '@/hooks/useRip';
 import { useScanSession } from '@/hooks/useScanSession';
 import { useSettings } from '@/hooks/useSettings';
 import { type OcrState, READER_LOADING, type ReaderStatus } from '@/services/ocrBridge';
+import { logScan } from '@/services/scanLog';
 import type { Card } from '@/types/card';
 import type { IconName } from '@/types/icon';
 import type { Size } from '@/types/scan';
 import { spacing } from '@/theme';
-import { cardVersionPrice } from '@/utils/cardVersion';
-import { variantForFinish } from '@/utils/rip';
 import { computeScanFrame } from '@/utils/scanFrame';
 
 const ERROR_VISIBLE_MS = 3500;
-const OPEN_MATCH_DELAY_MS = 900;
-const PULL_DELAY_MS = 1100;
-const BIG_PULL_USD = 20;
 const SCAN_ZOOM = 0.1;
 
 export default function ScanScreen() {
@@ -112,16 +108,8 @@ export default function ScanScreen() {
   }, [ripping, phase, stage, photo, runIdentify]);
 
   useEffect(() => {
-    if (stage !== 'done' || match?.status !== 'single') return;
-    const version = { variant: variantForFinish(match.card, reading?.finish), condition: 'NM' as const };
-    const price = cardVersionPrice(match.card, version);
-    if (price && price.currency === 'USD' && price.amount >= BIG_PULL_USD) haptics.hit();
-    else haptics.collect();
-    const timer = ripping
-      ? setTimeout(() => keepPull(match.card), PULL_DELAY_MS)
-      : setTimeout(() => openCard(match.card), OPEN_MATCH_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [stage, match, reading, ripping, haptics, openCard, keepPull]);
+    if (stage === 'done' && match?.status === 'single') haptics.ready();
+  }, [stage, match, haptics]);
 
   const bottomReserve = tabBarHeight + SCANNER_CONTROLS_HEIGHT + (ripping ? RIP_BAR_HEIGHT : 0);
   const frame = useMemo(
@@ -355,7 +343,8 @@ export default function ScanScreen() {
         ripping={ripping}
         bottom={tabBarHeight + spacing.md}
         onOpen={auto.openGuess}
-        onAdded={auto.settleGuess}
+        onAdded={(card) => auto.confirmGuess(card.id)}
+        onNotIt={auto.rejectGuess}
         onAddPull={(card) => addPull(card, 'unknown')}
       />
       {auto.result ? (
@@ -370,6 +359,16 @@ export default function ScanScreen() {
             router.push({ pathname: '/card/[id]', params: { id: card.id } });
           }}
           onAddPull={(card) => addPull(card, 'unknown')}
+          onAdded={(key) =>
+            logScan('picked', auto.result?.frame ?? null, {
+              key,
+              shown: auto.result?.candidates.map((entry) => `${entry.language}:${entry.card.id}`),
+            })
+          }
+          onSearch={(name) => {
+            auto.clear();
+            router.navigate(name ? { pathname: '/search', params: { q: name } } : '/search');
+          }}
         />
       ) : null}
       {preview}

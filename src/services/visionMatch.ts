@@ -11,7 +11,16 @@ const STEADY_SCORE = 0.7;
 const STEADY_GAP = 0.02;
 const PRESENT_SCORE = 0.68;
 const GUESS_SCORE = 0.62;
+const FINE_SURE = 0.55;
+const FINE_SURE_GAP = 0.15;
+const FINE_BACKUP = 0.45;
+const FINE_STEADY = 0.5;
+const FINE_STEADY_GAP = 0.1;
+const FINE_PRESENT = 0.35;
+const FINE_GUESS = 0.3;
+const NUMBER_PICK_FINE = 0.3;
 const MAX_CANDIDATES = 4;
+const MAX_ALTERNATIVES = 6;
 const LANGUAGES: DexLanguage[] = ['en', 'ja'];
 
 export type VisionVerdict = 'sure' | 'maybe' | 'none';
@@ -19,13 +28,21 @@ export type VisionVerdict = 'sure' | 'maybe' | 'none';
 export function judgeMatch(match: VisionMatch, previousTop: string | null): VisionVerdict {
   const top = match.results[0]?.key ?? null;
   if (!top) return 'none';
-  if (match.best >= SURE_SCORE && match.gap >= SURE_GAP) return 'sure';
-  if (match.best >= STEADY_SCORE && match.gap >= STEADY_GAP && top === previousTop) return 'sure';
-  return match.best >= PRESENT_SCORE ? 'maybe' : 'none';
+  const steady = top === previousTop;
+  if (match.fine === null) {
+    if (match.best >= SURE_SCORE && match.gap >= SURE_GAP) return 'sure';
+    if (steady && match.best >= STEADY_SCORE && match.gap >= STEADY_GAP) return 'sure';
+    return match.best >= PRESENT_SCORE ? 'maybe' : 'none';
+  }
+  if (match.fine >= FINE_SURE && match.fineGap >= FINE_SURE_GAP) return 'sure';
+  if (match.best >= SURE_SCORE && match.gap >= SURE_GAP && match.fine >= FINE_BACKUP) return 'sure';
+  if (steady && match.fine >= FINE_STEADY && match.fineGap >= FINE_STEADY_GAP) return 'sure';
+  return match.fine >= FINE_PRESENT || match.best >= PRESENT_SCORE ? 'maybe' : 'none';
 }
 
 export function canGuess(match: VisionMatch): boolean {
-  return match.best >= GUESS_SCORE && match.results.length > 0;
+  if (match.results.length === 0) return false;
+  return match.fine === null ? match.best >= GUESS_SCORE : match.fine >= FINE_GUESS || match.best >= GUESS_SCORE;
 }
 
 export function samePictureKeys(match: VisionMatch): string[] {
@@ -34,7 +51,23 @@ export function samePictureKeys(match: VisionMatch): string[] {
 
 export function guessKeys(match: VisionMatch): string[] {
   const floor = match.best - 0.08;
-  return match.results.filter((result) => result.same || result.score >= floor).map((result) => result.key);
+  return match.results
+    .filter((result) => result.same || result.score >= floor || (result.fine ?? 0) >= FINE_GUESS)
+    .map((result) => result.key);
+}
+
+export function alternativeKeys(match: VisionMatch, chosen: string[]): string[] {
+  const seen = new Set(chosen);
+  return match.results
+    .map((result) => result.key)
+    .filter((key) => !seen.has(key))
+    .slice(0, MAX_ALTERNATIVES);
+}
+
+export function numberPickKeys(match: VisionMatch, text: ScanText): string[] {
+  return match.results
+    .filter((result) => (result.fine === null || result.fine >= NUMBER_PICK_FINE) && keyNumberMatches(result.key, text))
+    .map((result) => result.key);
 }
 
 export async function visionCandidates(
@@ -69,6 +102,10 @@ function parseKey(key: string): { language: DexLanguage; id: string } | null {
   if (split < 0) return null;
   const language = key.slice(0, split) as DexLanguage;
   return LANGUAGES.includes(language) ? { language, id: key.slice(split + 1) } : null;
+}
+
+function keyNumberMatches(key: string, text: ScanText): boolean {
+  return sameNumber(key.slice(key.lastIndexOf('-') + 1), text.number);
 }
 
 function printedScore(id: string, text: ScanText): number {

@@ -1,13 +1,16 @@
 import type { CameraView } from 'expo-camera';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 
-import type { OcrHandle, OcrRegion, OcrState } from '@/services/ocrBridge';
+import type { OcrHandle, OcrRegion, OcrState, VisionMatch } from '@/services/ocrBridge';
 import { captureScanFrame } from '@/services/scanImage';
+import { logScan, summarizeMatch } from '@/services/scanLog';
 import { findScanCandidates, isConfirmed, type ScanCandidate } from '@/services/scanMatch';
 import {
+  alternativeKeys,
   canGuess,
   guessKeys,
   judgeMatch,
+  numberPickKeys,
   printedMatches,
   samePictureKeys,
   visionCandidates,
@@ -25,10 +28,12 @@ export type AutoScanResult = {
   language: DexLanguage | null;
   candidates: ScanCandidate[];
   confirmed: boolean;
+  frame: string | null;
 };
 
 export type AutoScanGuess = AutoScanResult & {
   key: string;
+  alternatives: string[];
   seenAt: number;
 };
 
@@ -42,14 +47,21 @@ type Options = {
 
 type Side = 'left' | 'right';
 
+type NumberRead = { text: ScanText; band: [number, number] };
+
 type Found = {
   key: string;
   source: 'picture' | 'text';
   printed: string | null;
   language: DexLanguage | null;
   candidates: ScanCandidate[];
+  alternatives: string[];
   confirmed: boolean;
+  frame: string | null;
+  match: VisionMatch | null;
 };
+
+type PictureOutcome = { kind: 'found'; found: Found } | { kind: 'maybe'; number: NumberRead | null } | { kind: 'none' };
 
 const MAIN_BAND: [number, number] = [0.875, 1.0];
 const BOTTOM_BANDS: [number, number][] = [MAIN_BAND, [0.85, 0.975], [0.9, 1.03], [0.95, 1.08], [0.8, 0.93]];
@@ -94,27 +106,24 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     return () => clearTimeout(timer);
   }, [guess]);
 
-  const readNumber = useCallback(
-    async (handle: OcrHandle): Promise<{ text: ScanText; band: [number, number] } | null> => {
-      const memory = memoryRef.current;
-      const band = BOTTOM_BANDS[memory.band] ?? MAIN_BAND;
-      const order: Side[] = memory.side === 'left' ? ['left', 'right'] : ['right', 'left'];
-      for (const side of order) {
-        const parsed = parseScanText(await handle.read(region(SIDES[side], band), BOTTOM_WIDTH));
-        if (parsed) {
-          memory.side = side;
-          return { text: parsed, band };
-        }
+  const readNumber = useCallback(async (handle: OcrHandle): Promise<NumberRead | null> => {
+    const memory = memoryRef.current;
+    const band = BOTTOM_BANDS[memory.band] ?? MAIN_BAND;
+    const order: Side[] = memory.side === 'left' ? ['left', 'right'] : ['right', 'left'];
+    for (const side of order) {
+      const parsed = parseScanText(await handle.read(region(SIDES[side], band), BOTTOM_WIDTH));
+      if (parsed) {
+        memory.side = side;
+        return { text: parsed, band };
       }
-      memory.band = (memory.band + 1) % BOTTOM_BANDS.length;
-      return null;
-    },
-    [],
-  );
+    }
+    memory.band = (memory.band + 1) % BOTTOM_BANDS.length;
+    return null;
+  }, []);
 
   const readByText = useCallback(
-    async (handle: OcrHandle, signal: AbortSignal): Promise<Found | null> => {
-      const number = await readNumber(handle);
+    async (handle: OcrHandle, source: string, known: NumberRead | null, signal: AbortSignal): Promise<Found | null> => {
+      const number = known ?? (await readNumber(handle));
       if (!number) return null;
       setPhase('reading');
       const [x0, y0, x1, y1] = NAME_BAND;
@@ -132,7 +141,10 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
         printed: number.text.printed,
         language: number.text.language,
         candidates: confirmed ? candidates.slice(0, 1) : candidates.slice(0, MAX_CANDIDATES),
+        alternatives: [],
         confirmed,
+        frame: source,
+        match: null,
       };
     },
     [readNumber],
@@ -141,30 +153,60 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
   const readByPicture = useCallback(
     async (
       handle: OcrHandle,
+      source: string,
       margin: number,
       relaxed: boolean,
       signal: AbortSignal,
-    ): Promise<Found | 'maybe' | null> => {
+    ): Promise<PictureOutcome> => {
       const memory = memoryRef.current;
       const match = await handle.match(margin);
       const verdict = judgeMatch(match, memory.top);
       memory.top = match.results[0]?.key ?? null;
-      const sure = verdict === 'sure';
-      if (!sure && !(relaxed && canGuess(match))) return verdict === 'maybe' ? 'maybe' : null;
-      const keys = sure ? samePictureKeys(match) : guessKeys(match);
-      const number = keys.length > 1 && text ? await readNumber(handle).catch(() => null) : null;
-      const candidates = await visionCandidates(keys, number?.text ?? null, signal);
-      const best = candidates[0];
-      if (!best) return null;
-      const settled = sure && (keys.length === 1 || (number !== null && printedMatches(best, number.text)));
-      return {
-        key: `${best.language}:${best.card.id}`,
-        source: 'picture',
-        printed: number?.text.printed ?? null,
-        language: number?.text.language ?? null,
-        candidates: settled ? candidates.slice(0, 1) : candidates.slice(0, MAX_CANDIDATES),
-        confirmed: settled,
+
+      const build = async (keys: string[], number: NumberRead | null, sure: boolean): Promise<Found | null> => {
+        const candidates = await visionCandidates(keys, number?.text ?? null, signal);
+        const best = candidates[0];
+        if (!best) return null;
+        const settled = sure && (keys.length === 1 || (number !== null && printedMatches(best, number.text)));
+        const shown = settled ? candidates.slice(0, 1) : candidates.slice(0, MAX_CANDIDATES);
+        return {
+          key: `${best.language}:${best.card.id}`,
+          source: 'picture',
+          printed: number?.text.printed ?? null,
+          language: number?.text.language ?? null,
+          candidates: shown,
+          alternatives: alternativeKeys(match, shown.map((candidate) => `${candidate.language}:${candidate.card.id}`)),
+          confirmed: settled,
+          frame: source,
+          match,
+        };
       };
+
+      if (verdict === 'sure') {
+        const keys = samePictureKeys(match);
+        const number = keys.length > 1 && text ? await readNumber(handle).catch(() => null) : null;
+        const found = await build(keys, number, true);
+        return found ? { kind: 'found', found } : { kind: 'none' };
+      }
+
+      if (verdict === 'maybe' && text) {
+        const number = await readNumber(handle).catch(() => null);
+        const picked = number ? numberPickKeys(match, number.text) : [];
+        if (number && picked.length > 0) {
+          const found = await build(picked, number, true);
+          if (found) return { kind: 'found', found };
+        }
+        if (!relaxed) {
+          logScan('unsure', source, { verdict, match: summarizeMatch(match), printed: number?.text.printed ?? null });
+          return { kind: 'maybe', number };
+        }
+      }
+
+      if (relaxed && canGuess(match)) {
+        const found = await build(guessKeys(match), null, false);
+        return found ? { kind: 'found', found } : { kind: 'none' };
+      }
+      return verdict === 'maybe' ? { kind: 'maybe', number: null } : { kind: 'none' };
     },
     [readNumber, text],
   );
@@ -173,14 +215,18 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     async (source: string, margin: number, relaxed: boolean, signal: AbortSignal): Promise<Found | null> => {
       if (!ocr) return null;
       await ocr.load(source);
+      let number: NumberRead | null = null;
       if (vision) {
-        const found = await readByPicture(ocr, margin, relaxed, signal);
-        if (found && found !== 'maybe') return found;
-        if (!found && !relaxed) return null;
+        const outcome = await readByPicture(ocr, source, margin, relaxed, signal);
+        if (outcome.kind === 'found') return outcome.found;
+        if (outcome.kind === 'none' && !relaxed) return null;
         const current = guessRef.current;
-        if (found === 'maybe' && current && current.key === memoryRef.current.top) return { ...current, source: 'picture' };
+        if (outcome.kind === 'maybe' && current && current.key === memoryRef.current.top) {
+          return { ...current, source: 'picture', match: null };
+        }
+        if (outcome.kind === 'maybe') number = outcome.number;
       }
-      return text ? readByText(ocr, signal) : null;
+      return text ? readByText(ocr, source, number, signal) : null;
     },
     [ocr, vision, text, readByPicture, readByText],
   );
@@ -227,13 +273,23 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
       memory.recent = [];
       sequenceRef.current += 1;
       setPhase('looking');
+      logScan('shown', found.frame, {
+        key: found.key,
+        source: found.source,
+        confirmed: found.confirmed,
+        printed: found.printed,
+        candidates: found.candidates.map((candidate) => `${candidate.language}:${candidate.card.id}`),
+        match: found.match ? summarizeMatch(found.match) : null,
+      });
       setGuess({
         id: sequenceRef.current,
         key: found.key,
         printed: found.printed,
         language: found.language,
         candidates: found.candidates,
+        alternatives: found.alternatives,
         confirmed: found.confirmed,
+        frame: found.frame,
         seenAt: Date.now(),
       });
     };
@@ -264,7 +320,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     };
   }, [running, frame, view, camera, recognize]);
 
-  const show = useCallback((found: Omit<Found, 'source'>) => {
+  const open = useCallback((found: AutoScanResult & { key: string }) => {
     sequenceRef.current += 1;
     memoryRef.current.handled = found.key;
     setGuess(null);
@@ -274,6 +330,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
       language: found.language,
       candidates: found.candidates,
       confirmed: found.confirmed,
+      frame: found.frame,
     });
   }, []);
 
@@ -282,10 +339,14 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
       const controller = new AbortController();
       const found = await recognize(source, margin, true, controller.signal).catch(() => null);
       if (!found) return false;
-      show(found);
+      const extra = found.confirmed
+        ? []
+        : await visionCandidates(found.alternatives.slice(0, MAX_CANDIDATES), null).catch(() => []);
+      const known = new Set(found.candidates.map((candidate) => candidate.card.id));
+      open({ ...found, id: 0, candidates: [...found.candidates, ...extra.filter((entry) => !known.has(entry.card.id))] });
       return true;
     },
-    [recognize, show],
+    [recognize, open],
   );
 
   const scanCamera = useCallback(async (): Promise<boolean> => {
@@ -298,12 +359,41 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
 
   const openGuess = useCallback(() => {
     const current = guessRef.current;
-    if (current) show(current);
-  }, [show]);
+    if (current) open(current);
+  }, [open]);
 
-  const settleGuess = useCallback(() => {
+  const confirmGuess = useCallback((cardId: string) => {
     const current = guessRef.current;
-    if (current) memoryRef.current.handled = current.key;
+    if (!current) return;
+    memoryRef.current.handled = current.key;
+    logScan('yes', current.frame, { key: current.key, added: cardId });
+  }, []);
+
+  const rejectGuess = useCallback(async () => {
+    const current = guessRef.current;
+    if (!current) return;
+    memoryRef.current.handled = current.key;
+    logScan('notit', current.frame, { key: current.key, alternatives: current.alternatives });
+    const others = await visionCandidates(current.alternatives.slice(0, MAX_CANDIDATES + 2), null).catch(() => []);
+    const seen = new Set([current.key]);
+    const rest: ScanCandidate[] = [];
+    for (const candidate of [...current.candidates.slice(1), ...others]) {
+      const key = `${candidate.language}:${candidate.card.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rest.push(candidate);
+    }
+    setGuess(null);
+    if (rest.length === 0) return;
+    sequenceRef.current += 1;
+    setResult({
+      id: sequenceRef.current,
+      printed: current.printed,
+      language: current.language,
+      candidates: rest,
+      confirmed: false,
+      frame: current.frame,
+    });
   }, []);
 
   const clear = useCallback(() => setResult(null), []);
@@ -323,7 +413,8 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     whenIdle,
     forget,
     openGuess,
-    settleGuess,
+    confirmGuess,
+    rejectGuess,
     scanCamera,
     scanSource,
   };
