@@ -2,7 +2,7 @@ import type { Card, CardmarketPrices, TcgPlayerPrice } from '@/types/card';
 
 export type Currency = 'USD' | 'EUR';
 
-export type PriceSource = 'tcgplayer' | 'cardmarket';
+export type PriceSource = 'tcgplayer' | 'cardmarket' | 'graded';
 
 export type PriceBasis = 'market' | 'mid' | 'low' | 'trend' | 'average';
 
