@@ -34,6 +34,7 @@ const ERROR_VISIBLE_MS = 3500;
 const OPEN_MATCH_DELAY_MS = 900;
 const PULL_DELAY_MS = 1100;
 const BIG_PULL_USD = 20;
+const SCAN_ZOOM = 0.1;
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -220,7 +221,8 @@ export default function ScanScreen() {
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           facing="back"
-          autofocus="on"
+          autofocus="off"
+          zoom={SCAN_ZOOM}
           enableTorch={torchOn}
           animateShutter={false}
           active={session.phase !== 'preview'}

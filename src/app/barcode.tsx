@@ -83,7 +83,8 @@ export default function BarcodeScreen() {
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
-          autofocus="on"
+          autofocus="off"
+          zoom={0.08}
           barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
           onBarcodeScanned={phase === 'scanning' ? onScanned : undefined}
         />
