@@ -1,4 +1,4 @@
-export type ThemeId = 'graphite' | 'paper' | 'amethyst' | 'liquidGlass' | 'pokeball' | 'cardBack' | 'midnight';
+export type ThemeId = 'aero' | 'graphite' | 'paper' | 'amethyst' | 'liquidGlass' | 'pokeball' | 'cardBack' | 'midnight';
 
 export type ThemeChoice = ThemeId | 'custom' | `saved:${string}`;
 
@@ -33,6 +33,35 @@ export type AppTheme = {
   aurora: GradientStops;
   auroraOpacity: number;
   glass: boolean;
+  gloss?: boolean;
+};
+
+const aero: AppTheme = {
+  id: 'aero',
+  name: 'Default',
+  tagline: 'Sky, glass and bubbles',
+  mode: 'light',
+  colors: {
+    background: '#EAF7FF',
+    surface: 'rgba(255,255,255,0.62)',
+    surfaceRaised: 'rgba(255,255,255,0.84)',
+    border: 'rgba(0,92,153,0.16)',
+    text: '#06283D',
+    textMuted: '#3A5F76',
+    textFaint: '#7D9CAF',
+    accent: '#0A8FDC',
+    onAccent: '#FFFFFF',
+    price: '#06283D',
+    gain: '#1E9E48',
+    loss: '#DE3B40',
+    danger: '#DE3B40',
+    tabBar: 'rgba(255,255,255,0.72)',
+  },
+  gradient: ['#6FD0FF', '#0A8FDC', '#0563B0'],
+  aurora: ['#46B8F2', '#8ED6FA', '#D6F2FF', '#EEFBFF'],
+  auroraOpacity: 0,
+  glass: true,
+  gloss: true,
 };
 
 const graphite: AppTheme = {
@@ -224,11 +253,11 @@ const midnight: AppTheme = {
   glass: false,
 };
 
-export const THEMES: Record<ThemeId, AppTheme> = { graphite, paper, amethyst, liquidGlass, pokeball, cardBack, midnight };
+export const THEMES: Record<ThemeId, AppTheme> = { aero, graphite, paper, amethyst, liquidGlass, pokeball, cardBack, midnight };
 
-export const THEME_ORDER: ThemeId[] = ['graphite', 'paper', 'liquidGlass', 'midnight', 'cardBack', 'pokeball', 'amethyst'];
+export const THEME_ORDER: ThemeId[] = ['aero', 'graphite', 'paper', 'liquidGlass', 'midnight', 'cardBack', 'pokeball', 'amethyst'];
 
-export const DEFAULT_THEME_ID: ThemeId = 'graphite';
+export const DEFAULT_THEME_ID: ThemeId = 'aero';
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
   return (

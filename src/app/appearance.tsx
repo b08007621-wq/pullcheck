@@ -24,6 +24,7 @@ import {
   buildCustomTheme,
   type CustomThemeSettings,
   DEFAULT_CUSTOM_THEME,
+  DEFAULT_THEME_ID,
   spacing,
   THEMES,
   typography,
@@ -47,7 +48,7 @@ export default function AppearanceScreen() {
   const customTheme = useMemo(() => buildCustomTheme(editing), [editing]);
   const previewTheme = draft && active ? customTheme : theme;
   const tileWidth = (Math.min(width, 640) - spacing.lg * 2 - GRID_GAP) / 2;
-  const options: AppTheme[] = [THEMES.graphite, ...settings.savedThemes.map(savedTheme)];
+  const options: AppTheme[] = [THEMES.aero, THEMES.graphite, ...settings.savedThemes.map(savedTheme)];
 
   const commitCustom = (changes: Partial<CustomThemeSettings>) => {
     if (!active) return;
@@ -82,7 +83,7 @@ export default function AppearanceScreen() {
           setDraft(null);
           updateSettings({
             savedThemes: settings.savedThemes.filter((entry) => entry.id !== active.id),
-            themeId: 'graphite',
+            themeId: DEFAULT_THEME_ID,
           });
         },
       },

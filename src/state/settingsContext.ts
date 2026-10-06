@@ -33,7 +33,7 @@ export type Settings = {
   design: number;
 };
 
-export const DESIGN_VERSION = 2;
+export const DESIGN_VERSION = 3;
 
 export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'recent', 'stats', 'shortcuts'];
 

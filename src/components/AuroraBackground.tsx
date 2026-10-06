@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 
+import { AeroSky } from './AeroSky';
 import { BackdropPattern } from './BackdropPattern';
 
 export function AuroraBackground() {
@@ -13,6 +14,7 @@ export function AuroraBackground() {
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.background }]}>
+      {theme.gloss ? <AeroSky /> : null}
       {backdrop.kind === 'image' && backdrop.uri ? (
         <>
           <Image

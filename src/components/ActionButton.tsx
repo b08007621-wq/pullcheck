@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { radius, spacing, typography } from '@/theme';
 import type { IconName } from '@/types/icon';
 
+import { Gloss } from './Gloss';
 import { PressableScale } from './PressableScale';
 
 type Props = {
@@ -22,8 +23,13 @@ export function ActionButton({ label, onPress, icon, variant = 'primary' }: Prop
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} scaleTo={0.97}>
       <View
-        style={[styles.button, { backgroundColor: isPrimary ? theme.colors.accent : theme.colors.surfaceRaised }]}
+        style={[
+          styles.button,
+          { backgroundColor: isPrimary ? theme.colors.accent : theme.colors.surfaceRaised },
+          theme.gloss && styles.glossy,
+        ]}
       >
+        {isPrimary ? <Gloss /> : null}
         {icon ? <Ionicons name={icon} size={17} color={contentColor} /> : null}
         <Text style={[styles.label, { color: contentColor }]}>{label}</Text>
       </View>
@@ -40,6 +46,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg + 2,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
+  },
+  glossy: {
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   label: {
     ...typography.label,

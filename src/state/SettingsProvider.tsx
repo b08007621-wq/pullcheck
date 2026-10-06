@@ -6,6 +6,7 @@ import {
   DEFAULT_THEME_ID,
   sanitizeCustomTheme,
   type ThemeChoice,
+  type ThemeId,
   THEMES,
 } from '@/theme';
 
@@ -51,7 +52,7 @@ export function SettingsProvider({ children }: Props) {
 
   const theme = useMemo(() => {
     const saved = settings.savedThemes.find((entry) => `saved:${entry.id}` === settings.themeId);
-    const base = saved ? savedTheme(saved) : THEMES[DEFAULT_THEME_ID];
+    const base = saved ? savedTheme(saved) : THEMES[builtInTheme(settings.themeId) ?? DEFAULT_THEME_ID];
     if (!settings.backdrop.glass) return base;
     const soften = (color: string, alpha: number) => (color.startsWith('#') ? withAlpha(color, alpha) : color);
     return {
@@ -75,6 +76,10 @@ export function SettingsProvider({ children }: Props) {
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 
+function builtInTheme(value: unknown): ThemeId | null {
+  return typeof value === 'string' && value in THEMES ? (value as ThemeId) : null;
+}
+
 function sanitize(stored: Partial<Settings>): Settings {
   const redesigned = typeof stored.design !== 'number' || stored.design < DESIGN_VERSION;
   const savedThemes: SavedTheme[] = Array.isArray(stored.savedThemes)
@@ -94,6 +99,8 @@ function sanitize(stored: Partial<Settings>): Settings {
     savedThemes.some((entry) => `saved:${entry.id}` === stored.themeId)
   ) {
     themeId = stored.themeId as ThemeChoice;
+  } else if (!redesigned) {
+    themeId = builtInTheme(stored.themeId) ?? DEFAULT_THEME_ID;
   }
   const view = stored.collectionView;
   return {

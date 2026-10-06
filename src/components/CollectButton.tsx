@@ -6,6 +6,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useTheme } from '@/hooks/useTheme';
 import { radius, spacing, typography } from '@/theme';
 
+import { Gloss } from './Gloss';
 import { PressableScale } from './PressableScale';
 
 type Props = {
@@ -55,6 +56,7 @@ export function CollectButton({ owned, onCollect, detail }: Props) {
           accessibilityLabel={detail ? `${label}, ${detail}` : label}
           style={[styles.button, { backgroundColor: confirming ? theme.colors.gain : theme.colors.accent }]}
         >
+          <Gloss />
           <View style={styles.content}>
             <Ionicons name={confirming ? 'checkmark' : 'add'} size={20} color={theme.colors.onAccent} />
             <View style={styles.text}>
