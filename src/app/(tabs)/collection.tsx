@@ -19,6 +19,7 @@ import { SortToggle } from '@/components/SortToggle';
 import { ViewToggle } from '@/components/ViewToggle';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
 import { spacing, typography } from '@/theme';
@@ -45,7 +46,9 @@ export default function CollectionScreen() {
   const [filter, setFilter] = useState<CollectionFilter>('all');
   const [sort, setSort] = useState<CollectionSort>('value');
   const [binder, setBinder] = useState<BinderFilter>('all');
-  const [view, setView] = useState<CollectionView>('list');
+  const { settings, updateSettings } = useSettings();
+  const view = settings.collectionView;
+  const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
   const { width } = useWindowDimensions();
   const [pulling, setPulling] = useState(false);
 
@@ -65,15 +68,16 @@ export default function CollectionScreen() {
   }, [haptics, refreshPrices]);
 
   const summary = useMemo(() => summarizeCollection(items), [items]);
+  const usesBinders = useMemo(() => items.some((item) => itemBinder(item) !== 'personal'), [items]);
   const visible = useMemo(
     () =>
       sortCollection(
         items.filter(
-          (item) => (filter === 'all' || item.kind === filter) && (binder === 'all' || itemBinder(item) === binder),
+          (item) => (filter === 'all' || item.kind === filter) && (binder === 'all' || !usesBinders || itemBinder(item) === binder),
         ),
         sort,
       ),
-    [items, filter, binder, sort],
+    [items, filter, binder, usesBinders, sort],
   );
 
   const openItem = useCallback(
@@ -141,14 +145,10 @@ export default function CollectionScreen() {
           <View style={styles.filters}>
             <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
           </View>
+          <SortToggle value={sort} onChange={setSort} compact />
           <ViewToggle value={view} onChange={setView} />
         </View>
-        <View style={styles.toolbar}>
-          <View style={styles.filters}>
-            <SegmentedControl options={BINDER_FILTERS} value={binder} onChange={setBinder} />
-          </View>
-          <SortToggle value={sort} onChange={setSort} />
-        </View>
+        {usesBinders ? <SegmentedControl options={BINDER_FILTERS} value={binder} onChange={setBinder} /> : null}
       </View>
     );
     const emptyText = (

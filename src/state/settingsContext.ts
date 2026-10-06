@@ -1,5 +1,7 @@
 import { createContext } from 'react';
 
+import type { CollectionView } from '@/types/collection';
+
 import {
   type AppTheme,
   type CustomThemeSettings,
@@ -9,9 +11,17 @@ import {
   THEMES,
 } from '@/theme';
 
+export type SavedTheme = {
+  id: string;
+  name: string;
+  custom: CustomThemeSettings;
+};
+
 export type Settings = {
   themeId: ThemeChoice;
   custom: CustomThemeSettings;
+  savedThemes: SavedTheme[];
+  collectionView: CollectionView;
   motion: boolean;
   haptics: boolean;
   sounds: boolean;
@@ -29,6 +39,8 @@ export type SettingsContextValue = {
 export const DEFAULT_SETTINGS: Settings = {
   themeId: DEFAULT_THEME_ID,
   custom: DEFAULT_CUSTOM_THEME,
+  savedThemes: [],
+  collectionView: 'list',
   motion: true,
   haptics: true,
   sounds: true,
