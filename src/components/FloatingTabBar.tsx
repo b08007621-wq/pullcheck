@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from 'expo-router/js-tabs';
-import { useContext, useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useHaptics } from '@/hooks/useHaptics';
 
 import { useMotionEnabled } from '@/hooks/useMotionEnabled';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
@@ -25,16 +27,48 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
   const reportHeight = useContext(BottomTabBarHeightCallbackContext);
   const [width, setWidth] = useState(0);
   const [slide] = useState(() => new Animated.Value(state.index));
+  const haptics = useHaptics();
+  const rowRef = useRef<View>(null);
+  const rowLeft = useRef(0);
+  const dragIndex = useRef<number | null>(null);
+  const startX = useRef(0);
   const count = state.routes.length;
   const itemWidth = width > 0 ? (width - PADDING * 2) / count : 0;
 
   useEffect(() => {
+    if (dragIndex.current !== null) return;
     if (!motion) {
       slide.setValue(state.index);
       return;
     }
     Animated.spring(slide, { toValue: state.index, speed: 16, bounciness: 7, useNativeDriver: true }).start();
   }, [slide, state.index, motion]);
+
+  const goTo = (index: number) => {
+    const route = state.routes[index];
+    if (!route || index === state.index) return;
+    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+    if (!event.defaultPrevented) navigation.navigate(route.name, route.params);
+  };
+
+  const drag = (event: GestureResponderEvent) => {
+    if (itemWidth <= 0) return;
+    const x = event.nativeEvent.pageX - rowLeft.current - PADDING;
+    const position = Math.min(Math.max(x / itemWidth - 0.5, 0), count - 1);
+    slide.setValue(position);
+    const index = Math.round(position);
+    if (index !== dragIndex.current) {
+      dragIndex.current = index;
+      haptics.selection();
+      goTo(index);
+    }
+  };
+
+  const endDrag = () => {
+    const index = dragIndex.current ?? state.index;
+    dragIndex.current = null;
+    Animated.spring(slide, { toValue: index, speed: 18, bounciness: 6, useNativeDriver: true }).start();
+  };
 
   return (
     <View
@@ -43,7 +77,31 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
       onLayout={(event) => reportHeight?.(event.nativeEvent.layout.height)}
     >
       <GlassSurface style={styles.bar} interactive>
-        <View style={styles.row} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+        <View
+          ref={rowRef}
+          style={styles.row}
+          onLayout={(event) => {
+            setWidth(event.nativeEvent.layout.width);
+            rowRef.current?.measureInWindow((x) => {
+              rowLeft.current = x;
+            });
+          }}
+          onTouchStart={(event) => {
+            startX.current = event.nativeEvent.pageX;
+          }}
+          onMoveShouldSetResponderCapture={(event) => Math.abs(event.nativeEvent.pageX - startX.current) > 8}
+          onResponderGrant={(event) => {
+            dragIndex.current = state.index;
+            rowRef.current?.measureInWindow((x) => {
+              rowLeft.current = x;
+            });
+            drag(event);
+          }}
+          onResponderMove={drag}
+          onResponderRelease={endDrag}
+          onResponderTerminate={endDrag}
+          onResponderTerminationRequest={() => false}
+        >
           {itemWidth > 0 ? (
             <Animated.View
               pointerEvents="none"
