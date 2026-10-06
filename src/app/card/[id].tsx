@@ -5,6 +5,7 @@ import { CardFacts } from '@/components/CardFacts';
 import { CardGameplay } from '@/components/CardGameplay';
 import { CardHero } from '@/components/CardHero';
 import { CardPricePanel } from '@/components/CardPricePanel';
+import { CardSwipe, type SwipeDirection } from '@/components/CardSwipe';
 import { Chip } from '@/components/Chip';
 import { CollectButton } from '@/components/CollectButton';
 import { DetailLayout } from '@/components/DetailLayout';
@@ -25,7 +26,9 @@ import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useJapaneseVersions } from '@/hooks/useCrossLanguage';
 import { useGradedPrices } from '@/hooks/useGradedPrices';
+import { useHaptics } from '@/hooks/useHaptics';
 import { useWishlist } from '@/hooks/useWishlist';
+import { type BrowsePlace, browsePlace } from '@/services/cardBrowse';
 import { gradedPriceFor } from '@/services/graded';
 import { estimatedPoints } from '@/services/marketHistory';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
@@ -45,8 +48,40 @@ import { cardViewerParams } from '@/utils/viewer';
 
 export default function CardDetailScreen() {
   const router = useRouter();
-  const { id, entry } = useLocalSearchParams<{ id: string; entry?: string }>();
-  const { card, owned, isFresh, error, retry } = useCardDetail(id ?? '');
+  const haptics = useHaptics();
+  const { id, entry, from } = useLocalSearchParams<{ id: string; entry?: string; from?: string }>();
+  const place = browsePlace(id ?? '', entry);
+
+  const go = (direction: SwipeDirection) => {
+    const stop = direction === 'next' ? place?.next : place?.previous;
+    if (!stop) return;
+    haptics.selection();
+    router.setParams({ id: stop.id, entry: stop.entry ?? '', from: direction });
+  };
+
+  return (
+    <CardPage
+      key={`${id ?? ''}|${entry ?? ''}`}
+      id={id ?? ''}
+      entry={entry || undefined}
+      place={place}
+      enterFrom={from === 'next' || from === 'previous' ? from : null}
+      onGo={go}
+    />
+  );
+}
+
+type PageProps = {
+  id: string;
+  entry?: string;
+  place: BrowsePlace | null;
+  enterFrom: SwipeDirection | null;
+  onGo: (direction: SwipeDirection) => void;
+};
+
+function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
+  const router = useRouter();
+  const { card, owned, isFresh, error, retry } = useCardDetail(id);
   const japaneseVersions = useJapaneseVersions(card ?? null);
   const { items, addCard, setQuantity, remove, setPaid, setGrading } = useCollection();
   const graded = useGradedPrices(card ?? null);
@@ -113,7 +148,9 @@ export default function CardDetailScreen() {
         />
       }
     >
-      <CardHero card={card} onPress={open3d} />
+      <CardSwipe place={place} enterFrom={enterFrom} onGo={onGo}>
+        <CardHero card={card} onPress={open3d} />
+      </CardSwipe>
       <View3DButton onPress={open3d} />
       <DetailTitle
         title={card.name}

@@ -5,6 +5,7 @@ import { FlatList, type ListRenderItemInfo, StyleSheet, Text } from 'react-nativ
 import type { CardSearch } from '@/hooks/useCardSearch';
 import { useCollection } from '@/hooks/useCollection';
 import { useTheme } from '@/hooks/useTheme';
+import { setBrowseList } from '@/services/cardBrowse';
 import { spacing, typography } from '@/theme';
 import type { Card } from '@/types/card';
 import { ownedCardCounts } from '@/utils/collectionValue';
@@ -38,9 +39,10 @@ export function SearchResults({ search, bottomInset, onSuggestion, recent, onCle
   const openCard = useCallback(
     (card: Card) => {
       onOpenResult();
+      setBrowseList(search.cards.map((stop) => ({ id: stop.id })));
       router.push({ pathname: '/card/[id]', params: { id: card.id } });
     },
-    [router, onOpenResult],
+    [router, onOpenResult, search.cards],
   );
 
   const count = search.cards.length;

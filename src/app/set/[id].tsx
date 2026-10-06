@@ -15,6 +15,7 @@ import { useSetCards } from '@/hooks/useSetCards';
 import { useSets } from '@/hooks/useSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useWishlist } from '@/hooks/useWishlist';
+import { setBrowseList } from '@/services/cardBrowse';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { Card } from '@/types/card';
 import type { SetFilter, SetInfo, SetMode } from '@/types/set';
@@ -57,9 +58,10 @@ export default function SetScreen() {
   const openCard = useCallback(
     (entry: SetEntry) => {
       haptics.tap();
+      setBrowseList(visible.map((stop) => ({ id: stop.card.id })));
       router.push({ pathname: '/card/[id]', params: { id: entry.card.id } });
     },
-    [haptics, router],
+    [haptics, router, visible],
   );
 
   const renderItem = useCallback(

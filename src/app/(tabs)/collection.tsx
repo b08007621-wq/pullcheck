@@ -28,6 +28,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { FreshPullPanel } from '@/components/FreshPullPanel';
 import { IconButton } from '@/components/IconButton';
 import { ItemActionsSheet } from '@/components/ItemActionsSheet';
+import { SectionDragList } from '@/components/SectionDragList';
+import { SectionHold } from '@/components/SectionHold';
 import { rowPosition } from '@/components/ListRow';
 import { MoneyEditor } from '@/components/MoneyEditor';
 import { RecentlyAddedStrip } from '@/components/RecentlyAddedStrip';
@@ -39,7 +41,8 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
-import { spacing, typography } from '@/theme';
+import { setBrowseList } from '@/services/cardBrowse';
+import { radius, spacing, typography } from '@/theme';
 import type { CollectionItem, CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
 import { itemBinder } from '@/utils/binder';
 import { type CollectionQuery, queryCollection, setCounts } from '@/utils/collectionQuery';
@@ -71,6 +74,8 @@ export default function CollectionScreen() {
   const [pulling, setPulling] = useState(false);
   const [sheet, setSheet] = useState<'filters' | 'customize' | null>(null);
   const [actionItem, setActionItem] = useState<CollectionItem | null>(null);
+  const [arranging, setArranging] = useState(false);
+  const [dragLock, setDragLock] = useState(false);
   const [paidItem, setPaidItem] = useState<CollectionItem | null>(null);
   const query = useMemo(() => ({ ...filters, basis: layout.changeBasis }), [filters, layout.changeBasis]);
 
@@ -110,6 +115,9 @@ export default function CollectionScreen() {
     (item: CollectionItem) => {
       setActionItem(null);
       if (item.kind === 'card') {
+        setBrowseList(
+          visible.flatMap((entry) => (entry.kind === 'card' ? [{ id: entry.card.id, entry: entry.key }] : [])),
+        );
         router.push({ pathname: '/card/[id]', params: { id: item.card.id, entry: item.key } });
       } else {
         router.push({
@@ -122,7 +130,7 @@ export default function CollectionScreen() {
         });
       }
     },
-    [router],
+    [router, visible],
   );
 
   const open3d = useCallback(
@@ -311,11 +319,51 @@ export default function CollectionScreen() {
 
     const header = (
       <View style={styles.header}>
-        {layout.order
-          .filter((section) => !hidden.has(section) && sections[section])
-          .map((section) => (
-            <View key={section}>{sections[section]}</View>
-          ))}
+        {arranging ? (
+          <View style={styles.arrange}>
+            <View style={styles.arrangeBar}>
+              <View style={styles.arrangeText}>
+                <Text style={[styles.arrangeTitle, { color: theme.colors.text }]}>Arrange your page</Text>
+                <Text style={[styles.arrangeHint, { color: theme.colors.textMuted }]}>
+                  Hold a section and drag it. Tap the eye to hide it.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  haptics.tap();
+                  setArranging(false);
+                  setDragLock(false);
+                }}
+                accessibilityRole="button"
+                style={[styles.arrangeDone, { backgroundColor: theme.colors.accent }]}
+              >
+                <Text style={[styles.arrangeDoneText, { color: theme.colors.onAccent }]}>Done</Text>
+              </Pressable>
+            </View>
+            <SectionDragList
+              order={layout.order}
+              hidden={layout.hidden}
+              liftDelay={120}
+              onChange={(next) => setLayout({ ...layout, ...next })}
+              onDragging={setDragLock}
+            />
+          </View>
+        ) : (
+          layout.order
+            .filter((section) => !hidden.has(section) && sections[section])
+            .map((section) => (
+              <SectionHold
+                key={section}
+                paused={actionItem !== null || sheet !== null}
+                onHold={() => {
+                  haptics.collect();
+                  setArranging(true);
+                }}
+              >
+                {sections[section]}
+              </SectionHold>
+            ))
+        )}
         <CollectionToolbar
           query={query}
           view={view}
@@ -344,6 +392,7 @@ export default function CollectionScreen() {
           scrollIndicatorInsets={{ bottom: tabBarHeight }}
           keyboardShouldPersistTaps="handled"
           refreshControl={refresh}
+          scrollEnabled={!dragLock}
         >
           {header}
           <View style={styles.coverStage}>
@@ -376,6 +425,7 @@ export default function CollectionScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           refreshControl={refresh}
+          scrollEnabled={!dragLock}
           ListHeaderComponent={header}
           ListEmptyComponent={emptyText}
         />
@@ -402,6 +452,33 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.lg,
     marginBottom: spacing.md,
+  },
+  arrange: {
+    gap: spacing.md,
+  },
+  arrangeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  arrangeText: {
+    flex: 1,
+    gap: 2,
+  },
+  arrangeTitle: {
+    ...typography.label,
+  },
+  arrangeHint: {
+    ...typography.caption,
+  },
+  arrangeDone: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  arrangeDoneText: {
+    ...typography.label,
+    fontSize: 15,
   },
   actions: {
     flexDirection: 'row',

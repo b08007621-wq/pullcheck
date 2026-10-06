@@ -22,7 +22,7 @@ export function AppNavigator() {
         }}
       >
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="card/[id]" />
+        <Stack.Screen name="card/[id]" options={{ fullScreenGestureEnabled: false }} />
         <Stack.Screen name="sealed/[id]" />
         <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
         <Stack.Screen name="rip" options={{ presentation: 'modal' }} />

@@ -11,6 +11,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useTheme } from '@/hooks/useTheme';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useWishlist } from '@/hooks/useWishlist';
+import { setBrowseList } from '@/services/cardBrowse';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { WishItem } from '@/types/wishlist';
 import { formatRelativeTime } from '@/utils/date';
@@ -37,9 +38,10 @@ export default function WishlistScreen() {
   const openCard = useCallback(
     (wish: WishItem) => {
       haptics.tap();
+      setBrowseList(sorted.map((stop) => ({ id: stop.id })));
       router.push({ pathname: '/card/[id]', params: { id: wish.id } });
     },
-    [haptics, router],
+    [haptics, router, sorted],
   );
 
   const removeWish = useCallback(
