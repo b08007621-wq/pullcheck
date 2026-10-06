@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 import type { AutoScanGuess } from '@/hooks/useAutoScan';
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { loadScanCard, useScanCard } from '@/hooks/useScanCard';
@@ -39,6 +40,8 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
   const haptics = useHaptics();
   const { addCard } = useCollection();
   const { fulfill } = useWishlist();
+  const { celebrate } = useCelebrate();
+  const thumbRef = useRef<View>(null);
   const [shown, setShown] = useState<AutoScanGuess | null>(guess);
   const [added, setAdded] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -97,12 +100,17 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
       }
       setAdded(id);
       onAdded(target, version.variant);
+      const amount = value?.currency === 'USD' ? value.amount : null;
+      const image = candidate.card.image ? `${candidate.card.image}/low.webp` : target.images.small || null;
+      thumbRef.current?.measureInWindow((x, y, width, height) =>
+        celebrate({ image, amount, from: width > 0 ? { x, y, width, height } : null }),
+      );
     } catch {
       haptics.remove();
     } finally {
       setAdding(false);
     }
-  }, [shown, candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, fulfill, onAdded]);
+  }, [shown, candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, fulfill, onAdded, celebrate]);
 
   const reject = useCallback(async () => {
     if (rejecting) return;
@@ -142,7 +150,7 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
           scaleTo={0.98}
         >
           <View style={styles.row}>
-            <View style={[styles.thumb, { backgroundColor: theme.colors.surfaceRaised }]}>
+            <View ref={thumbRef} style={[styles.thumb, { backgroundColor: theme.colors.surfaceRaised }]}>
               {image ? (
                 <Image source={image} style={styles.fill} contentFit="cover" transition={140} recyclingKey={image} />
               ) : null}

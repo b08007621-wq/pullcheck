@@ -1,4 +1,5 @@
 import { apiUrl } from './apiBase';
+import { type CachePolicy, cachedFetch } from './cache';
 import { getJson } from './http';
 
 type GradeStats = {
@@ -12,7 +13,15 @@ type GradeStats = {
 
 type Response = {
   data?: { ebay?: { salesByGrade?: Record<string, GradeStats> } } | unknown[];
+  limited?: { resetsAt?: string | null };
 };
+
+export type GradedResult = {
+  prices: GradedPrice[];
+  limitedUntil: string | null;
+};
+
+const GRADED_CACHE: CachePolicy = { bucket: 'graded', ttlMs: 3 * 24 * 60 * 60 * 1000, maxEntries: 400 };
 
 export type GradedPrice = {
   key: string;
@@ -26,8 +35,34 @@ export type GradedPrice = {
 
 const COMPANY_ORDER = ['psa', 'bgs', 'cgc', 'tag', 'sgc', 'ace'];
 
-export async function fetchGradedPrices(productId: number, signal?: AbortSignal): Promise<GradedPrice[]> {
-  const response = await getJson<Response>(apiUrl(`/api/pokeprice?id=${productId}`), { signal, timeoutMs: 20_000, maxAttempts: 1 });
+class GradedLimitError extends Error {
+  readonly resetsAt: string | null;
+
+  constructor(resetsAt: string | null) {
+    super('Graded price limit reached');
+    this.resetsAt = resetsAt;
+  }
+}
+
+export async function fetchGradedPrices(productId: number, signal?: AbortSignal): Promise<GradedResult> {
+  try {
+    const { value } = await cachedFetch(String(productId), GRADED_CACHE, async () => {
+      const response = await getJson<Response>(apiUrl(`/api/pokeprice?id=${productId}`), {
+        signal,
+        timeoutMs: 20_000,
+        maxAttempts: 1,
+      });
+      if (response.limited) throw new GradedLimitError(response.limited.resetsAt ?? null);
+      return parseGraded(response);
+    });
+    return { prices: value, limitedUntil: null };
+  } catch (error) {
+    if (error instanceof GradedLimitError) return { prices: [], limitedUntil: error.resetsAt ?? 'later' };
+    throw error;
+  }
+}
+
+function parseGraded(response: Response): GradedPrice[] {
   const data = response.data;
   if (!data || Array.isArray(data)) return [];
   const byGrade = data.ebay?.salesByGrade ?? {};

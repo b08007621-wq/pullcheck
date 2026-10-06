@@ -12,8 +12,18 @@ import {
 import { sanitizeBackdrop } from '@/theme/backdrop';
 import { withAlpha } from '@/theme/color';
 
+import type { ChangeBasis, CollectionLayout, CollectionSection } from '@/types/collection';
+
 import { savedTheme } from './savedTheme';
-import { DEFAULT_SETTINGS, DESIGN_VERSION, type SavedTheme, type Settings, SettingsContext } from './settingsContext';
+import {
+  COLLECTION_SECTIONS,
+  DEFAULT_COLLECTION_LAYOUT,
+  DEFAULT_SETTINGS,
+  DESIGN_VERSION,
+  type SavedTheme,
+  type Settings,
+  SettingsContext,
+} from './settingsContext';
 
 type Props = {
   children: ReactNode;
@@ -91,10 +101,28 @@ function sanitize(stored: Partial<Settings>): Settings {
     custom: sanitizeCustomTheme(stored.custom),
     savedThemes,
     collectionView: view === 'grid' || view === 'cover' ? view : 'list',
+    collectionLayout: sanitizeLayout(stored.collectionLayout),
     backdrop: sanitizeBackdrop(stored.backdrop),
     motion: typeof stored.motion === 'boolean' ? stored.motion : DEFAULT_SETTINGS.motion,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     sounds: typeof stored.sounds === 'boolean' ? stored.sounds : DEFAULT_SETTINGS.sounds,
     autoScan: typeof stored.autoScan === 'boolean' ? stored.autoScan : DEFAULT_SETTINGS.autoScan,
+  };
+}
+
+const BASES: ChangeBasis[] = ['auto', 'added', 'paid', 'day', 'week', 'month'];
+
+function sanitizeLayout(stored: Partial<CollectionLayout> | undefined): CollectionLayout {
+  if (!stored || typeof stored !== 'object') return DEFAULT_COLLECTION_LAYOUT;
+  const known = (value: unknown): value is CollectionSection =>
+    typeof value === 'string' && (COLLECTION_SECTIONS as string[]).includes(value);
+  const order = Array.isArray(stored.order) ? stored.order.filter(known) : [];
+  const missing = COLLECTION_SECTIONS.filter((section) => !order.includes(section));
+  return {
+    order: [...order, ...missing],
+    hidden: Array.isArray(stored.hidden) ? stored.hidden.filter(known) : [],
+    gridColumns: stored.gridColumns === 2 || stored.gridColumns === 4 ? stored.gridColumns : 3,
+    gridDetails: typeof stored.gridDetails === 'boolean' ? stored.gridDetails : true,
+    changeBasis: BASES.includes(stored.changeBasis as ChangeBasis) ? (stored.changeBasis as ChangeBasis) : 'auto',
   };
 }

@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
-import type { CollectionItem } from '@/types/collection';
+import type { ChangeBasis, CollectionItem } from '@/types/collection';
 import { formatCollectorNumber } from '@/utils/card';
 import { entryVersion, versionLabel } from '@/utils/cardVersion';
-import { itemPrice, itemProfit, itemTitle } from '@/utils/collectionValue';
-import { formatMoney, percentChange } from '@/utils/price';
+import { CHANGE_CAPTION, itemChange } from '@/utils/collectionChange';
+import { isNewItem } from '@/utils/collectionQuery';
+import { itemPrice, itemTitle } from '@/utils/collectionValue';
+import { formatMoney } from '@/utils/price';
 import { binderLabel, itemBinder } from '@/utils/binder';
 import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
 
@@ -19,18 +21,18 @@ import { ProductImage } from './ProductImage';
 type Props = {
   item: CollectionItem;
   position: RowPosition;
+  basis?: ChangeBasis;
+  fresh?: boolean;
   onPress: (item: CollectionItem) => void;
+  onLongPress?: (item: CollectionItem) => void;
 };
 
-function CollectionListItemView({ item, position, onPress }: Props) {
+function CollectionListItemView({ item, position, basis = 'auto', fresh = false, onPress, onLongPress }: Props) {
   const styles = useThemedStyles(createStyles);
   const price = itemPrice(item);
-  const profit = itemProfit(item);
-  const change =
-    profit?.percent ??
-    (price && item.priceAtAdd && price.currency === item.priceAtAdd.currency
-      ? percentChange(item.priceAtAdd.amount, price.amount)
-      : null);
+  const change = itemChange(item, basis);
+  const caption = change && (basis !== 'auto' || change.basis === 'paid') ? CHANGE_CAPTION[change.basis] : undefined;
+  const isNew = fresh || isNewItem(item);
   const version = item.kind === 'card' ? versionLabel(item.card, entryVersion(item), 'short') : null;
   const binder = itemBinder(item);
   const graded = item.kind === 'card' && item.grading ? `${item.grading.company} ${item.grading.grade}` : null;
@@ -42,9 +44,12 @@ function CollectionListItemView({ item, position, onPress }: Props) {
     <ListRow position={position} inset={70}>
       <Pressable
         onPress={() => onPress(item)}
+        onLongPress={onLongPress ? () => onLongPress(item) : undefined}
+        delayLongPress={320}
         accessibilityRole="button"
         accessibilityLabel={itemTitle(item)}
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        accessibilityHint="Long press for quick actions"
+        style={({ pressed }) => [styles.row, fresh && styles.fresh, pressed && styles.pressed]}
       >
         {item.kind === 'card' ? (
           <Image
@@ -61,6 +66,7 @@ function CollectionListItemView({ item, position, onPress }: Props) {
         )}
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>
+            {isNew ? <Text style={styles.newDot}>{'● '}</Text> : null}
             {itemTitle(item)}
             {item.quantity > 1 ? <Text style={styles.count}>{`  ×${item.quantity}`}</Text> : null}
           </Text>
@@ -72,7 +78,7 @@ function CollectionListItemView({ item, position, onPress }: Props) {
           <Text style={styles.amount}>
             {price ? formatMoney(price.amount * item.quantity, price.currency) : 'No price'}
           </Text>
-          {change !== null ? <PriceChange percent={change} prefix={profit ? 'vs paid' : undefined} /> : null}
+          {change && change.percent !== null ? <PriceChange percent={change.percent} prefix={caption} /> : null}
         </View>
       </Pressable>
     </ListRow>
@@ -103,6 +109,13 @@ function createStyles(theme: AppTheme) {
     },
     pressed: {
       backgroundColor: theme.colors.surfaceRaised,
+    },
+    fresh: {
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    newDot: {
+      color: theme.colors.gain,
+      fontSize: 12,
     },
     cardImage: {
       width: 46,

@@ -14,22 +14,30 @@ import {
 import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, spacing, typography } from '@/theme';
-import type { CollectionItem } from '@/types/collection';
-import { itemPrice, itemTitle } from '@/utils/collectionValue';
-import { formatPrice } from '@/utils/price';
+import type { ChangeBasis, CollectionItem } from '@/types/collection';
+import { formatCollectorNumber } from '@/utils/card';
+import { entryVersion, versionLabel } from '@/utils/cardVersion';
+import { CHANGE_CAPTION, itemChange } from '@/utils/collectionChange';
+import { isNewItem } from '@/utils/collectionQuery';
+import { itemPrice, itemProfit, itemTitle } from '@/utils/collectionValue';
+import { formatMoney, formatPrice } from '@/utils/price';
 
 import { PressableScale } from './PressableScale';
+import { PriceChange } from './PriceChange';
 import { ProductImage } from './ProductImage';
 
 type Props = {
   items: CollectionItem[];
   bottomInset: number;
+  basis: ChangeBasis;
+  isFresh: (item: CollectionItem) => boolean;
   onOpen3d: (item: CollectionItem) => void;
+  onLongPress: (item: CollectionItem) => void;
 };
 
 const CARD_RATIO = 63 / 88;
 
-export function CollectionCoverflow({ items, bottomInset, onOpen3d }: Props) {
+export function CollectionCoverflow({ items, bottomInset, basis, isFresh, onOpen3d, onLongPress }: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
   const { width } = useWindowDimensions();
@@ -40,6 +48,8 @@ export function CollectionCoverflow({ items, bottomInset, onOpen3d }: Props) {
   const sidePadding = (width - itemWidth) / 2;
   const active = items[Math.min(index, items.length - 1)];
   const price = active ? itemPrice(active) : null;
+  const change = active ? itemChange(active, basis) : null;
+  const profit = active ? itemProfit(active) : null;
 
   const onScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -63,6 +73,8 @@ export function CollectionCoverflow({ items, bottomInset, onOpen3d }: Props) {
           <Animated.View style={{ opacity, transform: [{ perspective: 900 }, { rotateY }, { scale }] }}>
             <PressableScale
               onPress={() => onOpen3d(item)}
+              onLongPress={() => onLongPress(item)}
+              delayLongPress={320}
               accessibilityRole="button"
               accessibilityLabel={`Open ${itemTitle(item)} in 3D`}
               style={{ width: itemWidth, height: itemHeight }}
@@ -83,7 +95,7 @@ export function CollectionCoverflow({ items, bottomInset, onOpen3d }: Props) {
         </View>
       );
     },
-    [itemHeight, itemWidth, onOpen3d, scrollX, styles.image],
+    [itemHeight, itemWidth, onOpen3d, onLongPress, scrollX, styles.image],
   );
 
   return (
@@ -105,19 +117,45 @@ export function CollectionCoverflow({ items, bottomInset, onOpen3d }: Props) {
       />
       {active ? (
         <View style={[styles.caption, { paddingBottom: bottomInset + spacing.lg }]}>
-          <Text style={styles.title} numberOfLines={1}>
-            {itemTitle(active)}
+          <View style={styles.titleRow}>
+            {isFresh(active) || isNewItem(active) ? (
+              <View style={styles.newBadge}>
+                <Text style={styles.newText}>NEW</Text>
+              </View>
+            ) : null}
+            <Text style={styles.title} numberOfLines={1}>
+              {itemTitle(active)}
+            </Text>
+          </View>
+          <Text style={styles.meta} numberOfLines={1}>
+            {subtitleFor(active)}
           </Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>{price ? formatPrice(price) : 'No price'}</Text>
+            {change && change.percent !== null ? (
+              <PriceChange percent={change.percent} prefix={CHANGE_CAPTION[change.basis]} />
+            ) : null}
+          </View>
           <Text style={styles.meta}>
-            {[price ? formatPrice(price) : null, active.quantity > 1 ? `×${active.quantity}` : null, `${index + 1} of ${items.length}`]
+            {[
+              active.quantity > 1 ? `${active.quantity} copies` : null,
+              profit ? `${profit.amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(profit.amount), profit.currency)} vs paid` : null,
+              `${index + 1} of ${items.length}`,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </Text>
-          <Text style={styles.hint}>Tap to view in 3D</Text>
+          <Text style={styles.hint}>Tap for 3D · hold for options</Text>
         </View>
       ) : null}
     </View>
   );
+}
+
+function subtitleFor(item: CollectionItem): string {
+  if (item.kind === 'sealed') return item.product.setName;
+  const version = item.grading ? `${item.grading.company} ${item.grading.grade}` : versionLabel(item.card, entryVersion(item), 'short');
+  return [item.card.set.name, `#${formatCollectorNumber(item.card)}`, version].filter(Boolean).join(' · ');
 }
 
 function keyExtractor(item: CollectionItem): string {
@@ -142,6 +180,36 @@ function createStyles(theme: AppTheme) {
     title: {
       ...typography.heading,
       color: theme.colors.text,
+      flexShrink: 1,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs + 2,
+      maxWidth: '100%',
+    },
+    newBadge: {
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      backgroundColor: theme.colors.gain,
+    },
+    newText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.colors.background,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: 2,
+    },
+    price: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.colors.text,
+      fontVariant: ['tabular-nums'],
     },
     meta: {
       ...typography.caption,

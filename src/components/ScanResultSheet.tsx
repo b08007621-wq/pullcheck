@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import type { AutoScanResult } from '@/hooks/useAutoScan';
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { loadScanCard, useLocalizedCards, useScanCard } from '@/hooks/useScanCard';
@@ -71,6 +72,8 @@ export function ScanResultSheet({
   const [language, setLanguage] = useState<DexLanguage>(result.language ?? 'en');
   const [added, setAdded] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const { celebrate } = useCelebrate();
+  const stageRef = useRef<View>(null);
   const [offset] = useState(() => new Animated.Value(height));
   const closingRef = useRef(false);
   const dragRef = useRef({ x: 0, y: 0, lastY: 0, lastT: 0, velocity: 0 });
@@ -149,6 +152,15 @@ export function ScanResultSheet({
     settle();
   };
 
+  const shown = localized.find((entry) => entry.language === language) ?? null;
+  const images = result.candidates.map((entry, position) =>
+    position === index
+      ? (shown?.image ?? (card?.images.large || (entry.card.image ? `${entry.card.image}/high.webp` : null)))
+      : entry.card.image
+        ? `${entry.card.image}/high.webp`
+        : null,
+  );
+
   const add = useCallback(
     async (binder: Binder | null) => {
       if (!candidate || added || adding) return;
@@ -169,13 +181,20 @@ export function ScanResultSheet({
           setAdded(binder ? `Added to ${binderLabel(binder)}` : 'Added to collection');
         }
         onAdded?.(`${candidate.language}:${candidate.card.id}`, version.variant);
+        const image = images[index] ?? target.images.small ?? null;
+        const amount = price?.currency === 'USD' ? price.amount : null;
+        stageRef.current?.measureInWindow((x, y, width) => {
+          const cardWidth = IMAGE_HEIGHT * (63 / 88);
+          const from = width > 0 ? { x: x + (width - cardWidth) / 2, y, width: cardWidth, height: IMAGE_HEIGHT } : null;
+          celebrate({ image, amount, from, delay: CLOSE_AFTER_ADD_MS + 200 });
+        });
       } catch {
         haptics.remove();
       } finally {
         setAdding(false);
       }
     },
-    [candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, setBinder, fulfill, onAdded],
+    [candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, setBinder, fulfill, onAdded, celebrate, images, index],
   );
 
   useEffect(() => {
@@ -184,14 +203,6 @@ export function ScanResultSheet({
     return () => clearTimeout(timer);
   }, [added, close]);
 
-  const shown = localized.find((entry) => entry.language === language) ?? null;
-  const images = result.candidates.map((entry, position) =>
-    position === index
-      ? (shown?.image ?? (card?.images.large || (entry.card.image ? `${entry.card.image}/high.webp` : null)))
-      : entry.card.image
-        ? `${entry.card.image}/high.webp`
-        : null,
-  );
   const backdrop = offset.interpolate({ inputRange: [0, height], outputRange: [1, 0], extrapolate: 'clamp' });
 
   return (
@@ -226,7 +237,7 @@ export function ScanResultSheet({
           {candidate ? (
             <ScanResultBody
               media={
-                <View style={styles.bleed}>
+                <View ref={stageRef} style={styles.bleed}>
                   <CandidateCarousel images={images} index={index} height={IMAGE_HEIGHT} onIndex={pick} />
                 </View>
               }
@@ -236,6 +247,7 @@ export function ScanResultSheet({
               number={card?.number ?? preview?.number ?? candidate.card.localId}
               card={priced}
               variant={variant}
+              pricing={card === null && error === null}
               failed={error !== null}
             />
           ) : null}

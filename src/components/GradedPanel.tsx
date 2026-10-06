@@ -11,13 +11,21 @@ import { SectionPanel } from './SectionPanel';
 
 type Props = {
   prices: GradedPrice[] | null;
+  limitedUntil?: string | null;
 };
 
 const PREVIEW = 4;
 
-export function GradedPanel({ prices }: Props) {
+export function GradedPanel({ prices, limitedUntil = null }: Props) {
   const styles = useThemedStyles(createStyles);
   const [open, setOpen] = useState(false);
+  if (limitedUntil && (!prices || prices.length === 0)) {
+    return (
+      <SectionPanel title="Graded">
+        <Text style={styles.paused}>{pausedText(limitedUntil)}</Text>
+      </SectionPanel>
+    );
+  }
   if (!prices || prices.length === 0) return null;
   const shown = open ? prices : prices.slice(0, PREVIEW);
 
@@ -45,6 +53,13 @@ export function GradedPanel({ prices }: Props) {
       <Text style={styles.source}>eBay sales via PokemonPriceTracker</Text>
     </SectionPanel>
   );
+}
+
+function pausedText(resetsAt: string): string {
+  const date = new Date(resetsAt);
+  if (Number.isNaN(date.getTime())) return 'PSA and other graded prices hit today’s free limit. They’ll be back tomorrow.';
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return `PSA and other graded prices hit today’s free limit. They’re back at ${time}.`;
 }
 
 function createStyles(theme: AppTheme) {
@@ -87,6 +102,10 @@ function createStyles(theme: AppTheme) {
       fontSize: 11,
       color: theme.colors.textFaint,
       paddingTop: spacing.xs,
+    },
+    paused: {
+      ...typography.body,
+      color: theme.colors.textMuted,
     },
   });
 }

@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import { enrichCardPrices, needsPrices } from '@/services/cardPrices';
 import { getCard, rememberCards } from '@/services/pokemonTcg';
 import type { ScanCandidate } from '@/services/scanMatch';
 import { dexToCard, getLocalizedCards, isDexCardId } from '@/services/tcgdex';
@@ -10,6 +11,7 @@ import { useResource } from './useResource';
 
 const LANGUAGES: DexLanguage[] = ['en', 'de', 'fr'];
 const FALLBACK_TIMEOUT_MS = 6000;
+const ENRICH_TIMEOUT_MS = 9000;
 
 export function useScanCard(candidate: ScanCandidate | null) {
   const key = candidate ? `${candidate.language}:${candidate.card.id}` : 'scan:none';
@@ -22,9 +24,18 @@ export function useScanCard(candidate: ScanCandidate | null) {
 }
 
 export async function loadScanCard(candidate: ScanCandidate, signal?: AbortSignal): Promise<Card> {
-  const card = await fillGaps(await dexToCard(candidate.card, candidate.language, signal), signal);
+  const filled = await fillGaps(await dexToCard(candidate.card, candidate.language, signal), signal);
+  const card = needsPrices(filled) ? await withPrices(filled) : filled;
   rememberCards([card]);
   return card;
+}
+
+async function withPrices(card: Card): Promise<Card> {
+  const enriched = await Promise.race([
+    enrichCardPrices([card]).catch(() => [card]),
+    new Promise<Card[]>((resolve) => setTimeout(() => resolve([card]), ENRICH_TIMEOUT_MS)),
+  ]);
+  return enriched[0] ?? card;
 }
 
 export function useLocalizedCards(candidate: ScanCandidate | null): LocalizedCard[] {

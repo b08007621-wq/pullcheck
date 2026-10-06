@@ -45,3 +45,6 @@ yarn-error.*
 
 # scanner frames saved by the dev server
 scan-log/
+
+# graded price cache written by the dev server
+.cache/

@@ -1,9 +1,10 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   type ListRenderItemInfo,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -14,52 +15,71 @@ import {
 
 import { AppearanceButton } from '@/components/AppearanceButton';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
+import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
+import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
 import { CollectionGridItem } from '@/components/CollectionGridItem';
 import { CollectionListItem } from '@/components/CollectionListItem';
+import { CollectionQuickStats } from '@/components/CollectionQuickStats';
 import { CollectionShortcuts } from '@/components/CollectionShortcuts';
-import { rowPosition } from '@/components/ListRow';
 import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
+import { CollectionToolbar } from '@/components/CollectionToolbar';
 import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
-import { SkeletonRows } from '@/components/SkeletonRows';
+import { FreshPullPanel } from '@/components/FreshPullPanel';
+import { IconButton } from '@/components/IconButton';
+import { ItemActionsSheet } from '@/components/ItemActionsSheet';
+import { rowPosition } from '@/components/ListRow';
+import { MoneyEditor } from '@/components/MoneyEditor';
+import { RecentlyAddedStrip } from '@/components/RecentlyAddedStrip';
 import { Screen } from '@/components/Screen';
-import { SegmentedControl } from '@/components/SegmentedControl';
-import { SortToggle } from '@/components/SortToggle';
-import { ViewToggle } from '@/components/ViewToggle';
+import { SkeletonRows } from '@/components/SkeletonRows';
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
 import { spacing, typography } from '@/theme';
-import type { BinderFilter, CollectionFilter, CollectionItem, CollectionSort, CollectionView } from '@/types/collection';
-import { BINDER_FILTERS, itemBinder } from '@/utils/binder';
-import { sortCollection, summarizeCollection } from '@/utils/collectionValue';
+import type { CollectionItem, CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
+import { itemBinder } from '@/utils/binder';
+import { type CollectionQuery, queryCollection, setCounts } from '@/utils/collectionQuery';
+import { summarizeCollection } from '@/utils/collectionValue';
 import { itemViewerParams } from '@/utils/viewer';
 
-const GRID_COLUMNS = 3;
-
-const FILTERS: { value: CollectionFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'card', label: 'Cards' },
-  { value: 'sealed', label: 'Sealed' },
-];
+const INITIAL_QUERY: Omit<CollectionQuery, 'basis'> = {
+  text: '',
+  type: 'all',
+  binder: 'all',
+  quick: null,
+  set: null,
+  sort: 'value',
+};
 
 export default function CollectionScreen() {
   const theme = useTheme();
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const haptics = useHaptics();
-  const { items, meta, isLoaded, refreshing, refreshFailed, refreshPrices } = useCollection();
+  const { items, meta, isLoaded, refreshing, refreshFailed, refreshPrices, setPaid } = useCollection();
   const { refresh: refreshWishlist } = useWishlist();
-  const [filter, setFilter] = useState<CollectionFilter>('all');
-  const [sort, setSort] = useState<CollectionSort>('value');
-  const [binder, setBinder] = useState<BinderFilter>('all');
+  const { fresh, clearFresh } = useCelebrate();
   const { settings, updateSettings } = useSettings();
-  const view = settings.collectionView;
-  const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
   const { width } = useWindowDimensions();
+  const view = settings.collectionView;
+  const layout = settings.collectionLayout;
+  const [filters, setFilters] = useState(INITIAL_QUERY);
   const [pulling, setPulling] = useState(false);
+  const [sheet, setSheet] = useState<'filters' | 'customize' | null>(null);
+  const [actionItem, setActionItem] = useState<CollectionItem | null>(null);
+  const [paidItem, setPaidItem] = useState<CollectionItem | null>(null);
+  const query = useMemo(() => ({ ...filters, basis: layout.changeBasis }), [filters, layout.changeBasis]);
+
+  const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
+  const setLayout = useCallback((next: CollectionLayout) => updateSettings({ collectionLayout: next }), [updateSettings]);
+  const changeQuery = useCallback(
+    (changes: Partial<CollectionQuery>) => setFilters((current) => ({ ...current, ...changes })),
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -78,19 +98,17 @@ export default function CollectionScreen() {
 
   const summary = useMemo(() => summarizeCollection(items), [items]);
   const usesBinders = useMemo(() => items.some((item) => itemBinder(item) !== 'personal'), [items]);
-  const visible = useMemo(
-    () =>
-      sortCollection(
-        items.filter(
-          (item) => (filter === 'all' || item.kind === filter) && (binder === 'all' || !usesBinders || itemBinder(item) === binder),
-        ),
-        sort,
-      ),
-    [items, filter, binder, usesBinders, sort],
+  const sets = useMemo(() => setCounts(items), [items]);
+  const visible = useMemo(() => queryCollection(items, query, usesBinders), [items, query, usesBinders]);
+  const freshIds = useMemo(() => new Set(fresh?.cards.map((card) => card.id) ?? []), [fresh]);
+  const isFresh = useCallback(
+    (item: CollectionItem) => item.kind === 'card' && freshIds.has(item.card.id),
+    [freshIds],
   );
 
   const openItem = useCallback(
     (item: CollectionItem) => {
+      setActionItem(null);
       if (item.kind === 'card') {
         router.push({ pathname: '/card/[id]', params: { id: item.card.id, entry: item.key } });
       } else {
@@ -116,18 +134,93 @@ export default function CollectionScreen() {
     [openItem, router],
   );
 
-  const tileWidth = Math.floor((width - spacing.lg * 2 - spacing.sm * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
+  const showActions = useCallback(
+    (item: CollectionItem) => {
+      haptics.selection();
+      setActionItem(item);
+    },
+    [haptics],
+  );
+
+  const columns = layout.gridColumns;
+  const tileWidth = Math.floor((width - spacing.lg * 2 - spacing.sm * (columns - 1)) / columns);
 
   const renderGridItem = useCallback(
-    ({ item }: ListRenderItemInfo<CollectionItem>) => <CollectionGridItem item={item} width={tileWidth} onPress={openItem} />,
-    [openItem, tileWidth],
+    ({ item }: ListRenderItemInfo<CollectionItem>) => (
+      <CollectionGridItem
+        item={item}
+        width={tileWidth}
+        basis={layout.changeBasis}
+        details={layout.gridDetails}
+        fresh={isFresh(item)}
+        onPress={openItem}
+        onLongPress={showActions}
+      />
+    ),
+    [openItem, showActions, tileWidth, layout.changeBasis, layout.gridDetails, isFresh],
   );
 
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<CollectionItem>) => (
-      <CollectionListItem item={item} position={rowPosition(index, visible.length)} onPress={openItem} />
+      <CollectionListItem
+        item={item}
+        position={rowPosition(index, visible.length)}
+        basis={layout.changeBasis}
+        fresh={isFresh(item)}
+        onPress={openItem}
+        onLongPress={showActions}
+      />
     ),
-    [openItem, visible.length],
+    [openItem, showActions, visible.length, layout.changeBasis, isFresh],
+  );
+
+  const sheets = (
+    <>
+      {sheet === 'filters' ? (
+        <CollectionFilterSheet query={query} sets={sets} onChange={changeQuery} onClose={() => setSheet(null)} />
+      ) : null}
+      {sheet === 'customize' ? (
+        <CollectionCustomizeSheet layout={layout} items={items} onChange={setLayout} onClose={() => setSheet(null)} />
+      ) : null}
+      {actionItem ? (
+        <ItemActionsSheet
+          item={actionItem}
+          basis={layout.changeBasis}
+          onOpen={openItem}
+          onEditPaid={(item) => {
+            setActionItem(null);
+            setPaidItem(item);
+          }}
+          onClose={() => setActionItem(null)}
+        />
+      ) : null}
+      {paidItem ? (
+        <MoneyEditor
+          initial={paidItem.paid ?? null}
+          heading="What did you pay?"
+          message="Per copy. It’s used for your profit and the Paid change view."
+          onSave={(paid) => {
+            haptics.tap();
+            setPaid(paidItem.key, paid);
+          }}
+          onClose={() => setPaidItem(null)}
+        />
+      ) : null}
+    </>
+  );
+
+  const headerAction = (
+    <View style={styles.actions}>
+      <IconButton
+        icon="create-outline"
+        accessibilityLabel="Customize this page"
+        onPress={() => {
+          haptics.tap();
+          setSheet('customize');
+        }}
+      />
+      <AppearanceButton />
+    </View>
   );
 
   let content;
@@ -148,26 +241,20 @@ export default function CollectionScreen() {
       </EmptyState>
     );
   } else {
-    const toolbar = (
-      <View style={styles.header}>
-        <View style={styles.toolbar}>
-          <View style={styles.filters}>
-            <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
-          </View>
-          <SortToggle value={sort} onChange={setSort} compact />
-          <ViewToggle value={view} onChange={setView} />
-        </View>
-        {usesBinders ? <SegmentedControl options={BINDER_FILTERS} value={binder} onChange={setBinder} /> : null}
-      </View>
-    );
-    const emptyText = (
-      <Text style={[styles.emptyFilter, { color: theme.colors.textMuted }]}>
-        {filter === 'sealed' ? 'No sealed products here.' : 'Nothing here yet.'}
-      </Text>
-    );
-
-    const header = (
-      <View style={styles.header}>
+    const hidden = new Set(layout.hidden);
+    const chart = <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />;
+    const sections: Record<CollectionSection, ReactNode> = {
+      pulled: fresh ? (
+        <FreshPullPanel
+          pull={fresh}
+          onOpenCard={(id) => router.push({ pathname: '/card/[id]', params: { id } })}
+          onDismiss={() => {
+            haptics.selection();
+            clearFresh();
+          }}
+        />
+      ) : null,
+      summary: (
         <CollectionSummaryCard
           summary={summary}
           history={meta.valueHistory}
@@ -175,11 +262,59 @@ export default function CollectionScreen() {
           pricesAsOf={meta.pricesAsOf ?? null}
           refreshing={refreshing}
           refreshFailed={refreshFailed}
-          chart={<CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />}
+          chart={hidden.has('chart') ? undefined : chart}
         />
-        <CollectionShortcuts variant="row" />
-        {toolbar}
+      ),
+      chart: hidden.has('summary') ? chart : null,
+      recent: <RecentlyAddedStrip items={items} onOpen={openItem} onLongPress={showActions} />,
+      stats: (
+        <CollectionQuickStats
+          items={items}
+          onFilter={(quick) => {
+            haptics.selection();
+            changeQuery({ quick });
+          }}
+          onOpen={openItem}
+        />
+      ),
+      shortcuts: <CollectionShortcuts variant="row" />,
+    };
+
+    const emptyText = (
+      <View style={styles.emptyFilter}>
+        <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>Nothing matches.</Text>
+        <Pressable onPress={() => setFilters(INITIAL_QUERY)} accessibilityRole="button" hitSlop={8}>
+          <Text style={[styles.clear, { color: theme.colors.accent }]}>Clear search and filters</Text>
+        </Pressable>
       </View>
+    );
+
+    const header = (
+      <View style={styles.header}>
+        {layout.order
+          .filter((section) => !hidden.has(section) && sections[section])
+          .map((section) => (
+            <View key={section}>{sections[section]}</View>
+          ))}
+        <CollectionToolbar
+          query={query}
+          view={view}
+          usesBinders={usesBinders}
+          shown={visible.length}
+          onChange={changeQuery}
+          onView={setView}
+          onFilters={() => setSheet('filters')}
+        />
+      </View>
+    );
+
+    const refresh = (
+      <RefreshControl
+        refreshing={pulling}
+        onRefresh={pullToRefresh}
+        tintColor={theme.colors.accent}
+        colors={[theme.colors.accent]}
+      />
     );
 
     if (view === 'cover') {
@@ -187,19 +322,20 @@ export default function CollectionScreen() {
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
           scrollIndicatorInsets={{ bottom: tabBarHeight }}
-          refreshControl={
-            <RefreshControl
-              refreshing={pulling}
-              onRefresh={pullToRefresh}
-              tintColor={theme.colors.accent}
-              colors={[theme.colors.accent]}
-            />
-          }
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refresh}
         >
           {header}
           <View style={styles.coverStage}>
             {visible.length > 0 ? (
-              <CollectionCoverflow items={visible} bottomInset={0} onOpen3d={open3d} />
+              <CollectionCoverflow
+                items={visible}
+                bottomInset={0}
+                basis={layout.changeBasis}
+                isFresh={isFresh}
+                onOpen3d={open3d}
+                onLongPress={showActions}
+              />
             ) : (
               emptyText
             )}
@@ -209,22 +345,17 @@ export default function CollectionScreen() {
     } else {
       content = (
         <FlatList
-          key={view}
+          key={view === 'grid' ? `grid-${columns}` : 'list'}
           data={visible}
           keyExtractor={keyExtractor}
           renderItem={view === 'grid' ? renderGridItem : renderItem}
-          numColumns={view === 'grid' ? GRID_COLUMNS : 1}
+          numColumns={view === 'grid' ? columns : 1}
           columnWrapperStyle={view === 'grid' ? styles.gridRow : undefined}
           contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
           scrollIndicatorInsets={{ bottom: tabBarHeight }}
-          refreshControl={
-            <RefreshControl
-              refreshing={pulling}
-              onRefresh={pullToRefresh}
-              tintColor={theme.colors.accent}
-              colors={[theme.colors.accent]}
-            />
-          }
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          refreshControl={refresh}
           ListHeaderComponent={header}
           ListEmptyComponent={emptyText}
         />
@@ -233,8 +364,9 @@ export default function CollectionScreen() {
   }
 
   return (
-    <Screen title="Collection" action={<AppearanceButton />}>
+    <Screen title="Collection" action={headerAction}>
       {content}
+      {sheets}
     </Screen>
   );
 }
@@ -251,13 +383,9 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     marginBottom: spacing.md,
   },
-  toolbar: {
+  actions: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.sm,
-  },
-  filters: {
-    flex: 1,
   },
   coverStage: {
     marginHorizontal: -spacing.lg,
@@ -271,8 +399,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   emptyFilter: {
-    ...typography.body,
-    textAlign: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+  },
+  clear: {
+    ...typography.label,
+    fontSize: 15,
   },
 });

@@ -20,6 +20,7 @@ import { View3DButton } from '@/components/View3DButton';
 import { WishButton } from '@/components/WishButton';
 import { WishPanel } from '@/components/WishPanel';
 import { useCardDetail } from '@/hooks/useCardDetail';
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useJapaneseVersions } from '@/hooks/useCrossLanguage';
 import { useGradedPrices } from '@/hooks/useGradedPrices';
@@ -49,13 +50,14 @@ export default function CardDetailScreen() {
   const { items, addCard, setQuantity, remove, setPaid, setGrading } = useCollection();
   const graded = useGradedPrices(card ?? null);
   const wishlist = useWishlist();
+  const { celebrate } = useCelebrate();
   const [picked, setPicked] = useState<CardVersion | null>(null);
 
   useEffect(() => {
-    if (!graded || graded.length === 0) return;
+    if (!graded || graded.prices.length === 0) return;
     for (const item of owned) {
       if (item.kind !== 'card' || !item.grading || item.grading.value) continue;
-      const value = gradedPriceFor(graded, item.grading.company, item.grading.grade);
+      const value = gradedPriceFor(graded.prices, item.grading.company, item.grading.grade);
       if (value) setGrading(item.key, { ...item.grading, value });
     }
   }, [graded, owned, setGrading]);
@@ -104,6 +106,8 @@ export default function CardDetailScreen() {
           onCollect={() => {
             addCard(card, version);
             wishlist.fulfill([card.id]);
+            const price = cardVersionPrice(card, version);
+            celebrate({ image: card.images.large || card.images.small, amount: price?.currency === 'USD' ? price.amount : null });
           }}
         />
       }
@@ -163,7 +167,7 @@ export default function CardDetailScreen() {
         estimated={version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []}
         source={{ kind: 'card', card, variant: version.variant ?? null }}
       />
-      <GradedPanel prices={graded} />
+      <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} />
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
       <OtherVersions language="jp" versions={japaneseVersions} />
       <CardFacts card={card} />

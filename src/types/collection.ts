@@ -68,4 +68,18 @@ export type BinderFilter = 'all' | Binder;
 
 export type CollectionView = 'list' | 'grid' | 'cover';
 
-export type CollectionSort = 'value' | 'recent';
+export type CollectionSort = 'value' | 'recent' | 'gain' | 'drop' | 'name' | 'set';
+
+export type ChangeBasis = 'auto' | 'added' | 'paid' | 'day' | 'week' | 'month';
+
+export type QuickFilter = 'dupes' | 'graded' | 'new' | 'gainers' | 'losers' | 'unpriced';
+
+export type CollectionSection = 'pulled' | 'summary' | 'chart' | 'recent' | 'stats' | 'shortcuts';
+
+export type CollectionLayout = {
+  order: CollectionSection[];
+  hidden: CollectionSection[];
+  gridColumns: 2 | 3 | 4;
+  gridDetails: boolean;
+  changeBasis: ChangeBasis;
+};

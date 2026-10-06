@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
 import { type Backdrop, DEFAULT_BACKDROP } from '@/theme/backdrop';
-import type { CollectionView } from '@/types/collection';
+import type { CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
 
 import {
   type AppTheme,
@@ -23,6 +23,7 @@ export type Settings = {
   custom: CustomThemeSettings;
   savedThemes: SavedTheme[];
   collectionView: CollectionView;
+  collectionLayout: CollectionLayout;
   backdrop: Backdrop;
   motion: boolean;
   haptics: boolean;
@@ -32,6 +33,16 @@ export type Settings = {
 };
 
 export const DESIGN_VERSION = 2;
+
+export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'recent', 'stats', 'shortcuts'];
+
+export const DEFAULT_COLLECTION_LAYOUT: CollectionLayout = {
+  order: COLLECTION_SECTIONS,
+  hidden: [],
+  gridColumns: 3,
+  gridDetails: true,
+  changeBasis: 'auto',
+};
 
 export type SettingsContextValue = {
   settings: Settings;
@@ -44,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   custom: DEFAULT_CUSTOM_THEME,
   savedThemes: [],
   collectionView: 'list',
+  collectionLayout: DEFAULT_COLLECTION_LAYOUT,
   backdrop: DEFAULT_BACKDROP,
   motion: true,
   haptics: true,

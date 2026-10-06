@@ -18,11 +18,12 @@ type Props = {
   card: Card | null;
   failed: boolean;
   variant?: string | null;
+  pricing?: boolean;
 };
 
 const IMAGE_HEIGHT = 236;
 
-export function ScanResultBody({ media, name, image, setName, number, card, failed, variant }: Props) {
+export function ScanResultBody({ media, name, image, setName, number, card, failed, variant, pricing = false }: Props) {
   const theme = useTheme();
   const version = card ? (variant === undefined ? defaultVersion(card) : { variant, condition: 'NM' as const }) : null;
   const price = card && version ? cardVersionPrice(card, version) : null;
@@ -63,6 +64,11 @@ export function ScanResultBody({ media, name, image, setName, number, card, fail
               <Text style={[styles.price, { color: theme.colors.price }]}>{formatPrice(price)}</Text>
               <Text style={[styles.caption, { color: theme.colors.textFaint }]}>{priceCaption}</Text>
             </>
+          ) : pricing ? (
+            <View style={styles.finding}>
+              <ActivityIndicator size="small" color={theme.colors.textMuted} />
+              <Text style={[styles.caption, { color: theme.colors.textMuted }]}>Finding price…</Text>
+            </View>
           ) : (
             <Text style={[styles.caption, { color: theme.colors.textMuted }]}>No TCGplayer price yet</Text>
           )
@@ -117,5 +123,10 @@ const styles = StyleSheet.create({
   },
   caption: {
     ...typography.caption,
+  },
+  finding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
   },
 });

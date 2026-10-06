@@ -3,6 +3,7 @@ import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from 'expo-
 import { useContext, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useHaptics } from '@/hooks/useHaptics';
 
 import { useMotionEnabled } from '@/hooks/useMotionEnabled';
@@ -129,7 +130,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
                 onPress={onPress}
                 style={styles.item}
               >
-                <TabIcon focused={focused} icon={icon} />
+                <TabIcon focused={focused} icon={icon} landing={route.name === 'collection'} />
                 {badge ? (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>{String(badge)}</Text>
@@ -144,10 +145,25 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
   );
 }
 
-function TabIcon({ focused, icon }: { focused: boolean; icon: (typeof ICONS)[string] | undefined }) {
+function TabIcon({
+  focused,
+  icon,
+  landing,
+}: {
+  focused: boolean;
+  icon: (typeof ICONS)[string] | undefined;
+  landing: boolean;
+}) {
   const styles = useThemedStyles(createStyles);
   const motion = useMotionEnabled();
+  const haptics = useHaptics();
+  const { bump, setTarget } = useCelebrate();
+  const wrapRef = useRef<View>(null);
   const [progress] = useState(() => new Animated.Value(focused ? 1 : 0));
+  const [kick] = useState(() => new Animated.Value(1));
+  const [bubble] = useState(() => new Animated.Value(0));
+  const bumpId = landing ? (bump?.id ?? null) : null;
+  const bumpCount = landing ? (bump?.count ?? 0) : 0;
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -158,18 +174,50 @@ function TabIcon({ focused, icon }: { focused: boolean; icon: (typeof ICONS)[str
     }).start();
   }, [focused, motion, progress]);
 
+  useEffect(() => {
+    if (bumpId === null) return;
+    haptics.tap();
+    if (!motion) return;
+    kick.setValue(1);
+    bubble.setValue(0);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(kick, { toValue: 1.38, speed: 40, bounciness: 14, useNativeDriver: true }),
+        Animated.spring(kick, { toValue: 1, speed: 14, bounciness: 12, useNativeDriver: true }),
+      ]),
+      Animated.timing(bubble, { toValue: 1, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+  }, [bumpId, haptics, motion, kick, bubble]);
+
   if (!icon) return null;
   const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
   const lift = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -1] });
+  const bubbleRise = bubble.interpolate({ inputRange: [0, 1], outputRange: [0, -26] });
+  const bubbleFade = bubble.interpolate({ inputRange: [0, 0.1, 0.7, 1], outputRange: [0, 1, 1, 0] });
 
   return (
-    <Animated.View style={[styles.iconWrap, { transform: [{ translateY: lift }, { scale }] }]}>
+    <Animated.View
+      ref={wrapRef}
+      onLayout={() => {
+        if (!landing) return;
+        wrapRef.current?.measureInWindow((x, y, width, height) => setTarget({ x: x + width / 2, y: y + height / 2 }));
+      }}
+      style={[styles.iconWrap, { transform: [{ translateY: lift }, { scale: Animated.multiply(scale, kick) }] }]}
+    >
       <Ionicons
         name={focused ? icon.active : icon.idle}
         size={22}
         color={focused ? styles.activeColor.color : styles.idleColor.color}
       />
       <Text style={[styles.label, focused ? styles.activeColor : styles.idleColor]}>{icon.label}</Text>
+      {landing && bumpCount > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.bubble, { opacity: bubbleFade, transform: [{ translateY: bubbleRise }] }]}
+        >
+          <Text style={styles.bubbleText}>{`+${bumpCount}`}</Text>
+        </Animated.View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -239,6 +287,20 @@ function createStyles(theme: AppTheme) {
       color: theme.colors.background,
       fontSize: 11,
       fontWeight: '700',
+    },
+    bubble: {
+      position: 'absolute',
+      top: -6,
+      right: -14,
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      backgroundColor: theme.colors.gain,
+    },
+    bubbleText: {
+      color: theme.colors.background,
+      fontSize: 12,
+      fontWeight: '800',
     },
   });
 }

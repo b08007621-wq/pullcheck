@@ -1,4 +1,4 @@
-import type { CollectionItem, CollectionSort } from '@/types/collection';
+import type { CollectionItem } from '@/types/collection';
 
 import { cardVersionPrice, entryVersion } from './cardVersion';
 import { type Currency, type MarketPrice, percentChange } from './price';
@@ -93,14 +93,4 @@ export function summarizeCollection(items: CollectionItem[]): CollectionSummary 
 
 export function itemTitle(item: CollectionItem): string {
   return item.kind === 'card' ? item.card.name : item.product.name;
-}
-
-export function sortCollection(items: CollectionItem[], sort: CollectionSort): CollectionItem[] {
-  const sorted = [...items];
-  if (sort === 'recent') {
-    sorted.sort((first, second) => second.lastAddedAt.localeCompare(first.lastAddedAt));
-  } else {
-    sorted.sort((first, second) => (itemValueUsd(second) ?? -1) - (itemValueUsd(first) ?? -1));
-  }
-  return sorted;
 }

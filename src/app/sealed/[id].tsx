@@ -15,6 +15,7 @@ import { SealedContents } from '@/components/SealedContents';
 import { SealedFacts } from '@/components/SealedFacts';
 import { SealedPricePanel } from '@/components/SealedPricePanel';
 import { View3DButton } from '@/components/View3DButton';
+import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useEnglishVersions } from '@/hooks/useCrossLanguage';
 import { useSealedDetail } from '@/hooks/useSealedDetail';
@@ -33,6 +34,7 @@ export default function SealedDetailScreen() {
   const market: Market = params.market === 'jp' ? 'jp' : 'en';
   const { product, owned, isFresh, error, retry } = useSealedDetail(Number(params.id), Number(params.groupId), market);
   const { addSealed, setQuantity, remove, setPaid } = useCollection();
+  const { celebrate } = useCelebrate();
   const englishVersions = useEnglishVersions(
     product && product.cardNumber && product.market === 'jp' ? product : null,
   );
@@ -59,7 +61,16 @@ export default function SealedDetailScreen() {
 
   return (
     <DetailLayout
-      footer={<CollectButton owned={owned?.quantity ?? 0} onCollect={() => addSealed(product)} />}
+      footer={
+        <CollectButton
+          owned={owned?.quantity ?? 0}
+          onCollect={() => {
+            addSealed(product);
+            const price = getSealedMarketPrice(product);
+            celebrate({ image: product.imageUrl, amount: price?.currency === 'USD' ? price.amount : null });
+          }}
+        />
+      }
     >
       <ProductHero product={product} onPress={open3d} />
       {open3d ? <View3DButton onPress={open3d} /> : null}
