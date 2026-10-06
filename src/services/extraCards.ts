@@ -7,6 +7,7 @@ import { normalizeText } from './sealedQuery';
 import { loadSets } from './sets';
 import {
   displaySetName,
+  isMainSet,
   loadGroupCatalogChecked,
   loadGroupProducts,
   loadGroups,
@@ -29,7 +30,10 @@ const CARD_PREFIX = 'tcg-';
 const SET_PREFIX = 'tcg-set-';
 const FETCH_GAP_MS = 2000;
 const NETWORK_THRESHOLD_MS = 150;
-const RECENT_PROMO_MS = 540 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_PROMO_MS = 540 * DAY_MS;
+const RECENT_SET_MS = 400 * DAY_MS;
+const UPCOMING_SET_MS = 120 * DAY_MS;
 const EXTRA_GROUP_IDS = new Set([24451, 22872, 2332, 1938, 2289, 2776, 24584, 24529, 24163, 23561, 23323]);
 const ERA_PROMO_GROUP = /^[A-Z]{1,5}\d*:.*promo/i;
 const OVERLAPPING_SETS: Record<number, string> = { 22872: 'svp' };
@@ -170,6 +174,10 @@ async function buildIndex(): Promise<ExtraEntry[]> {
   const chosen = groups.filter((group) => {
     if (EXTRA_GROUP_IDS.has(group.groupId)) return true;
     const published = group.publishedOn ? Date.parse(group.publishedOn) : 0;
+    const uncovered = !covered.has(normalizeText(displaySetName(group)));
+    if (isMainSet(group) && uncovered && published > now - RECENT_SET_MS && published < now + UPCOMING_SET_MS) {
+      return true;
+    }
     return (
       ERA_PROMO_GROUP.test(group.name) &&
       now - published < RECENT_PROMO_MS &&
@@ -177,6 +185,7 @@ async function buildIndex(): Promise<ExtraEntry[]> {
     );
   });
 
+  chosen.sort((first, second) => second.groupId - first.groupId);
   const entries: ExtraEntry[] = [];
   for (const group of chosen) {
     const started = Date.now();
