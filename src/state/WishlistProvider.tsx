@@ -117,9 +117,16 @@ export function WishlistProvider({ children }: Props) {
   const isWished = useCallback((cardId: string) => wishedIds.has(cardId), [wishedIds]);
   const hits = useMemo(() => countHits(items), [items]);
 
+  const restore = useCallback((incoming: unknown[], replace: boolean) => {
+    const valid = incoming.filter(isWishItem);
+    setItems((list) =>
+      replace ? valid : [...list, ...valid.filter((item) => !list.some((existing) => existing.id === item.id))],
+    );
+  }, []);
+
   const value = useMemo(
-    () => ({ items, meta, isLoaded, refreshing, hits, isWished, add, remove, setTarget, setVariant, fulfill, refresh }),
-    [items, meta, isLoaded, refreshing, hits, isWished, add, remove, setTarget, setVariant, fulfill, refresh],
+    () => ({ items, meta, isLoaded, refreshing, hits, isWished, add, remove, setTarget, setVariant, fulfill, refresh, restore }),
+    [items, meta, isLoaded, refreshing, hits, isWished, add, remove, setTarget, setVariant, fulfill, refresh, restore],
   );
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;

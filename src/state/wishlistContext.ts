@@ -16,6 +16,7 @@ export type WishlistContextValue = {
   setVariant: (cardId: string, variant: string | null) => void;
   fulfill: (cardIds: string[]) => void;
   refresh: (force: boolean) => Promise<void>;
+  restore: (items: unknown[], replace: boolean) => void;
 };
 
 export const WishlistContext = createContext<WishlistContextValue>({
@@ -31,4 +32,5 @@ export const WishlistContext = createContext<WishlistContextValue>({
   setVariant: () => {},
   fulfill: () => {},
   refresh: async () => {},
+  restore: () => {},
 });

@@ -17,6 +17,7 @@ type Props = {
   layout: CollectionLayout;
   items: CollectionItem[];
   onChange: (layout: CollectionLayout) => void;
+  onBackup: () => void;
   onClose: () => void;
 };
 
@@ -35,7 +36,7 @@ const GRID_OPTIONS = [
   { value: '4', label: '4 across' },
 ] as const;
 
-export function CollectionCustomizeSheet({ layout, items, onChange, onClose }: Props) {
+export function CollectionCustomizeSheet({ layout, items, onChange, onBackup, onClose }: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
 
@@ -129,7 +130,11 @@ export function CollectionCustomizeSheet({ layout, items, onChange, onClose }: P
           />
         </View>
 
-        <Pressable onPress={exportCsv} accessibilityRole="button" style={({ pressed }) => [styles.export, pressed && styles.pressed]}>
+        <Pressable onPress={onBackup} accessibilityRole="button" style={({ pressed }) => [styles.export, pressed && styles.pressed]}>
+          <Ionicons name="cloud-upload-outline" size={18} color={styles.exportText.color} />
+          <Text style={styles.exportText}>Backup, restore & import</Text>
+        </Pressable>
+        <Pressable onPress={exportCsv} accessibilityRole="button" style={({ pressed }) => [styles.export, styles.exportTight, pressed && styles.pressed]}>
           <Ionicons name="share-outline" size={18} color={styles.exportText.color} />
           <Text style={styles.exportText}>Export collection as CSV</Text>
         </Pressable>
@@ -229,6 +234,9 @@ function createStyles(theme: AppTheme) {
       paddingVertical: 12,
       borderRadius: radius.pill,
       backgroundColor: theme.colors.surfaceRaised,
+    },
+    exportTight: {
+      marginTop: 0,
     },
     pressed: {
       opacity: 0.7,

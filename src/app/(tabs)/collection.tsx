@@ -180,7 +180,16 @@ export default function CollectionScreen() {
         <CollectionFilterSheet query={query} sets={sets} onChange={changeQuery} onClose={() => setSheet(null)} />
       ) : null}
       {sheet === 'customize' ? (
-        <CollectionCustomizeSheet layout={layout} items={items} onChange={setLayout} onClose={() => setSheet(null)} />
+        <CollectionCustomizeSheet
+          layout={layout}
+          items={items}
+          onChange={setLayout}
+          onBackup={() => {
+            setSheet(null);
+            router.push('/backup');
+          }}
+          onClose={() => setSheet(null)}
+        />
       ) : null}
       {actionItem ? (
         <ItemActionsSheet
@@ -237,6 +246,9 @@ export default function CollectionScreen() {
       >
         <View style={styles.emptyShortcuts}>
           <CollectionShortcuts />
+          <Pressable onPress={() => router.push('/backup')} accessibilityRole="button" hitSlop={8} style={styles.restore}>
+            <Text style={[styles.clear, { color: theme.colors.accent }]}>Restore a backup or import from another app</Text>
+          </Pressable>
         </View>
       </EmptyState>
     );
@@ -397,6 +409,10 @@ const styles = StyleSheet.create({
   emptyShortcuts: {
     alignSelf: 'stretch',
     marginTop: spacing.lg,
+    gap: spacing.lg,
+  },
+  restore: {
+    alignSelf: 'center',
   },
   emptyFilter: {
     alignItems: 'center',

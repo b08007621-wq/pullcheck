@@ -8,7 +8,7 @@ import type { SealedProduct } from '@/types/sealed';
 import type { CardVersion } from '@/utils/cardVersion';
 
 import { CollectionContext } from './collectionContext';
-import { type CardEntry, collectionReducer, EMPTY_META, INITIAL_COLLECTION } from './collectionReducer';
+import { type CardEntry, collectionReducer, EMPTY_META, type ImportEntry, INITIAL_COLLECTION } from './collectionReducer';
 
 type Props = {
   children: ReactNode;
@@ -74,6 +74,20 @@ export function CollectionProvider({ children }: Props) {
     [],
   );
   const setBinder = useCallback((key: string, binder: Binder) => dispatch({ type: 'setBinder', key, binder }), []);
+  const replaceAll = useCallback(
+    (items: CollectionItem[], meta: CollectionMeta) => dispatch({ type: 'replaceAll', items, meta: sanitizeMeta(meta) }),
+    [],
+  );
+  const mergeItems = useCallback(
+    (items: CollectionItem[]) => dispatch({ type: 'mergeItems', items, at: now() }),
+    [],
+  );
+  const importCards = useCallback(
+    (entries: ImportEntry[]) => {
+      if (entries.length > 0) dispatch({ type: 'importCards', entries, at: now() });
+    },
+    [],
+  );
 
   const refreshPrices = useCallback(async (force: boolean) => {
     const { items, meta, isLoaded } = stateRef.current;
@@ -121,6 +135,9 @@ export function CollectionProvider({ children }: Props) {
       setPaid,
       setBinder,
       setGrading,
+      replaceAll,
+      mergeItems,
+      importCards,
     }),
     [
       state,
@@ -137,6 +154,9 @@ export function CollectionProvider({ children }: Props) {
       setPaid,
       setBinder,
       setGrading,
+      replaceAll,
+      mergeItems,
+      importCards,
     ],
   );
 

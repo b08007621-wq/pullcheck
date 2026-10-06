@@ -5,7 +5,7 @@ import type { Binder, CollectionItem, CollectionMeta, Grading, PaidPrice } from 
 import type { SealedProduct } from '@/types/sealed';
 import type { CardVersion } from '@/utils/cardVersion';
 
-import type { CardEntry } from './collectionReducer';
+import type { CardEntry, ImportEntry } from './collectionReducer';
 
 export type CollectionContextValue = {
   items: CollectionItem[];
@@ -24,6 +24,9 @@ export type CollectionContextValue = {
   setPaid: (key: string, paid: PaidPrice | null) => void;
   setBinder: (key: string, binder: Binder) => void;
   setGrading: (key: string, grading: Grading | null) => void;
+  replaceAll: (items: CollectionItem[], meta: CollectionMeta) => void;
+  mergeItems: (items: CollectionItem[]) => void;
+  importCards: (entries: ImportEntry[]) => void;
 };
 
 export const CollectionContext = createContext<CollectionContextValue>({
@@ -43,6 +46,9 @@ export const CollectionContext = createContext<CollectionContextValue>({
   setPaid: () => {},
   setBinder: () => {},
   setGrading: () => {},
+  replaceAll: () => {},
+  mergeItems: () => {},
+  importCards: () => {},
 });
 
 export function cardKey(id: string, version: CardVersion): string {

@@ -15,6 +15,13 @@ export type CardEntry = {
   version: CardVersion;
 };
 
+export type ImportEntry = CardEntry & {
+  quantity: number;
+  paid: PaidPrice | null;
+  grading?: Grading | null;
+  binder?: Binder | null;
+};
+
 export type CollectionState = {
   items: CollectionItem[];
   meta: CollectionMeta;
@@ -33,7 +40,10 @@ export type CollectionAction =
   | { type: 'applyRefresh'; cards: Card[]; products: SealedProduct[]; pricesAsOf: string | null; at: string }
   | { type: 'setPaid'; key: string; paid: PaidPrice | null }
   | { type: 'setBinder'; key: string; binder: Binder }
-  | { type: 'setGrading'; key: string; grading: Grading | null; at: string };
+  | { type: 'setGrading'; key: string; grading: Grading | null; at: string }
+  | { type: 'replaceAll'; items: CollectionItem[]; meta: CollectionMeta }
+  | { type: 'mergeItems'; items: CollectionItem[]; at: string }
+  | { type: 'importCards'; entries: ImportEntry[]; at: string };
 
 export const EMPTY_META: CollectionMeta = { lastRefreshAt: null, pricesAsOf: null, valueHistory: [] };
 
@@ -43,6 +53,16 @@ export function collectionReducer(state: CollectionState, action: CollectionActi
   switch (action.type) {
     case 'hydrate':
       return { items: normalizeCards(action.items), meta: action.meta, isLoaded: true };
+    case 'replaceAll':
+      return { items: normalizeCards(action.items), meta: action.meta, isLoaded: true };
+    case 'mergeItems':
+      return withValue(state, normalizeCards(action.items.reduce(mergeItem, state.items)), action.at);
+    case 'importCards':
+      return withValue(
+        state,
+        action.entries.reduce((items, entry) => importEntry(items, entry, action.at), state.items),
+        action.at,
+      );
     case 'addCard':
       return withValue(state, addCardEntry(state.items, action, action.at), action.at);
     case 'addCards':
@@ -113,6 +133,54 @@ function addCardEntry(items: CollectionItem[], entry: CardEntry, at: string): Co
           at,
         ),
   );
+}
+
+function mergeItem(items: CollectionItem[], incoming: CollectionItem): CollectionItem[] {
+  return add(items, incoming.key, (existing) => {
+    if (!existing || existing.kind !== incoming.kind) return incoming;
+    const longer = (existing.history?.length ?? 0) >= (incoming.history?.length ?? 0) ? existing.history : incoming.history;
+    const merged = {
+      ...existing,
+      quantity: existing.quantity + incoming.quantity,
+      addedAt: existing.addedAt < incoming.addedAt ? existing.addedAt : incoming.addedAt,
+      lastAddedAt: existing.lastAddedAt > incoming.lastAddedAt ? existing.lastAddedAt : incoming.lastAddedAt,
+      paid: existing.paid ?? incoming.paid ?? null,
+      binder: existing.binder ?? incoming.binder,
+      history: longer,
+    };
+    if (merged.kind === 'card' && incoming.kind === 'card') return { ...merged, grading: merged.grading ?? incoming.grading ?? null };
+    return merged;
+  });
+}
+
+function importEntry(items: CollectionItem[], entry: ImportEntry, at: string): CollectionItem[] {
+  const version = resolveVersion(entry.card, entry.version);
+  const key = cardKey(entry.card.id, version);
+  const quantity = Math.max(1, Math.round(entry.quantity));
+  return add(items, key, (existing) => {
+    if (existing?.kind === 'card') {
+      return {
+        ...existing,
+        quantity: existing.quantity + quantity,
+        lastAddedAt: at,
+        paid: existing.paid ?? entry.paid,
+        grading: existing.grading ?? entry.grading ?? null,
+        binder: existing.binder ?? entry.binder ?? undefined,
+      };
+    }
+    const created = newItem(
+      { kind: 'card', key, card: entry.card, variant: version.variant, condition: version.condition },
+      cardVersionPrice(entry.card, version),
+      at,
+    );
+    return {
+      ...created,
+      quantity,
+      paid: entry.paid,
+      ...(entry.grading ? { grading: entry.grading } : {}),
+      ...(entry.binder ? { binder: entry.binder } : {}),
+    } as CollectionItem;
+  });
 }
 
 type NewItemBase =
