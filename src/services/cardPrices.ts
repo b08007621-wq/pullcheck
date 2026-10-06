@@ -91,3 +91,13 @@ function todayStamp(): string {
   const day = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}/${month}/${day}`;
 }
+
+export async function locateTcgProduct(card: Card): Promise<{ groupId: number; productId: number } | null> {
+  const groups = await loadGroups();
+  const group = findGroup(groups, card);
+  if (!group) return null;
+  const [result] = await settleInBatches([group], loadGroupCatalog);
+  if (!result || result.status !== 'fulfilled') return null;
+  const listing = findListing(result.value.cards, card);
+  return listing ? { groupId: group.groupId, productId: listing.productId } : null;
+}

@@ -27,7 +27,10 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full
       - name: Probe archive
         run: |
-          curl -sSfL -o probe.7z https://tcgcsv.com/archive/tcgplayer/prices-2026-10-01.ppmd.7z
+          UA='PullCheck/1.0 (price-history; github.com/b08007621-wq/pullcheck)'
+          curl -sS -D - -o /dev/null -A "$UA" https://tcgcsv.com/archive/tcgplayer/prices-2024-02-08.ppmd.7z | head -20
+          curl -sS -D - -o /dev/null -A "$UA" https://tcgcsv.com/tcgplayer/3/groups | head -5
+          curl -sSfL -A "$UA" -o probe.7z https://tcgcsv.com/archive/tcgplayer/prices-2026-10-01.ppmd.7z
           ls -la probe.7z
           7z l probe.7z | head -40
           7z l probe.7z | grep -E '/(3|85)/' | head -20
