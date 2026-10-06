@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { CollectionItem, ValuePoint } from '@/types/collection';
@@ -9,10 +10,7 @@ import { itemTitle } from '@/utils/collectionValue';
 import { type ChartRange, findMovers, type Mover, RANGES, valuePointsInRange } from '@/utils/movers';
 import { formatMoney } from '@/utils/price';
 
-import { PriceChange } from './PriceChange';
 import { PriceHistoryChart } from './PriceHistoryChart';
-import { SectionPanel } from './SectionPanel';
-import { SegmentedControl } from './SegmentedControl';
 
 type Props = {
   items: CollectionItem[];
@@ -22,113 +20,128 @@ type Props = {
 
 export function CollectionValueChart({ items, history, onOpen }: Props) {
   const styles = useThemedStyles(createStyles);
+  const haptics = useHaptics();
   const [range, setRange] = useState<ChartRange>('30d');
   const points = useMemo(() => valuePointsInRange(history, range), [history, range]);
-  const { gainers, losers } = useMemo(() => findMovers(items, range), [items, range]);
+  const movers = useMemo(() => {
+    const { gainers, losers } = findMovers(items, range);
+    return [...gainers, ...losers];
+  }, [items, range]);
 
   return (
-    <SectionPanel title="Value">
-      <View style={styles.range}>
-        <SegmentedControl options={RANGES} value={range} onChange={setRange} />
+    <View style={styles.wrap}>
+      <PriceHistoryChart points={points} currency="USD" height={110} emptyMessage="Builds up daily." />
+      <View style={styles.ranges}>
+        {RANGES.map((option) => {
+          const selected = option.value === range;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => {
+                haptics.selection();
+                setRange(option.value);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              hitSlop={6}
+              style={[styles.range, selected && styles.rangeSelected]}
+            >
+              <Text style={[styles.rangeText, selected && styles.rangeTextSelected]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
-      <PriceHistoryChart
-        points={points}
-        currency="USD"
-        height={120}
-        emptyMessage="Builds up daily."
-      />
-      {gainers.length > 0 || losers.length > 0 ? (
-        <View style={styles.movers}>
-          <MoverColumn title="Up" movers={gainers} onOpen={onOpen} />
-          <MoverColumn title="Down" movers={losers} onOpen={onOpen} />
-        </View>
+      {movers.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.movers}>
+          {movers.map((mover) => (
+            <MoverChip key={mover.item.key} mover={mover} onOpen={onOpen} />
+          ))}
+        </ScrollView>
       ) : null}
-    </SectionPanel>
+    </View>
   );
 }
 
-function MoverColumn({ title, movers, onOpen }: { title: string; movers: Mover[]; onOpen: (item: CollectionItem) => void }) {
+function MoverChip({ mover, onOpen }: { mover: Mover; onOpen: (item: CollectionItem) => void }) {
   const styles = useThemedStyles(createStyles);
-  if (movers.length === 0) return null;
+  const item = mover.item;
+  const image = item.kind === 'card' ? item.card.images.small : item.product.imageUrl;
+  const up = mover.amount >= 0;
   return (
-    <View style={styles.column}>
-      <Text style={styles.columnTitle}>{title}</Text>
-      {movers.map((mover) => {
-        const item = mover.item;
-        const image = item.kind === 'card' ? item.card.images.small : item.product.imageUrl;
-        return (
-          <Pressable
-            key={item.key}
-            onPress={() => onOpen(item)}
-            accessibilityRole="button"
-            accessibilityLabel={itemTitle(item)}
-            style={({ pressed }) => [styles.mover, pressed && styles.pressed]}
-          >
-            <Image source={image} style={styles.thumb} contentFit="contain" recyclingKey={item.key} />
-            <View style={styles.moverInfo}>
-              <Text style={styles.moverName} numberOfLines={1}>
-                {itemTitle(item)}
-              </Text>
-              <View style={styles.moverRow}>
-                <Text style={[styles.amount, mover.amount >= 0 ? styles.gain : styles.loss]}>
-                  {`${mover.amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(mover.amount))}`}
-                </Text>
-                {mover.percent !== null ? <PriceChange percent={mover.percent} /> : null}
-              </View>
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
+    <Pressable
+      onPress={() => onOpen(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`${itemTitle(item)} ${up ? 'up' : 'down'} ${formatMoney(Math.abs(mover.amount))}`}
+      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+    >
+      <Image source={image} style={styles.thumb} contentFit="contain" recyclingKey={item.key} />
+      <View>
+        <Text style={styles.chipName} numberOfLines={1}>
+          {itemTitle(item)}
+        </Text>
+        <Text style={[styles.chipAmount, up ? styles.gain : styles.loss]}>
+          {`${up ? '▲' : '▼'} ${formatMoney(Math.abs(mover.amount))}`}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    range: {
-      paddingBottom: spacing.md,
+    wrap: {
+      gap: spacing.sm,
+      marginTop: spacing.sm,
     },
-    movers: {
-      gap: spacing.md,
-      paddingTop: spacing.md,
-    },
-    column: {
+    ranges: {
+      flexDirection: 'row',
       gap: spacing.xs,
     },
-    columnTitle: {
-      ...typography.label,
+    range: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: 5,
+      borderRadius: radius.pill,
+    },
+    rangeSelected: {
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    rangeText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: theme.colors.textMuted,
+    },
+    rangeTextSelected: {
       color: theme.colors.text,
     },
-    mover: {
+    movers: {
+      gap: spacing.sm,
+    },
+    chip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
-      paddingVertical: 4,
-      borderRadius: radius.sm,
+      paddingVertical: 6,
+      paddingLeft: 6,
+      paddingRight: spacing.md,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.surface,
+      maxWidth: 200,
     },
     pressed: {
       backgroundColor: theme.colors.surfaceRaised,
     },
     thumb: {
-      width: 30,
-      height: 42,
+      width: 26,
+      height: 36,
     },
-    moverInfo: {
-      flex: 1,
-      gap: 2,
-    },
-    moverName: {
+    chipName: {
       ...typography.caption,
       color: theme.colors.text,
+      maxWidth: 140,
     },
-    moverRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    amount: {
+    chipAmount: {
       ...typography.caption,
-      fontWeight: '600',
+      fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
     gain: {

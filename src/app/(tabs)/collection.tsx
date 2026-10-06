@@ -178,9 +178,9 @@ export default function CollectionScreen() {
             pricesAsOf={meta.pricesAsOf ?? null}
             refreshing={refreshing}
             refreshFailed={refreshFailed}
+            chart={<CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />}
           />
-          <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />
-          <CollectionShortcuts />
+          <CollectionShortcuts variant="row" />
           {toolbar}
         </View>
       );

@@ -4,7 +4,7 @@ import { itemPrice } from './collectionValue';
 import { dayKey } from './history';
 import { percentChange } from './price';
 
-export type ChartRange = '7d' | '30d' | '1y';
+export type ChartRange = '7d' | '30d' | '1y' | 'all';
 
 export type Mover = {
   item: CollectionItem;
@@ -16,10 +16,11 @@ export const RANGES: { value: ChartRange; label: string }[] = [
   { value: '7d', label: '7D' },
   { value: '30d', label: '30D' },
   { value: '1y', label: '1Y' },
+  { value: 'all', label: 'All' },
 ];
 
-const RANGE_DAYS: Record<ChartRange, number> = { '7d': 7, '30d': 30, '1y': 365 };
-const MOVER_COUNT = 3;
+const RANGE_DAYS: Record<ChartRange, number> = { '7d': 7, '30d': 30, '1y': 365, all: 36500 };
+const MOVER_COUNT = 5;
 
 export function rangeStart(range: ChartRange, now: Date = new Date()): string {
   const start = new Date(now);

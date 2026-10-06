@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
@@ -22,12 +22,13 @@ type Props = {
   pricesAsOf: string | null;
   refreshing: boolean;
   refreshFailed: boolean;
+  chart?: ReactNode;
 };
 
 const TREND_POINTS = 30;
 const TREND_HEIGHT = 52;
 
-export function CollectionSummaryCard({ summary, history, lastRefreshAt, pricesAsOf, refreshing, refreshFailed }: Props) {
+export function CollectionSummaryCard({ summary, history, lastRefreshAt, pricesAsOf, refreshing, refreshFailed, chart }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const motion = useMotionEnabled();
@@ -74,7 +75,7 @@ export function CollectionSummaryCard({ summary, history, lastRefreshAt, pricesA
         </Text>
       ) : null}
 
-      {trend.length >= 2 ? (
+      {chart ?? (trend.length >= 2 ? (
         <View style={styles.trend} onLayout={(event) => setTrendWidth(event.nativeEvent.layout.width)}>
           <Sparkline
             values={trend}
@@ -84,8 +85,7 @@ export function CollectionSummaryCard({ summary, history, lastRefreshAt, pricesA
             surface={theme.colors.surface}
           />
         </View>
-      ) : null}
-
+      ) : null)}
     </View>
   );
 }
