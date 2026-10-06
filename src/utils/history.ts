@@ -1,4 +1,4 @@
-const MAX_POINTS = 120;
+const MAX_POINTS = 400;
 
 export function dayKey(iso: string): string {
   const date = new Date(iso);
