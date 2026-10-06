@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '43 21 * * *'
-  push:
-    branches: [claude/sharp-curie-y20pyw]
-    paths: ['scripts/price-history/**', '.github/workflows/price-history.yml']
 
 permissions:
   contents: write
