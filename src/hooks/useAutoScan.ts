@@ -92,6 +92,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     side: 'left' as Side,
     band: 0,
     top: null as string | null,
+    images: new Map<string, string>(),
   });
 
   const ocr = reader.handle;
@@ -161,11 +162,12 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     ): Promise<PictureOutcome> => {
       const memory = memoryRef.current;
       const match = await handle.match(margin);
+      for (const result of match.results) if (result.image) memory.images.set(result.key, result.image);
       const verdict = judgeMatch(match, memory.top);
       memory.top = match.results[0]?.key ?? null;
 
       const build = async (keys: string[], number: NumberRead | null, sure: boolean): Promise<Found | null> => {
-        const candidates = await visionCandidates(keys, number?.text ?? null, signal);
+        const candidates = await visionCandidates(keys, number?.text ?? null, signal, memory.images);
         const best = candidates[0];
         if (!best) return null;
         const settled = sure && (keys.length === 1 || (number !== null && printedMatches(best, number.text)));
@@ -344,7 +346,9 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
       if (!found) return false;
       const extra = found.confirmed
         ? []
-        : await visionCandidates(found.alternatives.slice(0, MAX_CANDIDATES), null).catch(() => []);
+        : await visionCandidates(found.alternatives.slice(0, MAX_CANDIDATES), null, undefined, memoryRef.current.images).catch(
+            () => [],
+          );
       const known = new Set(found.candidates.map((candidate) => candidate.card.id));
       open({ ...found, id: 0, candidates: [...found.candidates, ...extra.filter((entry) => !known.has(entry.card.id))] });
       return true;
@@ -377,7 +381,12 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     if (!current) return;
     memoryRef.current.handled = current.key;
     logScan('notit', current.frame, { key: current.key, alternatives: current.alternatives });
-    const others = await visionCandidates(current.alternatives.slice(0, MAX_CANDIDATES + 2), null).catch(() => []);
+    const others = await visionCandidates(
+      current.alternatives.slice(0, MAX_CANDIDATES + 2),
+      null,
+      undefined,
+      memoryRef.current.images,
+    ).catch(() => []);
     const seen = new Set([current.key]);
     const rest: ScanCandidate[] = [];
     for (const candidate of [...current.candidates.slice(1), ...others]) {

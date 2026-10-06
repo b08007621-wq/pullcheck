@@ -620,7 +620,12 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
       for (var d = 0; d < dims; d += 1) s += index[n * dims + d] * index[n * dims + d];
       return Math.sqrt(s) || 1;
     };
-    var combined = function (r) { return r.fine === null ? r.score - 10 : r.score + FINE_WEIGHT * r.fine; };
+    var fineOf = function (r) {
+      if (r.fine !== null) return r.fine;
+      var proxy = (r.score - 0.62) * 2.5;
+      return proxy < 0 ? 0 : proxy > 1 ? 1 : proxy;
+    };
+    var combined = function (r) { return r.score + FINE_WEIGHT * fineOf(r); };
     var sorted = results.slice().sort(function (a, b) { return combined(b) - combined(a); });
     var first = sorted[0].index, firstNorm = norm(first), other = null, otherFine = null;
     var out = sorted.map(function (r, i) {

@@ -18,6 +18,7 @@ export type ScanCandidate = {
   setCode: string | null;
   nameScore: number;
   codeScore: number;
+  image?: string | null;
 };
 
 export async function findScanCandidates(

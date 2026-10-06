@@ -25,6 +25,7 @@ import type { Card } from '@/types/card';
 import type { Binder } from '@/types/collection';
 import type { DexLanguage } from '@/types/tcgdex';
 import { binderLabel } from '@/utils/binder';
+import { scanLarge } from '@/utils/cardImage';
 import { cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
 import { defaultVariant, getVariantOptions } from '@/utils/price';
 
@@ -155,10 +156,8 @@ export function ScanResultSheet({
   const shown = localized.find((entry) => entry.language === language) ?? null;
   const images = result.candidates.map((entry, position) =>
     position === index
-      ? (shown?.image ?? (card?.images.large || (entry.card.image ? `${entry.card.image}/high.webp` : null)))
-      : entry.card.image
-        ? `${entry.card.image}/high.webp`
-        : null,
+      ? (shown?.image ?? (card?.images.large || scanLarge(entry.card.image, entry.image)))
+      : scanLarge(entry.card.image, entry.image),
   );
 
   const add = useCallback(

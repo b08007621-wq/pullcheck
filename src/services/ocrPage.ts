@@ -96,6 +96,7 @@ export const OCR_PAGE_HTML = `<!doctype html>
     visionIndex = {
       ids: entry.meta.ids,
       series: entry.meta.series || {},
+      images: entry.meta.images || {},
       dims: entry.meta.dims,
       count: entry.meta.ids.length,
       data: new Int8Array(entry.vectors)
@@ -122,6 +123,7 @@ export const OCR_PAGE_HTML = `<!doctype html>
 
   var fineCache = new Map();
   var imageFor = function (key) {
+    if (visionIndex.images[key]) return visionIndex.images[key];
     var split = key.indexOf(':');
     var lang = key.slice(0, split), id = key.slice(split + 1);
     var dash = id.lastIndexOf('-');
@@ -162,9 +164,15 @@ export const OCR_PAGE_HTML = `<!doctype html>
     .catch(function () { return null; })
     .then(function (cached) {
       if (!usable(cached)) return download();
-      if (!cached.meta.series || Date.now() - cached.savedAt > ${INDEX_REFRESH_MS}) {
-        download().then(function (next) { if (usable(next)) adopt(next); }, function () {});
-      }
+      fresh('${INDEX_URL}stamp.json')
+        .then(function (response) { return response.ok ? response.json() : null; })
+        .catch(function () { return null; })
+        .then(function (stamp) {
+          var stale = stamp
+            ? stamp.count !== cached.meta.ids.length || stamp.built !== cached.meta.built
+            : !cached.meta.series || Date.now() - cached.savedAt > ${INDEX_REFRESH_MS};
+          if (stale) download().then(function (next) { if (usable(next)) adopt(next); }, function () {});
+        });
       return cached;
     })
     .then(function (entry) {
@@ -267,7 +275,8 @@ export const OCR_PAGE_HTML = `<!doctype html>
           fineGap: final.fineGap,
           foil: top ? trackFoil(visionIndex.ids[top.index], query.raster) : null,
           results: final.results.map(function (result) {
-            return { key: visionIndex.ids[result.index], score: result.score, fine: result.fine, same: result.same };
+            var key = visionIndex.ids[result.index];
+            return { key: key, score: result.score, fine: result.fine, same: result.same, image: visionIndex.images[key] || null };
           })
         });
       });

@@ -12,6 +12,7 @@ export type VisionResult = {
   score: number;
   fine: number | null;
   same: boolean;
+  image?: string | null;
 };
 
 export type FoilDrift = {

@@ -14,6 +14,7 @@ import { previewCard } from '@/services/tcgdex';
 import { looksReverseHolo } from '@/services/visionMatch';
 import { radius, spacing, typography, withAlpha } from '@/theme';
 import type { Card } from '@/types/card';
+import { scanThumb } from '@/utils/cardImage';
 import { cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
 import { defaultVariant, formatPrice, getVariantOptions } from '@/utils/price';
 
@@ -101,7 +102,7 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
       setAdded(id);
       onAdded(target, version.variant);
       const amount = value?.currency === 'USD' ? value.amount : null;
-      const image = candidate.card.image ? `${candidate.card.image}/low.webp` : target.images.small || null;
+      const image = scanThumb(candidate.card.image, candidate.image) ?? (target.images.small || null);
       thumbRef.current?.measureInWindow((x, y, width, height) =>
         celebrate({ image, amount, from: width > 0 ? { x, y, width, height } : null }),
       );
@@ -125,7 +126,7 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
 
   if (!shown || !candidate) return null;
 
-  const image = candidate.card.image ? `${candidate.card.image}/low.webp` : null;
+  const image = scanThumb(candidate.card.image, candidate.image);
   const name = card?.name ?? candidate.card.name;
   const setName = card?.set.name ?? candidate.card.set.name;
   const number = card?.number ?? candidate.card.localId;

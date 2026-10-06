@@ -5,6 +5,7 @@ import { getCard, rememberCards } from '@/services/pokemonTcg';
 import type { ScanCandidate } from '@/services/scanMatch';
 import { dexToCard, getLocalizedCards, isDexCardId } from '@/services/tcgdex';
 import type { Card } from '@/types/card';
+import { largerImage } from '@/utils/cardImage';
 import type { DexLanguage, LocalizedCard } from '@/types/tcgdex';
 
 import { useResource } from './useResource';
@@ -24,7 +25,12 @@ export function useScanCard(candidate: ScanCandidate | null) {
 }
 
 export async function loadScanCard(candidate: ScanCandidate, signal?: AbortSignal): Promise<Card> {
-  const filled = await fillGaps(await dexToCard(candidate.card, candidate.language, signal), signal);
+  const built = await dexToCard(candidate.card, candidate.language, signal);
+  const pictured =
+    !built.images.small && candidate.image
+      ? { ...built, images: { small: candidate.image, large: largerImage(candidate.image) } }
+      : built;
+  const filled = await fillGaps(pictured, signal);
   const card = needsPrices(filled) ? await withPrices(filled) : filled;
   rememberCards([card]);
   return card;

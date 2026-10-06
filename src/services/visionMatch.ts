@@ -86,6 +86,7 @@ export async function visionCandidates(
   keys: string[],
   text: ScanText | null,
   signal?: AbortSignal,
+  images?: Map<string, string>,
 ): Promise<ScanCandidate[]> {
   const parsed = keys.map(parseKey).filter((entry): entry is { language: DexLanguage; id: string } => entry !== null);
   const ordered = text ? [...parsed].sort((first, second) => printedScore(second.id, text) - printedScore(first.id, text)) : parsed;
@@ -99,7 +100,7 @@ export async function visionCandidates(
   for (const result of settled) {
     if (result.status !== 'fulfilled') continue;
     const { card, language } = result.value;
-    found.push({ card, language, setCode: null, nameScore: 0, codeScore: 0 });
+    found.push({ card, language, setCode: null, nameScore: 0, codeScore: 0, image: images?.get(`${language}:${card.id}`) ?? null });
   }
   if (!text) return found;
   return found.sort((first, second) => printedFit(second, text) - printedFit(first, text));

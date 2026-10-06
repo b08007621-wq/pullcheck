@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 24
       - name: Install image decoder
-        run: npm install --prefix scripts/card-index --no-save --no-package-lock jpeg-js@0.4.4
+        run: npm install --prefix scripts/card-index --no-save --no-package-lock jpeg-js@0.4.4 pngjs@7.0.0
       - name: Load existing index
         run: |
           mkdir -p data
