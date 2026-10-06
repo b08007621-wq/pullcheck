@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>North Cali: Pocket Drive</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101b2b;font-family:monospace}#wrap{height:100%;display:grid;place-items:center;background:linear-gradient(#101b2b,#253c52)}canvas{width:min(100vw,177.78vh);height:min(56.25vw,100vh);image-rendering:pixelated;image-rendering:crisp-edges;box-shadow:0 0 0 5px #142235,0 16px 60px #0009}#hud{position:fixed;top:14px;left:16px;color:#fff;background:#142235e8;border:2px solid #e9bd62;padding:9px 13px;line-height:1.5;font-weight:bold;text-shadow:2px 2px #142235;z-index:2}#hud b{color:#ffd66b}#hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#142235e8;color:white;border:2px solid #e9bd62;padding:8px 12px;white-space:nowrap;font-size:12px}#overlay{position:fixed;inset:0;display:grid;place-items:center;background:#091522bb;z-index:3;color:white;text-align:center}.panel{background:#182b40;border:4px solid #f2c66d;box-shadow:8px 8px #091522;padding:24px;max-width:440px;width:85%}h1{color:#ffd66b;font-size:clamp(25px,5vw,42px);margin:0 0 5px;text-shadow:3px 3px #8b4b42}p{line-height:1.5;color:#d6e3ed}button{font: bold 16px monospace;color:#142235;background:#ffd66b;border:0;padding:12px 20px;cursor:pointer}button:hover{background:#fff0b5}
+</style></head><body>
+<div id="wrap"><canvas id="c" width="480" height="270"></canvas></div>
+<div id="hud">NORTH CALI <span style="color:#9fc7e8">/ POCKET DRIVE</span><br>COINS <b id="coins">0</b>　DIST <b id="dist">0</b> m<br>SPEED <b id="speed">0</b> km/h</div>
+<div id="hint">W / ↑ ACCELERATE　 A D / ← → STEER　 SPACE BRAKE</div>
+<div id="overlay"><div class="panel"><h1>NORTH CALI</h1><b style="color:#9fc7e8">POCKET DRIVE</b><p>Take a sunset cruise through the city. Dodge traffic, scoop up coins, and see how far you can go.</p><button id="start">START DRIVING</button></div></div>
+<script>
+(()=> {
+const canvas=document.querySelector('#c'),ctx=canvas.getContext('2d'),W=480,H=270;
+ctx.imageSmoothingEnabled=false;
+const $=id=>document.getElementById(id);
+let keys={},started=false,speed=0,dist=0,coins=0,playerX=0,roadScroll=0,traffic=[],pickups=[],time=0,last=0,spawn=0;
+const pal={sky1:'#f5b66d',sky2:'#e98b68',far:'#7c7183',hill:'#536b68',grass:'#47765b',road:'#354354',edge:'#e8c58a',line:'#f5e7b0',dark:'#172b3a',car:'#d85c4a',gold:'#ffd35c'};
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function drawSky(){
+ const g=ctx.createLinearGradient(0,0,0,150);g.addColorStop(0,pal.sky1);g.addColorStop(1,pal.sky2);ctx.fillStyle=g;ctx.fillRect(0,0,W,160);
+ // sun + distant layered hills
+ rect(365,42,34,34,'#ffe4a0');rect(373,35,18,7,'#ffe4a0');
+ for(let i=0;i<8;i++){let x=i*68-20;let h=28+(i*17%35);rect(x,126-h,90,h+35,i%2?pal.far:pal.hill)}
+ // skyline silhouette and windows
+ const buildings=[[8,78,32,78],[45,57,40,99],[91,89,31,67],[127,43,46,113],[181,72,35,84],[220,31,49,125],[277,65,38,91],[322,49,35,107],[362,83,47,73],[414,59,52,97]];
+ for(const [x,y,w,h] of buildings){rect(x,y,w,h,'#34495b');rect(x+4,y+5,w-8,3,'#526173');for(let yy=y+13;yy<y+h-5;yy+=13)for(let xx=x+6;xx<x+w-5;xx+=11)rect(xx,yy,4,5,'#e7b66f')}
+ // skyline base
+ rect(0,157,W,10,'#536b68');
+}
+function drawPalm(x,y,s=1){
+ rect(x-2*s,y-30*s,4*s,31*s,'#725447');
+ for(let i=0;i<5;i++){let a=(-2+i)*.55;let ex=x+Math.sin(a)*19*s,ey=y-30*s-Math.cos(a)*10*s;ctx.strokeStyle='#285b4c';ctx.lineWidth=4*s;ctx.beginPath();ctx.moveTo(x,y-30*s);ctx.lineTo(ex,ey);ctx.stroke()}
+}
+function drawRoad(){
+ rect(0,167,W,103,pal.grass);
+ // curb + asphalt perspective trapezoid
+ ctx.fillStyle=pal.edge;ctx.beginPath();ctx.moveTo(115,164);ctx.lineTo(365,164);ctx.lineTo(480,270);ctx.lineTo(0,270);ctx.closePath();ctx.fill();
+ ctx.fillStyle=pal.road;ctx.beginPath();ctx.moveTo(123,167);ctx.lineTo(357,167);ctx.lineTo(468,270);ctx.lineTo(12,270);ctx.closePath();ctx.fill();
+ // road lane dashes perspective
+ for(let i=0;i<8;i++){let p=((i*39+roadScroll)%300)/300;let y=169+p*101;let half=4+p*10;let x=240;rect(x-half/2,y,half,3+p*3,pal.line)}
+ // roadside scenery scrolling
+ for(let i=0;i<5;i++){let y=174+((i*65+roadScroll*1.6)%110);let p=(y-167)/103;drawPalm(75-p*32,y,0.55+p*.45);drawPalm(405+p*30,y,0.55+p*.45)}
+}
+function drawCar(x,y,color,scale=1){
+ ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+ rect(-17,8,34,35,'#172331');rect(-14,0,28,43,color);rect(-11,4,22,12,'#8fc3cf');rect(-11,20,22,11,'#b6d2d0');rect(-13,35,5,6,'#ffe9a3');rect(8,35,5,6,'#ffe9a3');rect(-19,10,4,12,'#202b36');rect(15,10,4,12,'#202b36');rect(-9,43,18,3,'#172331');
+ ctx.restore();
+}
+function spawnTraffic(){const lane=[-0.58,0,0.58][Math.floor(Math.random()*3)];traffic.push({lane,y:165,color:['#4c91a6','#d9a441','#a65c62'][Math.floor(Math.random()*3)],speed:35+Math.random()*35})}
+function spawnCoin(){const lane=[-0.58,0,0.58][Math.floor(Math.random()*3)];pickups.push({lane,y:170})}
+function update(dt){
+ time+=dt;let accel=keys.ArrowUp||keys.KeyW,brake=keys.Space||keys.ArrowDown;
+ speed+= (accel?42:0)*dt;speed-= (brake?95:0)*dt;speed-=speed*1.05*dt;speed=Math.max(0,Math.min(125,speed));
+ let steer=(keys.ArrowLeft||keys.KeyA?-1:0)+(keys.ArrowRight||keys.KeyD?1:0);
+ playerX=Math.max(-.78,Math.min(.78,playerX+steer*dt*(.85+speed/100)));
+ roadScroll=(roadScroll+speed*dt*1.8)%300;dist+=speed*dt/3.6;
+ spawn+=dt;if(spawn>1.1){spawn=0;if(Math.random()<.75)spawnTraffic();if(Math.random()<.9)spawnCoin()}
+ const flow=dt*(.25+speed/90);
+ traffic.forEach(t=>t.y+=flow*125);pickups.forEach(p=>p.y+=flow*125);
+ traffic=traffic.filter(t=>t.y<300);pickups=pickups.filter(p=>p.y<300);
+ for(const p of pickups){if(!p.hit&&p.y>220&&p.y<260&&Math.abs(p.lane-playerX)<.24){p.hit=true;coins++}}
+ for(const t of traffic){if(t.y>220&&t.y<260&&Math.abs(t.lane-playerX)<.25){speed*=.55;t.y=300}}
+ $('coins').textContent=coins;$('dist').textContent=Math.floor(dist);$('speed').textContent=Math.floor(speed);
+}
+function render(){
+ drawSky();drawRoad();
+ // traffic and coins use same perspective lanes
+ for(const t of traffic){let scale=.45+(t.y-165)/105*.75;drawCar(240+t.lane*(110+(t.y-165)*.8),t.y,t.color,scale)}
+ for(const p of pickups){if(p.hit)continue;let scale=.5+(p.y-165)/105*.7,x=240+p.lane*(110+(p.y-165)*.8);rect(x-5*scale,p.y-5*scale,10*scale,10*scale,pal.gold);rect(x-2*scale,p.y-3*scale,4*scale,6*scale,'#fff1a6')}
+ drawCar(240+playerX*135,225,pal.car,1.2);
+ // little dashboard footer
+ rect(0,263,W,7,'#172b3a');rect(0,263,Math.min(W,dist%480),2,'#ffd35c');
+}
+function frame(ts){let dt=Math.min(.04,(ts-last)/1000||0);last=ts;if(started)update(dt);render();requestAnimationFrame(frame)}
+addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=false);
+$('start').onclick=()=>{$('overlay').style.display='none';started=true};
+render();requestAnimationFrame(frame);
+})();
+</script></body></html>
