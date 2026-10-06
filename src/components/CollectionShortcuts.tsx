@@ -38,6 +38,26 @@ export function CollectionShortcuts() {
         }}
       />
       <ShortcutTile
+        icon="calendar-outline"
+        title="Upcoming sets"
+        detail="Pre-order prices"
+        position="middle"
+        onPress={() => {
+          haptics.tap();
+          router.push('/upcoming');
+        }}
+      />
+      <ShortcutTile
+        icon="swap-horizontal-outline"
+        title="Trade checker"
+        detail="Compare values"
+        position="middle"
+        onPress={() => {
+          haptics.tap();
+          router.push('/trade');
+        }}
+      />
+      <ShortcutTile
         icon="heart-outline"
         title="Wishlist"
         detail={wishDetail}

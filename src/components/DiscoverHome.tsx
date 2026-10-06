@@ -13,6 +13,7 @@ import { formatShortDate, parseDate } from '@/utils/date';
 import { DiscoverCardTile, TILE_WIDTH } from './DiscoverCardTile';
 import { DiscoverSection } from './DiscoverSection';
 import { SetLogoTile } from './SetLogoTile';
+import { ShortcutTile } from './ShortcutTile';
 import { SuggestionChips } from './SuggestionChips';
 
 const AUTO_RETRIES = 2;
@@ -118,6 +119,19 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
               <SetLogoTile key={set.id} set={set} onPress={openSet} />
             ))}
           </DiscoverSection>
+
+          <View>
+            <ShortcutTile
+              icon="calendar-outline"
+              title="Upcoming sets"
+              detail="Pre-order prices"
+              position="only"
+              onPress={() => {
+                haptics.tap();
+                router.push('/upcoming');
+              }}
+            />
+          </View>
         </>
       ) : error && autoRetries >= AUTO_RETRIES ? (
         <Pressable onPress={retry} accessibilityRole="button" style={styles.retry}>

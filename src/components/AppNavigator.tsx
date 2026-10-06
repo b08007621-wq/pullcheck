@@ -23,6 +23,8 @@ export function AppNavigator() {
         <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
         <Stack.Screen name="rip" options={{ presentation: 'modal' }} />
         <Stack.Screen name="sets" />
+        <Stack.Screen name="upcoming" />
+        <Stack.Screen name="trade" />
         <Stack.Screen name="set/[id]" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
