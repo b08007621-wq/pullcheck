@@ -5,10 +5,12 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useGroupArt } from '@/hooks/useGroupArt';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useJapaneseLogos } from '@/hooks/useJapaneseLogos';
 import { useJapaneseSets } from '@/hooks/useJapaneseSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { displaySetName, type TcgcsvGroup } from '@/services/tcgcsv';
+import { setCode } from '@/services/tcgdex';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { Market } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -30,6 +32,7 @@ export function JapaneseSetList({ onMarket }: Props) {
   const haptics = useHaptics();
   const styles = useThemedStyles(createStyles);
   const { data, error, retry } = useJapaneseSets();
+  const logos = useJapaneseLogos();
   const [query, setQuery] = useState('');
 
   const visible = useMemo(() => {
@@ -68,7 +71,12 @@ export function JapaneseSetList({ onMarket }: Props) {
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           renderItem={({ item, index }) => (
-            <JapaneseSetRow group={item} position={rowPosition(index, visible.length)} onPress={openSet} />
+            <JapaneseSetRow
+              group={item}
+              logo={logos[setCode(item.abbreviation)] ?? null}
+              position={rowPosition(index, visible.length)}
+              onPress={openSet}
+            />
           )}
           ListHeaderComponent={
             <View style={styles.header}>
@@ -91,15 +99,18 @@ export function JapaneseSetList({ onMarket }: Props) {
 
 function JapaneseSetRow({
   group,
+  logo,
   position,
   onPress,
 }: {
   group: TcgcsvGroup;
+  logo: string | null;
   position: ReturnType<typeof rowPosition>;
   onPress: (group: TcgcsvGroup) => void;
 }) {
   const styles = useThemedStyles(createStyles);
-  const art = useGroupArt(group.groupId, 'jp');
+  const box = useGroupArt(logo ? null : group.groupId, 'jp');
+  const art = logo ?? box;
   const released = parseDate(group.publishedOn);
   return (
     <ListRow position={position} inset={88}>

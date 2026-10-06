@@ -11,10 +11,12 @@ import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useGroupArt } from '@/hooks/useGroupArt';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useJapaneseLogos } from '@/hooks/useJapaneseLogos';
 import { useResource } from '@/hooks/useResource';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { ApiError } from '@/services/http';
 import { displaySetName, loadGroupCatalog, loadGroups } from '@/services/tcgcsv';
+import { setCode } from '@/services/tcgdex';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SealedProduct } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -39,7 +41,8 @@ export default function JapaneseSetScreen() {
   const { width } = useWindowDimensions();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const groupId = /^\d+$/.test(id) ? Number(id) : null;
-  const art = useGroupArt(groupId, 'jp');
+  const box = useGroupArt(groupId, 'jp');
+  const logos = useJapaneseLogos();
   const [tab, setTab] = useState<Tab>('cards');
 
   const load = useCallback(async () => {
@@ -115,6 +118,7 @@ export default function JapaneseSetScreen() {
   }
 
   const released = parseDate(data.group.publishedOn);
+  const logo = logos[setCode(data.group.abbreviation)] ?? null;
 
   return (
     <DetailLayout
@@ -130,8 +134,13 @@ export default function JapaneseSetScreen() {
           initialNumToRender={18}
           ListHeaderComponent={
             <View style={styles.header}>
-              {art ? (
-                <Image source={largeProductImage(art)} style={styles.art} contentFit="contain" transition={200} />
+              {logo || box ? (
+                <Image
+                  source={logo ?? largeProductImage(box ?? '')}
+                  style={logo ? styles.logo : styles.art}
+                  contentFit="contain"
+                  transition={200}
+                />
               ) : null}
               <Text style={styles.title} accessibilityRole="header">
                 {displaySetName(data.group)}
@@ -176,6 +185,10 @@ function createStyles(theme: AppTheme) {
     },
     art: {
       height: 160,
+      width: '100%',
+    },
+    logo: {
+      height: 90,
       width: '100%',
     },
     title: {
