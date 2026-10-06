@@ -18,13 +18,13 @@ export function RipButton({ onPress }: Props) {
     <PressableScale
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Open packs"
+      accessibilityLabel="Pull"
       hitSlop={6}
       scaleTo={0.94}
     >
       <GlassSurface interactive style={styles.pill}>
         <Ionicons name="gift-outline" size={18} color={theme.colors.accent} />
-        <Text style={[styles.label, { color: theme.colors.text }]}>Open packs</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>Pull</Text>
       </GlassSurface>
     </PressableScale>
   );

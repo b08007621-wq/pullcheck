@@ -4,7 +4,7 @@ import type { PricePoint } from '@/types/collection';
 import { type CachePolicy, cachedFetch } from './cache';
 import { getJson } from './http';
 
-type HistoryFile = {
+export type HistoryFile = {
   start: string;
   series: Record<string, Record<string, [number, number][]>>;
 };
@@ -12,6 +12,25 @@ type HistoryFile = {
 const BASE = 'https://cdn.jsdelivr.net/gh/b08007621-wq/pullcheck@price-history';
 const HISTORY_CACHE: CachePolicy = { bucket: 'price-history', ttlMs: 12 * 60 * 60 * 1000, maxEntries: 12 };
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export async function loadGroupHistory(market: Market, groupId: number): Promise<HistoryFile> {
+  const { value } = await cachedFetch(`${market}:${groupId}`, HISTORY_CACHE, () =>
+    getJson<HistoryFile>(`${BASE}/${market}/${groupId}.json`, { timeoutMs: 20_000, maxAttempts: 2 }),
+  );
+  return value;
+}
+
+export function weeklyChange(file: HistoryFile, productId: number): number | null {
+  const byVariant = file.series[String(productId)];
+  if (!byVariant) return null;
+  const key = pickVariant(Object.keys(byVariant), null);
+  const points = key ? byVariant[key] : undefined;
+  if (!points || points.length < 2) return null;
+  const last = points[points.length - 1]!;
+  const base = [...points].reverse().find((point) => last[0] - point[0] >= 7) ?? points[0]!;
+  if (base[0] === last[0] || base[1] <= 0) return null;
+  return (last[1] - base[1]) / base[1];
+}
 
 export async function loadProductHistory(
   market: Market,

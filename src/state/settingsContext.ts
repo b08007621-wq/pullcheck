@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 
+import { type Backdrop, DEFAULT_BACKDROP } from '@/theme/backdrop';
 import type { CollectionView } from '@/types/collection';
 
 import {
@@ -22,6 +23,7 @@ export type Settings = {
   custom: CustomThemeSettings;
   savedThemes: SavedTheme[];
   collectionView: CollectionView;
+  backdrop: Backdrop;
   motion: boolean;
   haptics: boolean;
   sounds: boolean;
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   custom: DEFAULT_CUSTOM_THEME,
   savedThemes: [],
   collectionView: 'list',
+  backdrop: DEFAULT_BACKDROP,
   motion: true,
   haptics: true,
   sounds: true,

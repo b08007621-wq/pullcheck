@@ -9,6 +9,9 @@ import {
   THEMES,
 } from '@/theme';
 
+import { sanitizeBackdrop } from '@/theme/backdrop';
+import { withAlpha } from '@/theme/color';
+
 import { savedTheme } from './savedTheme';
 import { DEFAULT_SETTINGS, DESIGN_VERSION, type SavedTheme, type Settings, SettingsContext } from './settingsContext';
 
@@ -37,8 +40,20 @@ export function SettingsProvider({ children }: Props) {
 
   const theme = useMemo(() => {
     const saved = settings.savedThemes.find((entry) => `saved:${entry.id}` === settings.themeId);
-    return saved ? savedTheme(saved) : THEMES[DEFAULT_THEME_ID];
-  }, [settings.themeId, settings.savedThemes]);
+    const base = saved ? savedTheme(saved) : THEMES[DEFAULT_THEME_ID];
+    if (!settings.backdrop.glass) return base;
+    const soften = (color: string, alpha: number) => (color.startsWith('#') ? withAlpha(color, alpha) : color);
+    return {
+      ...base,
+      glass: true,
+      colors: {
+        ...base.colors,
+        surface: soften(base.colors.surface, 0.55),
+        surfaceRaised: soften(base.colors.surfaceRaised, 0.65),
+        tabBar: soften(base.colors.tabBar, 0.6),
+      },
+    };
+  }, [settings.themeId, settings.savedThemes, settings.backdrop.glass]);
 
   const value = useMemo(() => ({ settings, theme, updateSettings }), [settings, theme, updateSettings]);
 
@@ -76,6 +91,7 @@ function sanitize(stored: Partial<Settings>): Settings {
     custom: sanitizeCustomTheme(stored.custom),
     savedThemes,
     collectionView: view === 'grid' || view === 'cover' ? view : 'list',
+    backdrop: sanitizeBackdrop(stored.backdrop),
     motion: typeof stored.motion === 'boolean' ? stored.motion : DEFAULT_SETTINGS.motion,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     sounds: typeof stored.sounds === 'boolean' ? stored.sounds : DEFAULT_SETTINGS.sounds,

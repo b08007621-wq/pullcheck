@@ -101,3 +101,22 @@ export async function locateTcgProduct(card: Card): Promise<{ groupId: number; p
   const listing = findListing(result.value.cards, card);
   return listing ? { groupId: group.groupId, productId: listing.productId } : null;
 }
+
+export async function productIdsForCards(cards: Card[]): Promise<Map<string, { groupId: number; productId: number }>> {
+  const groups = await loadGroups();
+  const bySet = new Map<string, Card[]>();
+  for (const card of cards) bySet.set(card.set.id, [...(bySet.get(card.set.id) ?? []), card]);
+  const found = new Map<string, { groupId: number; productId: number }>();
+  for (const setCards of bySet.values()) {
+    const first = setCards[0];
+    const group = first ? findGroup(groups, first) : null;
+    if (!group) continue;
+    const [result] = await settleInBatches([group], loadGroupCatalog);
+    if (!result || result.status !== 'fulfilled') continue;
+    for (const card of setCards) {
+      const listing = findListing(result.value.cards, card);
+      if (listing) found.set(card.id, { groupId: group.groupId, productId: listing.productId });
+    }
+  }
+  return found;
+}

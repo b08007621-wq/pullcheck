@@ -58,6 +58,7 @@ export function presetOptions(): RipOption[] {
         packs,
         sourceKey: null,
         imageUrl: null,
+        setName: null,
         detail: packs && packs > 1 ? `${packs} packs · MSRP` : 'MSRP',
       },
     ];
@@ -81,6 +82,7 @@ export function ownedOptions(items: CollectionItem[]): RipOption[] {
         packs,
         sourceKey: item.key,
         imageUrl: item.product.imageUrl,
+        setName: item.product.setName,
         detail: packs && packs > 1 ? `${packs} packs · ${basis}` : basis,
       },
     ];

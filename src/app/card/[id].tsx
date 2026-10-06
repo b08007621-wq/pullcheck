@@ -37,6 +37,7 @@ import {
   versionLabel,
 } from '@/utils/cardVersion';
 import { itemPrice } from '@/utils/collectionValue';
+import { getMarketPrice } from '@/utils/price';
 import { isBaseCard } from '@/utils/setProgress';
 import { cardViewerParams } from '@/utils/viewer';
 
@@ -84,7 +85,9 @@ export default function CardDetailScreen() {
   ).size;
   const open3d = () => router.push({ pathname: '/viewer', params: cardViewerParams(card, version.variant) });
   const versionPrice = cardVersionPrice(card, version);
-  const marketUsd = versionPrice?.currency === 'USD' ? versionPrice.amount : null;
+  const anyPrice = getMarketPrice(card);
+  const marketUsd =
+    versionPrice?.currency === 'USD' ? versionPrice.amount : anyPrice?.currency === 'USD' ? anyPrice.amount : null;
 
   return (
     <DetailLayout

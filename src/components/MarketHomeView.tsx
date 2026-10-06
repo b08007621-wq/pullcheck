@@ -69,7 +69,7 @@ export function MarketHomeView({ market, kind, children, bottomInset }: Props) {
                     accessibilityLabel={product.name}
                     style={styles.tile}
                   >
-                    {singles ? (
+                    {product.cardNumber ? (
                       <Image
                         source={product.imageUrl}
                         style={styles.card}
@@ -83,7 +83,7 @@ export function MarketHomeView({ market, kind, children, bottomInset }: Props) {
                       </View>
                     )}
                     <Text style={styles.name} numberOfLines={1}>
-                      {singles ? baseCardName(product.name) : product.name}
+                      {product.cardNumber ? baseCardName(product.name) : product.name}
                     </Text>
                     <Text style={styles.price}>{formatMoney(price(product) ?? 0, 'USD')}</Text>
                   </PressableScale>
