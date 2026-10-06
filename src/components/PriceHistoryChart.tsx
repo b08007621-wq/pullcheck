@@ -9,7 +9,7 @@ import { formatShortDate } from '@/utils/date';
 import { dateFromKey } from '@/utils/history';
 import { type Currency, formatMoney } from '@/utils/price';
 
-import { Sparkline } from './Sparkline';
+import { SPARK_PAD, Sparkline } from './Sparkline';
 
 type Props = {
   points: PricePoint[];
@@ -18,7 +18,9 @@ type Props = {
   height?: number;
 };
 
-const CHART_PAD = 6;
+const CHART_PAD = SPARK_PAD;
+const GUIDES = 3;
+const TIP_WIDTH = 116;
 
 export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 }: Props) {
   const theme = useTheme();
@@ -62,6 +64,7 @@ export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 
         </Text>
       </View>
       <View
+        style={styles.plot}
         onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
@@ -81,7 +84,39 @@ export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 
           surface={theme.colors.surface}
           gridColor={theme.colors.border}
           activeIndex={active}
+          guides={GUIDES}
         />
+        {Array.from({ length: GUIDES }, (_, index) => {
+          const level = CHART_PAD + (index / (GUIDES - 1)) * (height - CHART_PAD * 2);
+          const amount = high - (index / (GUIDES - 1)) * (high - low);
+          return (
+            <Text
+              key={index}
+              pointerEvents="none"
+              style={[styles.guide, { top: level - 14, color: theme.colors.textFaint }]}
+            >
+              {formatMoney(amount, currency)}
+            </Text>
+          );
+        })}
+        {active !== null && shown && width > 0 ? (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.tip,
+              {
+                left: tipLeft(active, points.length, width),
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.tipValue, { color: theme.colors.text }]}>{formatMoney(shown.amount, currency)}</Text>
+            <Text style={[styles.tipDate, { color: theme.colors.textMuted }]}>
+              {formatShortDate(dateFromKey(shown.date))}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View style={styles.footer}>
         <Text style={[styles.caption, { color: theme.colors.textFaint }]}>
@@ -98,7 +133,39 @@ export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 
   );
 }
 
+function tipLeft(index: number, count: number, width: number): number {
+  const x = CHART_PAD + (index / Math.max(count - 1, 1)) * (width - CHART_PAD * 2);
+  return Math.min(Math.max(x - TIP_WIDTH / 2, 0), width - TIP_WIDTH);
+}
+
 const styles = StyleSheet.create({
+  plot: {
+    position: 'relative',
+  },
+  guide: {
+    position: 'absolute',
+    right: 2,
+    fontSize: 10,
+    fontVariant: ['tabular-nums'],
+  },
+  tip: {
+    position: 'absolute',
+    top: -6,
+    width: TIP_WIDTH,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+  },
+  tipValue: {
+    ...typography.label,
+    fontVariant: ['tabular-nums'],
+  },
+  tipDate: {
+    ...typography.caption,
+    fontSize: 11,
+  },
   wrap: {
     gap: spacing.xs,
   },

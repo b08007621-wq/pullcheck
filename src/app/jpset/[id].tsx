@@ -11,12 +11,11 @@ import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useGroupArt } from '@/hooks/useGroupArt';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useJapaneseLogos } from '@/hooks/useJapaneseLogos';
 import { useResource } from '@/hooks/useResource';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { ApiError } from '@/services/http';
 import { displaySetName, loadGroupCatalog, loadGroups } from '@/services/tcgcsv';
-import { japaneseLogo } from '@/services/tcgdex';
+import { japaneseLogo } from '@/services/japaneseLogos';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SealedProduct } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -42,7 +41,6 @@ export default function JapaneseSetScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const groupId = /^\d+$/.test(id) ? Number(id) : null;
   const box = useGroupArt(groupId, 'jp');
-  const logos = useJapaneseLogos();
   const [tab, setTab] = useState<Tab>('cards');
 
   const load = useCallback(async () => {
@@ -118,7 +116,7 @@ export default function JapaneseSetScreen() {
   }
 
   const released = parseDate(data.group.publishedOn);
-  const logo = japaneseLogo(logos, data.group);
+  const logo = japaneseLogo(data.group);
 
   return (
     <DetailLayout
