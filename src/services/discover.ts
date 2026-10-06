@@ -1,5 +1,6 @@
 import type { Card } from '@/types/card';
 import type { SetInfo } from '@/types/set';
+import { parseDate } from '@/utils/date';
 import { getMarketPrice } from '@/utils/price';
 
 import { enrichCardPrices, productIdsForCards } from './cardPrices';
@@ -40,6 +41,7 @@ const RISING_FLOOR = 3;
 const RISING_MIN_CHANGE = 0.02;
 const HISTORY_SETS = 6;
 const RISING_WINDOW_DAYS = 7;
+const FRESH_MARKET_MS = 10 * 24 * 60 * 60 * 1000;
 
 async function pickCandidates(signal?: AbortSignal): Promise<SetInfo[]> {
   const today = dayStamp();
@@ -146,7 +148,8 @@ function findSleepers(priced: DiscoverPick[]): DiscoverPick[] {
 
 function marketMomentum(card: Card): number | undefined {
   const prices = card.cardmarket?.prices;
-  if (!prices) return undefined;
+  const updated = parseDate(card.cardmarket?.updatedAt);
+  if (!prices || !updated || Date.now() - updated.getTime() > FRESH_MARKET_MS) return undefined;
   const recent = prices.avg1 ?? prices.trendPrice ?? prices.avg7;
   const bases = [prices.avg7, prices.avg30].filter((value): value is number => typeof value === 'number' && value > 0);
   if (!recent || bases.length === 0) return undefined;
