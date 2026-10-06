@@ -100,7 +100,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
               ))
             ) : (
               <Text style={styles.note}>
-                Nothing has climbed more than 8% this week. Quiet market.
+                Nothing has climbed more than 3% recently. Quiet market.
               </Text>
             )}
           </DiscoverSection>

@@ -35,7 +35,7 @@ const CHASE_RARITY = /illustration|ultra|hyper|special|secret|rainbow/i;
 const SLEEPER_DISCOUNT = 0.35;
 const SLEEPER_FLOOR = 4;
 const RISING_FLOOR = 3;
-const RISING_MIN_CHANGE = 0.08;
+const RISING_MIN_CHANGE = 0.03;
 const RISING_WINDOW_DAYS = 7;
 
 export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {
@@ -113,10 +113,11 @@ function findSleepers(priced: DiscoverPick[]): DiscoverPick[] {
 
 function marketMomentum(card: Card): number | undefined {
   const prices = card.cardmarket?.prices;
-  const recent = prices?.avg1 ?? prices?.trendPrice;
-  const base = prices?.avg7 ?? prices?.avg30;
-  if (!recent || !base || base <= 0) return undefined;
-  return (recent - base) / base;
+  if (!prices) return undefined;
+  const recent = prices.avg1 ?? prices.trendPrice ?? prices.avg7;
+  const bases = [prices.avg7, prices.avg30].filter((value): value is number => typeof value === 'number' && value > 0);
+  if (!recent || bases.length === 0) return undefined;
+  return Math.max(...bases.map((base) => (recent - base) / base));
 }
 
 function findRising(priced: DiscoverPick[], changes: Map<string, number>): DiscoverPick[] {
