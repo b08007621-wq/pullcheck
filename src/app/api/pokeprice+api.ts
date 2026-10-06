@@ -10,10 +10,9 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const id = params.get('id') ?? '';
-  const days = Math.min(365, Math.max(1, Number(params.get('days') ?? 365) || 365));
-  if (!/^[\w.-]{1,40}$/.test(id)) return Response.json({ error: { code: 'bad_request' } }, { status: 400 });
+  if (!/^\d{1,10}$/.test(id)) return Response.json({ error: { code: 'bad_request' } }, { status: 400 });
 
-  const cacheKey = `${id}:${days}`;
+  const cacheKey = id;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_MS) {
     return new Response(hit.body, { headers: { 'Content-Type': 'application/json' } });
@@ -21,7 +20,7 @@ export async function GET(request: Request) {
   if (isRateLimited(clientKey(request))) return Response.json({ error: { code: 'rate_limited' } }, { status: 429 });
 
   const upstream = await fetch(
-    `${BASE}?tcgPlayerId=${encodeURIComponent(id)}&includeHistory=true&includeEbay=true&days=${days}`,
+    `${BASE}?tcgPlayerId=${encodeURIComponent(id)}&includeEbay=true`,
     { headers: { Authorization: `Bearer ${key}` } },
   ).catch(() => null);
   if (!upstream) return Response.json({ error: { code: 'unreachable' } }, { status: 502 });
