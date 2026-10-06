@@ -2,9 +2,10 @@ import type { Card } from '@/types/card';
 import type { SetInfo } from '@/types/set';
 import { getMarketPrice } from '@/utils/price';
 
-import { enrichCardPrices } from './cardPrices';
+import { enrichCardPrices, productIdsForCards } from './cardPrices';
 import { extraSets } from './extraCards';
 import { getSetCards } from './pokemonTcg';
+import { loadGroupHistory, weeklyChange } from './priceHistory';
 import { compareSnapshots, dayStamp, recordSnapshot } from './priceSnapshots';
 import { loadSets } from './sets';
 
@@ -36,7 +37,8 @@ const CHASE_RARITY = /illustration|ultra|hyper|special|secret|rainbow/i;
 const SLEEPER_DISCOUNT = 0.35;
 const SLEEPER_FLOOR = 4;
 const RISING_FLOOR = 3;
-const RISING_MIN_CHANGE = 0.03;
+const RISING_MIN_CHANGE = 0.02;
+const HISTORY_SETS = 6;
 const RISING_WINDOW_DAYS = 7;
 
 async function pickCandidates(signal?: AbortSignal): Promise<SetInfo[]> {
@@ -49,15 +51,28 @@ async function pickCandidates(signal?: AbortSignal): Promise<SetInfo[]> {
 }
 
 export async function loadRisingExtra(signal?: AbortSignal): Promise<DiscoverPick[]> {
-  const older = (await pickCandidates(signal)).slice(NEWEST_SETS);
-  const settled = await Promise.allSettled(older.map((set) => getSetCards(set.id, signal)));
-  const picks = settled
-    .flatMap((result) => (result.status === 'fulfilled' ? result.value.value : []))
-    .flatMap((card) => {
-      const price = getMarketPrice(card);
-      return price?.currency === 'USD' ? [{ card, price: price.amount, change: null }] : [];
-    });
-  return findRising(picks, new Map());
+  const candidates = await pickCandidates(signal);
+  const settled = await Promise.allSettled(candidates.slice(0, HISTORY_SETS).map((set) => getSetCards(set.id, signal)));
+  const cards = await enrichCardPrices(settled.flatMap((result) => (result.status === 'fulfilled' ? result.value.value : [])));
+  const picks: DiscoverPick[] = cards.flatMap((card) => {
+    const price = getMarketPrice(card);
+    return price?.currency === 'USD' ? [{ card, price: price.amount, change: null }] : [];
+  });
+  const changes = new Map<string, number>();
+  try {
+    const products = await productIdsForCards(picks.map((pick) => pick.card));
+    const groups = new Set([...products.values()].map((entry) => entry.groupId));
+    const files = new Map(
+      (await Promise.allSettled([...groups].map(async (groupId) => [groupId, await loadGroupHistory('en', groupId)] as const)))
+        .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+    );
+    for (const [cardId, entry] of products) {
+      const file = files.get(entry.groupId);
+      const change = file ? weeklyChange(file, entry.productId) : null;
+      if (change !== null) changes.set(cardId, change);
+    }
+  } catch {}
+  return findRising(picks, changes);
 }
 
 export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {

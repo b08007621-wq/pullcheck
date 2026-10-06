@@ -1,7 +1,16 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, type ListRenderItemInfo, RefreshControl, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
@@ -157,33 +166,47 @@ export default function CollectionScreen() {
       </Text>
     );
 
+    const header = (
+      <View style={styles.header}>
+        <CollectionSummaryCard
+          summary={summary}
+          history={meta.valueHistory}
+          lastRefreshAt={meta.lastRefreshAt}
+          pricesAsOf={meta.pricesAsOf ?? null}
+          refreshing={refreshing}
+          refreshFailed={refreshFailed}
+          chart={<CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />}
+        />
+        <CollectionShortcuts variant="row" />
+        {toolbar}
+      </View>
+    );
+
     if (view === 'cover') {
       content = (
-        <View style={styles.cover}>
-          <View style={styles.coverToolbar}>{toolbar}</View>
-          {visible.length > 0 ? (
-            <CollectionCoverflow items={visible} bottomInset={tabBarHeight} onOpen3d={open3d} />
-          ) : (
-            emptyText
-          )}
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+          scrollIndicatorInsets={{ bottom: tabBarHeight }}
+          refreshControl={
+            <RefreshControl
+              refreshing={pulling}
+              onRefresh={pullToRefresh}
+              tintColor={theme.colors.accent}
+              colors={[theme.colors.accent]}
+            />
+          }
+        >
+          {header}
+          <View style={styles.coverStage}>
+            {visible.length > 0 ? (
+              <CollectionCoverflow items={visible} bottomInset={0} onOpen3d={open3d} />
+            ) : (
+              emptyText
+            )}
+          </View>
+        </ScrollView>
       );
     } else {
-      const header = (
-        <View style={styles.header}>
-          <CollectionSummaryCard
-            summary={summary}
-            history={meta.valueHistory}
-            lastRefreshAt={meta.lastRefreshAt}
-            pricesAsOf={meta.pricesAsOf ?? null}
-            refreshing={refreshing}
-            refreshFailed={refreshFailed}
-            chart={<CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />}
-          />
-          <CollectionShortcuts variant="row" />
-          {toolbar}
-        </View>
-      );
       content = (
         <FlatList
           key={view}
@@ -236,11 +259,8 @@ const styles = StyleSheet.create({
   filters: {
     flex: 1,
   },
-  cover: {
-    flex: 1,
-  },
-  coverToolbar: {
-    paddingHorizontal: spacing.lg,
+  coverStage: {
+    marginHorizontal: -spacing.lg,
   },
   gridRow: {
     gap: spacing.sm,

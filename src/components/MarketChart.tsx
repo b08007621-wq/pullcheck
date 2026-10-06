@@ -35,7 +35,7 @@ export function MarketChart({ id, usd, extra = [], estimated = [], source = null
     [useEstimates, estimated, long, extra, recorded],
   );
 
-  if (usd === null) return null;
+  if (usd === null && points.length === 0) return null;
 
   return (
     <SectionPanel title="Market">

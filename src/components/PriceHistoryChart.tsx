@@ -63,6 +63,16 @@ export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 
           {shown ? (active === null ? 'Latest' : formatShortDate(dateFromKey(shown.date))) : ''}
         </Text>
       </View>
+      <View style={styles.stats}>
+        <Text style={[styles.stat, { color: theme.colors.textMuted }]} numberOfLines={1}>
+          {'High '}
+          <Text style={{ color: theme.colors.gain }}>{formatMoney(high, currency)}</Text>
+        </Text>
+        <Text style={[styles.stat, { color: theme.colors.textMuted }]} numberOfLines={1}>
+          {'Low '}
+          <Text style={{ color: theme.colors.loss }}>{formatMoney(low, currency)}</Text>
+        </Text>
+      </View>
       <View
         style={styles.plot}
         onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
@@ -121,9 +131,6 @@ export function PriceHistoryChart({ points, currency, emptyMessage, height = 96 
       <View style={styles.footer}>
         <Text style={[styles.caption, { color: theme.colors.textFaint }]}>
           {first ? formatShortDate(dateFromKey(first.date)) : ''}
-        </Text>
-        <Text style={[styles.caption, { color: theme.colors.textFaint }]}>
-          High {formatMoney(high, currency)} · Low {formatMoney(low, currency)}
         </Text>
         <Text style={[styles.caption, { color: theme.colors.textFaint }]}>
           {last ? formatShortDate(dateFromKey(last.date)) : ''}
@@ -185,6 +192,16 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  stats: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  stat: {
+    ...typography.caption,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    flexShrink: 1,
   },
   empty: {
     ...typography.caption,
