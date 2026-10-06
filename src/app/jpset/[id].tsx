@@ -16,7 +16,7 @@ import { useResource } from '@/hooks/useResource';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { ApiError } from '@/services/http';
 import { displaySetName, loadGroupCatalog, loadGroups } from '@/services/tcgcsv';
-import { setCode } from '@/services/tcgdex';
+import { japaneseLogo } from '@/services/tcgdex';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SealedProduct } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -118,7 +118,7 @@ export default function JapaneseSetScreen() {
   }
 
   const released = parseDate(data.group.publishedOn);
-  const logo = logos[setCode(data.group.abbreviation)] ?? null;
+  const logo = japaneseLogo(logos, data.group);
 
   return (
     <DetailLayout

@@ -10,7 +10,7 @@ import { useJapaneseSets } from '@/hooks/useJapaneseSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { displaySetName, type TcgcsvGroup } from '@/services/tcgcsv';
-import { setCode } from '@/services/tcgdex';
+import { japaneseLogo } from '@/services/tcgdex';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { Market } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -73,7 +73,7 @@ export function JapaneseSetList({ onMarket }: Props) {
           renderItem={({ item, index }) => (
             <JapaneseSetRow
               group={item}
-              logo={logos[setCode(item.abbreviation)] ?? null}
+              logo={japaneseLogo(logos, item)}
               position={rowPosition(index, visible.length)}
               onPress={openSet}
             />

@@ -5,7 +5,7 @@ import { loadGroupProducts, productField, type TcgcsvGroup, type TcgcsvProduct }
 
 type ArtStore = Record<string, string | null>;
 
-const PREFERENCE = [/booster box|booster display/i, /elite trainer box/i, /booster bundle/i, /booster pack/i, /box/i];
+const PREFERENCE = [/booster box|booster display/i, /elite trainer box/i, /booster bundle/i, /booster pack/i, /\bbox\b/i];
 const CONCURRENCY = 2;
 
 let store: ArtStore | null = null;
@@ -39,7 +39,7 @@ function pickArt(products: TcgcsvProduct[]): string | null {
     const match = sealed.find((product) => pattern.test(product.name));
     if (match) return match.imageUrl;
   }
-  return sealed[0]?.imageUrl ?? products.find((product) => product.imageUrl)?.imageUrl ?? null;
+  return null;
 }
 
 function readStore(): Promise<ArtStore> {
