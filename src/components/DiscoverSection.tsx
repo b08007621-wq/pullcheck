@@ -4,18 +4,21 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, spacing, typography } from '@/theme';
 
+import { FadeInView } from './FadeInView';
+
 type Props = {
   title: string;
   subtitle?: string;
   children: ReactNode;
   scroll?: boolean;
+  delay?: number;
 };
 
-export function DiscoverSection({ title, subtitle, children, scroll = true }: Props) {
+export function DiscoverSection({ title, subtitle, children, scroll = true, delay = 0 }: Props) {
   const styles = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.section}>
+    <FadeInView delay={delay} style={styles.section}>
       <View style={styles.header}>
         <Text style={styles.title} accessibilityRole="header">
           {title}
@@ -35,7 +38,7 @@ export function DiscoverSection({ title, subtitle, children, scroll = true }: Pr
       ) : (
         children
       )}
-    </View>
+    </FadeInView>
   );
 }
 

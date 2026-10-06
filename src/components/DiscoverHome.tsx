@@ -13,6 +13,7 @@ import { formatShortDate, parseDate } from '@/utils/date';
 import { DiscoverCardTile, TILE_WIDTH } from './DiscoverCardTile';
 import { DiscoverSection } from './DiscoverSection';
 import { SetLogoTile } from './SetLogoTile';
+import { ShortcutTile } from './ShortcutTile';
 import { SuggestionChips } from './SuggestionChips';
 
 const AUTO_RETRIES = 2;
@@ -82,7 +83,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
       {discover ? (
         <>
           {discover.chase.length > 0 ? (
-            <DiscoverSection title="Chase cards" subtitle={`The most valuable pulls in ${setNames}`}>
+            <DiscoverSection delay={60} title="Chase cards" subtitle={`The most valuable pulls in ${setNames}`}>
               {discover.chase.map((pick) => (
                 <DiscoverCardTile key={pick.card.id} pick={pick} badge="none" onPress={openCard} />
               ))}
@@ -90,6 +91,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
           ) : null}
 
           <DiscoverSection
+            delay={140}
             title="Rising"
             subtitle={since ? `Climbing the most since ${formatShortDate(since)}` : 'Climbing the most this week'}
             scroll={discover.rising.length > 0}
@@ -106,18 +108,31 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
           </DiscoverSection>
 
           {discover.sleepers.length > 0 ? (
-            <DiscoverSection title="Sleepers" subtitle="Chase cards priced well under their set’s average">
+            <DiscoverSection delay={220} title="Sleepers" subtitle="Chase cards priced well under their set’s average">
               {discover.sleepers.map((pick) => (
                 <DiscoverCardTile key={pick.card.id} pick={pick} badge="under" onPress={openCard} />
               ))}
             </DiscoverSection>
           ) : null}
 
-          <DiscoverSection title="New sets">
+          <DiscoverSection delay={300} title="New sets">
             {discover.sets.map((set) => (
               <SetLogoTile key={set.id} set={set} onPress={openSet} />
             ))}
           </DiscoverSection>
+
+          <View>
+            <ShortcutTile
+              icon="calendar-outline"
+              title="Upcoming sets"
+              detail="Pre-order prices"
+              position="only"
+              onPress={() => {
+                haptics.tap();
+                router.push('/upcoming');
+              }}
+            />
+          </View>
         </>
       ) : error && autoRetries >= AUTO_RETRIES ? (
         <Pressable onPress={retry} accessibilityRole="button" style={styles.retry}>

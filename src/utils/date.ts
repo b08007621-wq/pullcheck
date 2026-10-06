@@ -61,3 +61,9 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   if (hours < 24) return `${hours} h ago`;
   return hours < 48 ? 'yesterday' : formatShortDate(date);
 }
+
+export function daysUntil(date: Date, now: Date = new Date()): number {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  return Math.round((end - start) / (24 * 60 * 60 * 1000));
+}

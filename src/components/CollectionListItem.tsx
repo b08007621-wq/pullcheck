@@ -9,10 +9,12 @@ import { formatCollectorNumber } from '@/utils/card';
 import { entryVersion, versionLabel } from '@/utils/cardVersion';
 import { itemPrice, itemProfit, itemTitle } from '@/utils/collectionValue';
 import { formatMoney, percentChange } from '@/utils/price';
+import { binderLabel, itemBinder } from '@/utils/binder';
 import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
 
 import { ListRow, type RowPosition } from './ListRow';
 import { PriceChange } from './PriceChange';
+import { ProductImage } from './ProductImage';
 
 type Props = {
   item: CollectionItem;
@@ -30,7 +32,10 @@ function CollectionListItemView({ item, position, onPress }: Props) {
       ? percentChange(item.priceAtAdd.amount, price.amount)
       : null);
   const version = item.kind === 'card' ? versionLabel(item.card, entryVersion(item), 'short') : null;
-  const subtitle = [itemSubtitle(item), version].filter(Boolean).join(' · ');
+  const binder = itemBinder(item);
+  const subtitle = [itemSubtitle(item), version, binder === 'personal' ? null : binderLabel(binder)]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <ListRow position={position} inset={70}>
@@ -50,13 +55,7 @@ function CollectionListItemView({ item, position, onPress }: Props) {
           />
         ) : (
           <View style={styles.productFrame}>
-            <Image
-              source={item.product.imageUrl}
-              style={styles.productImage}
-              contentFit="contain"
-              recyclingKey={item.key}
-              accessibilityIgnoresInvertColors
-            />
+            <ProductImage product={item.product} size={160} style={styles.productImage} transition={150} />
           </View>
         )}
         <View style={styles.info}>
@@ -113,8 +112,7 @@ function createStyles(theme: AppTheme) {
       width: 46,
       height: 64,
       borderRadius: radius.sm - 2,
-      backgroundColor: '#FFFFFF',
-      padding: 3,
+      padding: 1,
     },
     productImage: {
       flex: 1,

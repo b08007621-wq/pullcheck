@@ -10,6 +10,8 @@ import { itemProfit, itemTitle } from '@/utils/collectionValue';
 import { daysSince, formatDateTime, formatRelativeTime, parseDate } from '@/utils/date';
 import { formatMoney, formatPrice, type MarketPrice, percentChange } from '@/utils/price';
 
+import { BINDERS, itemBinder } from '@/utils/binder';
+
 import { ActionButton } from './ActionButton';
 import { EditableValue } from './EditableValue';
 import { FactRow } from './FactRow';
@@ -18,6 +20,7 @@ import { type OwnedVersion, OwnedVersionTabs } from './OwnedVersionTabs';
 import { PriceChange } from './PriceChange';
 import { PriceHistoryChart } from './PriceHistoryChart';
 import { QuantityStepper } from './QuantityStepper';
+import { SegmentedControl } from './SegmentedControl';
 import { SectionPanel } from './SectionPanel';
 
 type Props = {
@@ -43,7 +46,7 @@ export function OwnedPanel({
 }: Props) {
   const theme = useTheme();
   const haptics = useHaptics();
-  const { meta } = useCollection();
+  const { meta, setBinder } = useCollection();
   const [editingPaid, setEditingPaid] = useState(false);
   const profit = itemProfit(item);
   const addedAt = parseDate(item.addedAt);
@@ -92,6 +95,9 @@ export function OwnedPanel({
           <QuantityStepper value={item.quantity} onChange={onQuantityChange} onRemoveRequest={confirmRemove} />
         }
       />
+      <View style={styles.binder}>
+        <SegmentedControl options={BINDERS} value={itemBinder(item)} onChange={(value) => setBinder(item.key, value)} />
+      </View>
       <FactRow
         label="You paid"
         value={
@@ -178,6 +184,9 @@ export function OwnedPanel({
 }
 
 const styles = StyleSheet.create({
+  binder: {
+    paddingVertical: spacing.sm,
+  },
   nowValue: {
     alignItems: 'flex-end',
     gap: 2,

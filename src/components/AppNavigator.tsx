@@ -14,6 +14,10 @@ export function AppNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 280,
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
@@ -23,6 +27,9 @@ export function AppNavigator() {
         <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
         <Stack.Screen name="rip" options={{ presentation: 'modal' }} />
         <Stack.Screen name="sets" />
+        <Stack.Screen name="upcoming" />
+        <Stack.Screen name="trade" />
+        <Stack.Screen name="barcode" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="set/[id]" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />

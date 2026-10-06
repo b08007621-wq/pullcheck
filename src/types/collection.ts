@@ -20,8 +20,11 @@ export type PaidPrice = {
   currency: Currency;
 };
 
+export type Binder = 'personal' | 'trade' | 'sale';
+
 type CollectedBase = {
   key: string;
+  binder?: Binder;
   addedAt: string;
   lastAddedAt: string;
   quantity: number;
@@ -51,5 +54,9 @@ export type CollectionMeta = {
 };
 
 export type CollectionFilter = 'all' | 'card' | 'sealed';
+
+export type BinderFilter = 'all' | Binder;
+
+export type CollectionView = 'list' | 'grid' | 'cover';
 
 export type CollectionSort = 'value' | 'recent';

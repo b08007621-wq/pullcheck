@@ -1,9 +1,10 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
+import { IconButton } from '@/components/IconButton';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Screen } from '@/components/Screen';
 import { SealedResults } from '@/components/SealedResults';
@@ -24,6 +25,7 @@ const MODES: { value: SearchMode; label: string }[] = [
 ];
 
 export default function SearchScreen() {
+  const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const [mode, setMode] = useState<SearchMode>('cards');
@@ -64,6 +66,9 @@ export default function SearchScreen() {
           <View style={styles.modes}>
             <SegmentedControl options={MODES} value={mode} onChange={setMode} />
           </View>
+          {isCards ? null : (
+            <IconButton icon="barcode-outline" accessibilityLabel="Scan a barcode" onPress={() => router.push('/barcode')} />
+          )}
           <LanguageToggle value={market} onChange={setMarket} />
         </View>
         <SearchBar

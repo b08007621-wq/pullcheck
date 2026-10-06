@@ -2,11 +2,11 @@ import { Image } from 'expo-image';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useTheme } from '@/hooks/useTheme';
-import { radius } from '@/theme';
 import type { SealedProduct } from '@/types/sealed';
 import { largeProductImage } from '@/utils/sealed';
 
 import { PressableScale } from './PressableScale';
+import { ProductImage } from './ProductImage';
 
 type Props = {
   product: SealedProduct;
@@ -34,15 +34,19 @@ export function ProductHero({ product, onPress }: Props) {
         accessibilityHint={onPress ? 'Opens it in 3D' : undefined}
         style={[single ? styles.cardFrame : styles.frame, frame, { shadowColor: theme.colors.accent }]}
       >
-        <Image
-          source={largeProductImage(product.imageUrl)}
-          placeholder={product.imageUrl}
-          placeholderContentFit="contain"
-          style={styles.image}
-          contentFit="contain"
-          transition={250}
-          accessibilityLabel={product.name}
-        />
+        {single ? (
+          <Image
+            source={largeProductImage(product.imageUrl)}
+            placeholder={product.imageUrl}
+            placeholderContentFit="contain"
+            style={styles.image}
+            contentFit="contain"
+            transition={250}
+            accessibilityLabel={product.name}
+          />
+        ) : (
+          <ProductImage product={product} size={800} style={styles.image} transition={250} />
+        )}
       </PressableScale>
     </View>
   );
@@ -54,13 +58,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   frame: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: radius.lg + 8,
-    padding: 14,
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    padding: 6,
   },
   cardFrame: {
     shadowOpacity: 0.6,

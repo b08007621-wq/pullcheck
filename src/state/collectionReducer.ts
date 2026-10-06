@@ -1,5 +1,5 @@
 import type { Card } from '@/types/card';
-import type { CollectedCard, CollectedSealed, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
+import type { Binder, CollectedCard, CollectedSealed, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 import { type CardVersion, cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
 import { itemPrice, summarizeCollection } from '@/utils/collectionValue';
@@ -31,7 +31,8 @@ export type CollectionAction =
   | { type: 'refreshCard'; card: Card; at: string }
   | { type: 'refreshSealed'; product: SealedProduct; at: string }
   | { type: 'applyRefresh'; cards: Card[]; products: SealedProduct[]; pricesAsOf: string | null; at: string }
-  | { type: 'setPaid'; key: string; paid: PaidPrice | null };
+  | { type: 'setPaid'; key: string; paid: PaidPrice | null }
+  | { type: 'setBinder'; key: string; binder: Binder };
 
 export const EMPTY_META: CollectionMeta = { lastRefreshAt: null, pricesAsOf: null, valueHistory: [] };
 
@@ -80,6 +81,11 @@ export function collectionReducer(state: CollectionState, action: CollectionActi
         meta: { ...updated.meta, lastRefreshAt: action.at, pricesAsOf: action.pricesAsOf ?? updated.meta.pricesAsOf ?? null },
       };
     }
+    case 'setBinder':
+      return {
+        ...state,
+        items: state.items.map((item) => (item.key === action.key ? { ...item, binder: action.binder } : item)),
+      };
     case 'setPaid':
       return {
         ...state,
@@ -182,6 +188,7 @@ function mergeEntries(first: CollectionItem, second: CollectionItem): Collection
     lastAddedAt: first.lastAddedAt > second.lastAddedAt ? first.lastAddedAt : second.lastAddedAt,
     priceAtAdd: first.priceAtAdd ?? second.priceAtAdd,
     paid: first.paid ?? second.paid,
+    binder: first.binder ?? second.binder,
     history: (first.history?.length ?? 0) >= (second.history?.length ?? 0) ? first.history : second.history,
   };
 }

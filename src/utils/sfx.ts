@@ -15,15 +15,15 @@ const SOURCES: Record<SoundName, number> = {
 };
 
 const VOLUME: Record<SoundName, number> = {
-  tick: 0.6,
-  pop: 0.6,
-  collect: 0.7,
-  remove: 0.6,
-  shutter: 0.7,
-  reveal: 0.6,
-  flip: 0.8,
-  turn: 0.8,
-  hit: 0.75,
+  tick: 0.28,
+  pop: 0.3,
+  collect: 0.34,
+  remove: 0.28,
+  shutter: 0.32,
+  reveal: 0.3,
+  flip: 0.4,
+  turn: 0.4,
+  hit: 0.36,
 };
 
 const players = new Map<SoundName, AudioPlayer>();
