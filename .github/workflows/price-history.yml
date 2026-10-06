@@ -1,0 +1,36 @@
+name: Price history
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+  push:
+    branches: [claude/sharp-curie-y20pyw]
+    paths: ['scripts/price-history/**', '.github/workflows/price-history.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: price-history
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full
+      - name: Probe archive
+        run: |
+          curl -sSfL -o probe.7z https://tcgcsv.com/archive/tcgplayer/prices-2026-10-01.ppmd.7z
+          ls -la probe.7z
+          7z l probe.7z | head -40
+          7z l probe.7z | grep -E '/(3|85)/' | head -20
+          7z l probe.7z | tail -5
+          mkdir x && 7z x -ox probe.7z -r '*/3/*' >/dev/null && find x -type f | head -5 && du -sh x
+          f=$(find x -type f | head -1); head -c 600 "$f"
