@@ -34,6 +34,7 @@ export function AppNavigator() {
         <Stack.Screen name="jpset/[id]" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="backup" />
+        <Stack.Screen name="centering" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>
       <StatusBar style={theme.mode === 'light' ? 'dark' : 'light'} />

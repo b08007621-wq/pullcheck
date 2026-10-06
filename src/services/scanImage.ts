@@ -42,14 +42,25 @@ export async function pickLibraryImage(): Promise<SourceImage | null> {
   return asset ? { uri: asset.uri, width: asset.width, height: asset.height } : null;
 }
 
-export async function captureScanFrame(camera: CameraView, frame: Rect, view: Size): Promise<string | null> {
-  const picture = await camera.takePictureAsync({ quality: 0.85, shutterSound: false });
+type FrameOptions = {
+  margin?: number;
+  width?: number;
+  quality?: number;
+};
+
+export async function captureScanFrame(
+  camera: CameraView,
+  frame: Rect,
+  view: Size,
+  { margin = AUTO_CROP_MARGIN, width = FRAME_WIDTH, quality = 0.85 }: FrameOptions = {},
+): Promise<string | null> {
+  const picture = await camera.takePictureAsync({ quality, shutterSound: false });
   try {
-    const crop = frameToPhotoCrop(frame, view, picture, AUTO_CROP_MARGIN);
+    const crop = frameToPhotoCrop(frame, view, picture, margin);
     if (!crop) return null;
     const context = ImageManipulator.manipulate(picture.uri);
     context.crop({ originX: crop.x, originY: crop.y, width: crop.width, height: crop.height });
-    if (crop.width > FRAME_WIDTH) context.resize({ width: FRAME_WIDTH });
+    if (crop.width > width) context.resize({ width });
     const image = await context.renderAsync();
     const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: FRAME_QUALITY, base64: true });
     discard(saved.uri);

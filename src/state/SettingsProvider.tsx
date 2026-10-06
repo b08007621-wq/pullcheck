@@ -13,6 +13,7 @@ import { sanitizeBackdrop } from '@/theme/backdrop';
 import { withAlpha } from '@/theme/color';
 
 import type { ChangeBasis, CollectionLayout, CollectionSection } from '@/types/collection';
+import { GRADING_COST_RANGE } from '@/utils/centering';
 
 import { savedTheme } from './savedTheme';
 import {
@@ -107,6 +108,10 @@ function sanitize(stored: Partial<Settings>): Settings {
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     sounds: typeof stored.sounds === 'boolean' ? stored.sounds : DEFAULT_SETTINGS.sounds,
     autoScan: typeof stored.autoScan === 'boolean' ? stored.autoScan : DEFAULT_SETTINGS.autoScan,
+    gradingCost:
+      typeof stored.gradingCost === 'number' && Number.isFinite(stored.gradingCost)
+        ? Math.min(GRADING_COST_RANGE[1], Math.max(GRADING_COST_RANGE[0], stored.gradingCost))
+        : DEFAULT_SETTINGS.gradingCost,
   };
 }
 

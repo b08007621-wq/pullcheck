@@ -29,6 +29,7 @@ export type Settings = {
   haptics: boolean;
   sounds: boolean;
   autoScan: boolean;
+  gradingCost: number;
   design: number;
 };
 
@@ -61,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   sounds: true,
   autoScan: true,
+  gradingCost: 30,
   design: DESIGN_VERSION,
 };
 

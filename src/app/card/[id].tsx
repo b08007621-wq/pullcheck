@@ -11,6 +11,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { GradeCheckButton } from '@/components/GradeCheckButton';
 import { GradedPanel } from '@/components/GradedPanel';
 import { MarketChart } from '@/components/MarketChart';
 import { OtherVersions } from '@/components/OtherVersions';
@@ -168,6 +169,14 @@ export default function CardDetailScreen() {
         source={{ kind: 'card', card, variant: version.variant ?? null }}
       />
       <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} />
+      <GradeCheckButton
+        onPress={() =>
+          router.push({
+            pathname: '/centering',
+            params: version.variant ? { id: card.id, variant: version.variant } : { id: card.id },
+          })
+        }
+      />
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
       <OtherVersions language="jp" versions={japaneseVersions} />
       <CardFacts card={card} />

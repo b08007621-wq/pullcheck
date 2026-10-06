@@ -30,10 +30,34 @@ export type VisionMatch = {
   results: VisionResult[];
 };
 
+export type CenterBox = {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+};
+
+export type BorderWidths = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+export type CenteringRead = {
+  found: boolean;
+  image: string | null;
+  aspect: number | null;
+  outer: CenterBox | null;
+  inner: CenterBox | null;
+  widths: BorderWidths | null;
+};
+
 export type OcrHandle = {
   load: (source: string) => Promise<Size>;
   read: (region: OcrRegion, targetWidth: number) => Promise<string>;
   match: (margin: number) => Promise<VisionMatch>;
+  centering: (margin: number) => Promise<CenteringRead>;
 };
 
 export type ReaderStatus = 'loading' | 'ready' | 'failed';
@@ -56,6 +80,7 @@ type PageMessage =
   | { type: 'loaded'; id: number; width: number; height: number }
   | { type: 'text'; id: number; text: string }
   | ({ type: 'match'; id: number } & VisionMatch)
+  | ({ type: 'centering'; id: number } & CenteringRead)
   | { type: 'error'; id: number; message?: string };
 
 type Pending = {
@@ -67,6 +92,7 @@ type Pending = {
 const LOAD_TIMEOUT_MS = 8000;
 const READ_TIMEOUT_MS = 15000;
 const MATCH_TIMEOUT_MS = 10000;
+const CENTERING_TIMEOUT_MS = 25000;
 
 export type OcrBridge = ReturnType<typeof createOcrBridge>;
 
@@ -101,6 +127,8 @@ export function createOcrBridge(run: (script: string) => void, onState: (state: 
         READ_TIMEOUT_MS,
       ),
     match: (margin) => call<VisionMatch>((id) => `window.pullcheckMatch(${id}, ${margin}); true;`, MATCH_TIMEOUT_MS),
+    centering: (margin) =>
+      call<CenteringRead>((id) => `window.pullcheckCentering(${id}, ${margin}); true;`, CENTERING_TIMEOUT_MS),
   };
 
   const settle = (id: number, outcome: { value?: unknown; error?: string }) => {
@@ -128,6 +156,9 @@ export function createOcrBridge(run: (script: string) => void, onState: (state: 
     else if (message.type === 'match') {
       const { best, gap, fine, fineGap, foil, results } = message;
       settle(message.id, { value: { best, gap, fine, fineGap, foil: foil ?? null, results } });
+    } else if (message.type === 'centering') {
+      const { found, image, aspect, outer, inner, widths } = message;
+      settle(message.id, { value: { found, image, aspect, outer, inner, widths } });
     } else if (message.type === 'error') settle(message.id, { error: message.message ?? 'Card reader error' });
   };
 

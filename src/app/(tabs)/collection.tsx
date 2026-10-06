@@ -200,6 +200,14 @@ export default function CollectionScreen() {
             setActionItem(null);
             setPaidItem(item);
           }}
+          onGradeCheck={(item) => {
+            setActionItem(null);
+            if (item.kind !== 'card') return;
+            router.push({
+              pathname: '/centering',
+              params: item.variant ? { id: item.card.id, variant: item.variant } : { id: item.card.id },
+            });
+          }}
           onClose={() => setActionItem(null)}
         />
       ) : null}

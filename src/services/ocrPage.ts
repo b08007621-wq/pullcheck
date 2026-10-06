@@ -12,12 +12,22 @@ const FOIL_FRAMES = 6;
 
 export const OCR_BASE_URL = `${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/`;
 
-export const OCR_PAGE_HTML = `<!doctype html>
+const CENTER_SOURCE_WIDTH = 1600;
+const CENTER_PAD = 0.04;
+const CENTER_QUALITY = 0.86;
+
+export type ReaderPage = 'scan' | 'measure';
+
+export const OCR_PAGE_HTML = readerPage(true);
+export const MEASURE_PAGE_HTML = readerPage(false);
+
+function readerPage(full: boolean): string {
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script src="${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js"></script>
+${full ? `<script src="${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js"></script>` : ''}
 <script>${CARD_VISION_JS}</script>
 </head>
 <body style="margin:0;background:transparent">
@@ -38,7 +48,8 @@ export const OCR_PAGE_HTML = `<!doctype html>
   var image = null;
   send({ type: 'boot' });
 
-  var ready = window.Tesseract
+  var FULL = ${full ? 'true' : 'false'};
+  var ready = FULL && window.Tesseract
     ? window.Tesseract.createWorker('eng', 1, {
         workerPath: '${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js',
         corePath: '${CDN}/tesseract.js-core@${TESSERACT_VERSION}',
@@ -160,7 +171,7 @@ export const OCR_PAGE_HTML = `<!doctype html>
     if (fineCache.size > ${FINE_CACHE}) fineCache.delete(fineCache.keys().next().value);
     return job;
   };
-  var indexReady = stored('readonly', function (store) { return store.get(INDEX_KEY); })
+  var indexReady = !FULL ? Promise.reject(new Error('Pictures are off on this page')) : stored('readonly', function (store) { return store.get(INDEX_KEY); })
     .catch(function () { return null; })
     .then(function (cached) {
       if (!usable(cached)) return download();
@@ -284,7 +295,69 @@ export const OCR_PAGE_HTML = `<!doctype html>
       send({ type: 'error', id: id, message: describe(error) });
     });
   };
+
+  window.pullcheckCentering = function (id, margin) {
+    try {
+      if (!image) throw new Error('No frame loaded');
+      var scale = Math.min(1, ${CENTER_SOURCE_WIDTH} / image.naturalWidth);
+      var width = Math.max(2, Math.round(image.naturalWidth * scale));
+      var height = Math.max(2, Math.round(image.naturalHeight * scale));
+      visionCanvas.width = width;
+      visionCanvas.height = height;
+      var context = visionCanvas.getContext('2d', { willReadFrequently: true });
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(image, 0, 0, width, height);
+      var measured = PullVision.measureCentering(context.getImageData(0, 0, width, height), margin);
+      visionCanvas.width = 2;
+      visionCanvas.height = 2;
+      if (!measured) {
+        send({ type: 'centering', id: id, found: false, image: null, aspect: null, outer: null, inner: null, widths: null });
+        return;
+      }
+      var e = measured.edge;
+      var sides = [measured.left, measured.right, measured.top, measured.bottom];
+      var ok = sides.every(function (side) { return !!side; });
+      var box = ok
+        ? { x0: e.x0 + measured.left.start, x1: e.x1 - measured.right.start, y0: e.y0 + measured.top.start, y1: e.y1 - measured.bottom.start }
+        : { x0: e.x0, x1: e.x1, y0: e.y0, y1: e.y1 };
+      var pad = Math.round((box.x1 - box.x0) * ${CENTER_PAD});
+      var cx = Math.max(0, Math.floor(box.x0 - pad)), cy = Math.max(0, Math.floor(box.y0 - pad));
+      var cw = Math.min(measured.width, Math.ceil(box.x1 + pad)) - cx, ch = Math.min(measured.height, Math.ceil(box.y1 + pad)) - cy;
+      canvas.width = cw;
+      canvas.height = ch;
+      var out = canvas.getContext('2d');
+      var pixels = out.createImageData(cw, ch);
+      for (var y = 0; y < ch; y += 1) {
+        for (var x = 0; x < cw; x += 1) {
+          var k = ((y + cy) * measured.width + x + cx) * 3, p = (y * cw + x) * 4;
+          pixels.data[p] = measured.rgb[k];
+          pixels.data[p + 1] = measured.rgb[k + 1];
+          pixels.data[p + 2] = measured.rgb[k + 2];
+          pixels.data[p + 3] = 255;
+        }
+      }
+      out.putImageData(pixels, 0, 0);
+      var picture = canvas.toDataURL('image/jpeg', ${CENTER_QUALITY});
+      canvas.width = 2;
+      canvas.height = 2;
+      var norm = function (b) { return { x0: (b.x0 - cx) / cw, x1: (b.x1 - cx) / cw, y0: (b.y0 - cy) / ch, y1: (b.y1 - cy) / ch }; };
+      send({
+        type: 'centering',
+        id: id,
+        found: true,
+        image: picture,
+        aspect: cw / ch,
+        outer: ok ? norm(box) : null,
+        inner: ok ? norm({ x0: box.x0 + measured.left.width, x1: box.x1 - measured.right.width, y0: box.y0 + measured.top.width, y1: box.y1 - measured.bottom.width }) : null,
+        widths: ok ? { left: measured.left.width, right: measured.right.width, top: measured.top.width, bottom: measured.bottom.width } : null
+      });
+    } catch (error) {
+      send({ type: 'error', id: id, message: describe(error) });
+    }
+  };
 })();
 </script>
 </body>
 </html>`;
+}

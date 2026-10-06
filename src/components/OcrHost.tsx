@@ -3,13 +3,14 @@ import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { createOcrBridge, type OcrBridge, type OcrState, READER_FAILED, READER_LOADING } from '@/services/ocrBridge';
-import { OCR_BASE_URL, OCR_PAGE_HTML } from '@/services/ocrPage';
+import { MEASURE_PAGE_HTML, OCR_BASE_URL, OCR_PAGE_HTML, type ReaderPage } from '@/services/ocrPage';
 
 type Props = {
   onState: (state: OcrState) => void;
+  page?: ReaderPage;
 };
 
-export function OcrHost({ onState }: Props) {
+export function OcrHost({ onState, page = 'scan' }: Props) {
   const webRef = useRef<WebView>(null);
   const bridgeRef = useRef<OcrBridge | null>(null);
   const [generation, setGeneration] = useState(0);
@@ -31,7 +32,7 @@ export function OcrHost({ onState }: Props) {
       <WebView
         key={generation}
         ref={webRef}
-        source={{ html: OCR_PAGE_HTML, baseUrl: OCR_BASE_URL }}
+        source={{ html: page === 'scan' ? OCR_PAGE_HTML : MEASURE_PAGE_HTML, baseUrl: OCR_BASE_URL }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled

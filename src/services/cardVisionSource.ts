@@ -524,6 +524,267 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     return { art: regionDrift(a, b, FOIL_ART), body: regionDrift(a, b, FOIL_BODY) };
   };
 
+  var CENTER_W = 630;
+  var CENTER_H = 880;
+  var EDGE_SAMPLES = 48;
+
+  var colorAt = function (img, x, y) {
+    var w = img.width, h = img.height, d = img.data;
+    if (x < 0) x = 0; else if (x > w - 1.001) x = w - 1.001;
+    if (y < 0) y = 0; else if (y > h - 1.001) y = h - 1.001;
+    var ix = x | 0, iy = y | 0, fx = x - ix, fy = y - iy;
+    var k = (iy * w + ix) * 4, k2 = k + w * 4;
+    var out = [0, 0, 0];
+    for (var c = 0; c < 3; c += 1) {
+      out[c] = d[k + c] * (1 - fx) * (1 - fy) + d[k + 4 + c] * fx * (1 - fy) + d[k2 + c] * (1 - fx) * fy + d[k2 + 4 + c] * fx * fy;
+    }
+    return out;
+  };
+
+  var fitLine = function (points) {
+    var keep = points.slice();
+    var line = null;
+    for (var round = 0; round < 3 && keep.length >= 6; round += 1) {
+      var mx = 0, my = 0;
+      for (var i = 0; i < keep.length; i += 1) { mx += keep[i][0]; my += keep[i][1]; }
+      mx /= keep.length; my /= keep.length;
+      var sxx = 0, syy = 0, sxy = 0;
+      for (var j = 0; j < keep.length; j += 1) {
+        var dx = keep[j][0] - mx, dy = keep[j][1] - my;
+        sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+      }
+      var angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      line = { x: mx, y: my, dx: Math.cos(angle), dy: Math.sin(angle) };
+      var dist = keep.map(function (p) { return Math.abs((p[0] - line.x) * line.dy - (p[1] - line.y) * line.dx); });
+      var sorted = dist.slice().sort(function (a, b) { return a - b; });
+      var limit = Math.max(0.8, sorted[Math.floor(sorted.length * 0.6)] * 2.5);
+      keep = keep.filter(function (_, k) { return dist[k] <= limit; });
+    }
+    return line;
+  };
+
+  var crossLines = function (a, b) {
+    var det = a.dx * b.dy - a.dy * b.dx;
+    if (Math.abs(det) < 1e-9) return null;
+    var t = ((b.x - a.x) * b.dy - (b.y - a.y) * b.dx) / det;
+    return [a.x + a.dx * t, a.y + a.dy * t];
+  };
+
+  var refineQuad = function (img, quad) {
+    var cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+    var cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+    var lines = [];
+    for (var s = 0; s < 4; s += 1) {
+      var p = quad[s], q = quad[(s + 1) % 4];
+      var len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+      var tx = (q[0] - p[0]) / len, ty = (q[1] - p[1]) / len;
+      var nx = -ty, ny = tx;
+      var mx = (p[0] + q[0]) / 2 - cx, my = (p[1] + q[1]) / 2 - cy;
+      if (nx * mx + ny * my < 0) { nx = -nx; ny = -ny; }
+      var reach = Math.max(5, len * 0.012);
+      var found = [];
+      for (var i = 0; i < EDGE_SAMPLES; i += 1) {
+        var t = 0.12 + (0.76 * (i + 0.5)) / EDGE_SAMPLES;
+        var bx = p[0] + (q[0] - p[0]) * t, by = p[1] + (q[1] - p[1]) * t;
+        var offsets = [], grads = [], best = 0;
+        for (var o = -reach; o <= reach; o += 0.5) {
+          var a = colorAt(img, bx + nx * (o + 1), by + ny * (o + 1));
+          var b = colorAt(img, bx + nx * (o - 1), by + ny * (o - 1));
+          var g = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+          offsets.push(o);
+          grads.push(g);
+          if (g > best) best = g;
+        }
+        var pick = grads.indexOf(best);
+        if (pick >= 0 && best > 30) found.push([bx + nx * offsets[pick], by + ny * offsets[pick]]);
+      }
+      var line = found.length >= 8 ? fitLine(found) : null;
+      lines.push(line || { x: p[0], y: p[1], dx: tx, dy: ty });
+    }
+    var corners = [];
+    for (var c = 0; c < 4; c += 1) {
+      var point = crossLines(lines[(c + 3) % 4], lines[c]);
+      corners.push(point || quad[c]);
+    }
+    return corners;
+  };
+
+  var CENTER_MARGIN = 0.07;
+
+  var sidePixel = function (rgb, w, side, depth, line, edge) {
+    var x, y;
+    if (side === 0) { x = edge.x0 + depth; y = line; }
+    else if (side === 1) { x = edge.x1 - 1 - depth; y = line; }
+    else if (side === 2) { x = line; y = edge.y0 + depth; }
+    else { x = line; y = edge.y1 - 1 - depth; }
+    var k = (y * w + x) * 3;
+    return [rgb[k], rgb[k + 1], rgb[k + 2]];
+  };
+
+  var colorGap = function (a, b) {
+    return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+  };
+
+  var STEP_SPAN = 3;
+  var STEP_MIN = 34;
+  var FLAT_MAX = 20;
+
+  var sideProfile = function (rgb, w, edge, side) {
+    var cardW = edge.x1 - edge.x0, cardH = edge.y1 - edge.y0;
+    var vertical = side < 2;
+    var span = vertical ? cardH : cardW;
+    var start = vertical ? edge.y0 : edge.x0;
+    var lines = [];
+    if (vertical) {
+      for (var a = Math.round(span * 0.22); a < Math.round(span * 0.78); a += 2) lines.push(start + a);
+    } else {
+      for (var b = Math.round(span * 0.09); b < Math.round(span * 0.25); b += 2) lines.push(start + b);
+      for (var c = Math.round(span * 0.75); c < Math.round(span * 0.91); c += 2) lines.push(start + c);
+    }
+    var outside = Math.min(edge.x0, edge.y0) - 1;
+    var deepest = Math.round((vertical ? cardW : cardH) * 0.16);
+    var profile = [];
+    for (var d = -outside; d < deepest; d += 1) {
+      var sum = [0, 0, 0];
+      for (var i = 0; i < lines.length; i += 1) {
+        var px = sidePixel(rgb, w, side, d, lines[i], edge);
+        sum[0] += px[0]; sum[1] += px[1]; sum[2] += px[2];
+      }
+      profile.push([sum[0] / lines.length, sum[1] / lines.length, sum[2] / lines.length]);
+    }
+    return { profile: profile, offset: outside };
+  };
+
+  var meanColor = function (profile, from, to) {
+    var sum = [0, 0, 0], n = 0;
+    for (var i = Math.max(0, from); i < Math.min(profile.length, to); i += 1) {
+      sum[0] += profile[i][0]; sum[1] += profile[i][1]; sum[2] += profile[i][2]; n += 1;
+    }
+    return n ? [sum[0] / n, sum[1] / n, sum[2] / n] : [0, 0, 0];
+  };
+
+  var plateausOf = function (profile, minWidth, maxWidth) {
+    var steps = [];
+    for (var i = STEP_SPAN; i <= profile.length - STEP_SPAN; i += 1) {
+      steps.push(colorGap(meanColor(profile, i, i + STEP_SPAN), meanColor(profile, i - STEP_SPAN, i)));
+    }
+    var edges = [];
+    for (var j = 1; j < steps.length - 1; j += 1) {
+      if (steps[j] >= STEP_MIN && steps[j] >= steps[j - 1] && steps[j] >= steps[j + 1]) {
+        var curve = steps[j - 1] - 2 * steps[j] + steps[j + 1];
+        var at = j + STEP_SPAN + (curve < 0 ? Math.max(-0.5, Math.min(0.5, (steps[j - 1] - steps[j + 1]) / (2 * curve))) : 0);
+        if (edges.length && at - edges[edges.length - 1].at < 3) {
+          if (steps[j] > edges[edges.length - 1].strength) edges[edges.length - 1] = { at: at, strength: steps[j] };
+        } else edges.push({ at: at, strength: steps[j] });
+      }
+    }
+    var found = [];
+    for (var a = 0; a < edges.length; a += 1) {
+      for (var b = a + 1; b < edges.length; b += 1) {
+        var width = edges[b].at - edges[a].at;
+        if (width < minWidth) continue;
+        if (width > maxWidth) break;
+        var inset = Math.min(2, Math.floor(width / 4));
+        var from = Math.ceil(edges[a].at) + inset, to = Math.floor(edges[b].at) - inset;
+        var color = meanColor(profile, from, to);
+        var wobble = 0, n = 0;
+        for (var k = from; k < to; k += 1) { wobble += colorGap(profile[k], color); n += 1; }
+        if (n && wobble / n <= FLAT_MAX) {
+          var last = found[found.length - 1];
+          if (!last || last.end !== edges[b].at) found.push({ start: edges[a].at, end: edges[b].at, color: color, strength: edges[a].strength + edges[b].strength });
+          break;
+        }
+      }
+    }
+    return found;
+  };
+
+  var sameInk = function (a, b) {
+    var sa = a[0] + a[1] + a[2], sb = b[0] + b[1] + b[2];
+    if (sa < 120 || sb < 120) return colorGap(a, b) <= 60;
+    var ratio = sa / sb;
+    if (ratio < 0.7 || ratio > 1.43) return false;
+    var drift = 0;
+    for (var c = 0; c < 3; c += 1) drift += Math.abs(a[c] / sa - b[c] / sb);
+    return drift <= 0.05;
+  };
+
+  var CARD_MM_W = 63;
+  var CARD_MM_H = 88;
+  var SHAPE_RANGE = [0.69, 0.765];
+  var THICKNESS_RANGE = [0.8, 1.25];
+  var CANDIDATES_PER_SIDE = 4;
+
+  var shapeOf = function (edge, picks) {
+    var outerW = edge.x1 - edge.x0 - picks[0].start - picks[1].start;
+    var outerH = edge.y1 - edge.y0 - picks[2].start - picks[3].start;
+    var acrossMm = ((picks[0].end - picks[0].start + picks[1].end - picks[1].start) / outerW) * CARD_MM_W;
+    var downMm = ((picks[2].end - picks[2].start + picks[3].end - picks[3].start) / outerH) * CARD_MM_H;
+    return { aspect: outerW / outerH, thickness: downMm / Math.max(0.01, acrossMm), acrossMm: acrossMm, downMm: downMm };
+  };
+
+  var outside = function (value, range) {
+    return value < range[0] ? range[0] - value : value > range[1] ? value - range[1] : 0;
+  };
+
+  var borderRuns = function (rgb, w, h, edge) {
+    var cardW = edge.x1 - edge.x0;
+    var minWidth = Math.round(cardW * 0.012), maxWidth = Math.round(cardW * 0.1);
+    var sides = [0, 1, 2, 3].map(function (side) {
+      var p = sideProfile(rgb, w, edge, side);
+      return plateausOf(p.profile, minWidth, maxWidth).slice(0, CANDIDATES_PER_SIDE).map(function (q) {
+        return { start: q.start - p.offset, end: q.end - p.offset, color: q.color, strength: q.strength };
+      });
+    });
+    var best = null;
+    var picks = [];
+    var depth = 0;
+    var visit = function (side) {
+      if (side === 4) {
+        for (var a = 0; a < 4; a += 1) for (var b = a + 1; b < 4; b += 1) if (!sameInk(picks[a].color, picks[b].color)) return;
+        var shape = shapeOf(edge, picks);
+        var miss = outside(shape.aspect, SHAPE_RANGE) * 10 + outside(shape.thickness, THICKNESS_RANGE);
+        var score = (miss > 0 ? 1000 + miss * 100 : 0) + depth;
+        if (!best || score < best.score) best = { score: score, picks: picks.slice(), shape: shape };
+        return;
+      }
+      for (var k = 0; k < sides[side].length; k += 1) {
+        picks[side] = sides[side][k];
+        depth += k;
+        visit(side + 1);
+        depth -= k;
+      }
+    };
+    visit(0);
+    if (!best) return { reason: 'border', sides: [null, null, null, null] };
+    var fits = outside(best.shape.aspect, SHAPE_RANGE) === 0 && outside(best.shape.thickness, THICKNESS_RANGE) === 0;
+    var color = [0, 0, 0];
+    best.picks.forEach(function (q) { color[0] += q.color[0] / 4; color[1] += q.color[1] / 4; color[2] += q.color[2] / 4; });
+    return {
+      reason: fits ? null : 'shape',
+      border: color,
+      shape: best.shape,
+      sides: best.picks.map(function (q) { return fits ? { width: q.end - q.start, start: q.start } : null; }),
+    };
+  };
+
+  var measureCentering = function (img, margin) {
+    var work = shrink(img, WORK_WIDTH);
+    var found = locate(work, margin);
+    if (found.length === 0) return null;
+    var scale = img.width / work.width;
+    var coarse = found[0].quad.map(function (p) { return [p[0] * scale, p[1] * scale]; });
+    var quad = refineQuad(img, coarse);
+    var mx = CENTER_MARGIN, my = CENTER_MARGIN * CARD_ASPECT;
+    var wide = scaleQuad(quad, -mx, -my);
+    var W2 = Math.round(CENTER_W * (1 + 2 * mx)), H2 = Math.round(CENTER_H * (1 + 2 * my));
+    var rgb = warp(img, wide, W2, H2);
+    var edge = { x0: Math.round(CENTER_W * mx), x1: W2 - Math.round(CENTER_W * mx), y0: Math.round(CENTER_H * my), y1: H2 - Math.round(CENTER_H * my) };
+    var measured = borderRuns(rgb, W2, H2, edge);
+    var left = measured.sides[0], right = measured.sides[1], top = measured.sides[2], bottom = measured.sides[3];
+    return { quad: quad, width: W2, height: H2, edge: edge, rgb: rgb, border: measured.border, shape: measured.shape, reason: measured.reason, left: left, right: right, top: top, bottom: bottom };
+  };
+
   var HYPOTHESES = [[0, 0], [0.025, 0.0175], [-0.035, -0.025]];
 
   var describeQuery = function (img, margin) {
@@ -652,6 +913,7 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
   return {
     DIMS: DIMS,
     regroup: regroup,
+    measureCentering: measureCentering,
     foilDrift: foilDrift,
     rank: rank,
     fineReference: fineReference,

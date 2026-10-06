@@ -52,6 +52,7 @@ With the "sure" thresholds, 90% of correct matches show immediately. Over 1,800 
 ### Index (`scripts/card-index/build.mjs`, `.github/workflows/card-index.yml`)
 
 - Every TCGdex card with an image: about 19.7k English (TCG Pocket excluded) and 3.9k Japanese. Fingerprints come from each card's `low.jpg`.
+- Cards TCGdex lists without an image (about 6.3k) get one from `scripts/card-index/fallbacks.mjs`. English images come from the pokemontcg-data JSON on GitHub, matched by set name and number. Japanese images are TCGCSV product photos, matched by set abbreviation or name, with white borders trimmed. The URL is stored in `meta.json` `images[key]`, and the phone uses it for the close-up check and the result thumbnail.
 - Published to the orphan branch `card-index` as `v<CARD_VISION_VERSION>/meta.json` (ids like `en:sv01-045`) plus `vectors.bin` (int8, N × 190, about 4.5 MB). It's served by jsDelivr: `cdn.jsdelivr.net/gh/b08007621-wq/pullcheck@card-index/v1/`.
 - The workflow runs daily at 09:17 UTC and on pushes that touch the matcher. Each run reuses existing vectors and only downloads new cards.
 - **Changing the fingerprint math means bumping `CARD_VISION_VERSION`**, so old app builds keep reading the old folder.
@@ -177,6 +178,18 @@ Use these to tune `visionMatch.ts` thresholds and `PullVision` against real iPho
 
 Auto is a persisted setting (`settings.autoScan`, default on), toggled with the **Auto** pill in the Scan header.
 
+## Centering (`measureCentering` in `cardVisionSource.ts`)
+
+Used by `src/app/centering.tsx`. The page function is `pullcheckCentering` in `ocrPage.ts`, which runs on the light `MEASURE_PAGE_HTML` page (no tesseract, no index).
+
+1. Find the card with the normal `locate`, then refine each edge at full resolution (`refineQuad`: strongest color step within ±1.2% of the side, trimmed PCA line fit, corners from line crossings).
+2. Warp the card to 630×880 with a 7% margin on all sides, so the real outer edge is inside the image even when the locator latched onto the inner frame.
+3. For each side, average a color profile across many scan lines from outside the card inward. Vertical sides use 22–78% of the height. Top and bottom use the corner zones (9–25% and 75–91% of the width) so the copyright text and HP don't interfere. Steps in the profile (sub-pixel, parabolic peak) bound flat "plateaus".
+4. Choose one plateau per side together. All four must be the same ink, compared by chromaticity with a 0.7–1.43 brightness ratio so lighting gradients don't matter. The outer card must be 0.69–0.765 wide-to-tall, and the top+bottom border thickness in mm must be 0.8–1.25× the left+right. Prefer the outermost plateaus, and fall back to deeper ones only when the outer choice gives an impossible card. This handles a grey carpet patch next to an Energy card and a Colorless card whose inside is the same grey as the border.
+5. If nothing fits, return no widths. The UI then says it couldn't read the borders and never shows a number.
+
+Accuracy: synthetic cards with known borders measure within 0.1% (mean 0.04%). On 40 real logged frames, every measured card looked right by eye, and the failures were non-cards, cropped cards, cards held in a hand, or dim frames on white carpet. Verified in headless Edge with the real page code, which gave the same numbers as Node. Not yet tried on an iPhone.
+
 ## Files
 
 | File | Role |
@@ -190,7 +203,8 @@ Auto is a persisted setting (`settings.autoScan`, default on), toggled with the 
 | `src/hooks/useScanCard.ts` | Candidate → app `Card`, localized names |
 | `src/services/ocrPage.ts`, `ocrBridge.ts` | WebView OCR page and message bridge |
 | `src/components/OcrHost.tsx`, `OcrHost.web.tsx` | Hidden OCR host (WebView / iframe) |
-| `src/services/scanImage.ts` | `captureScanFrame` |
+| `src/services/scanImage.ts` | `captureScanFrame` (margin, width and quality options) |
+| `src/app/centering.tsx`, `src/components/CenteringPhoto.tsx`, `GradeCalculator.tsx`, `GradeCheckButton.tsx`, `src/utils/centering.ts` | Centering checker and "Should I grade it?" |
 | `src/utils/scanText.ts` | Number, set code and language parsing; name scoring |
 | `src/services/scanMatch.ts` | Candidate search and ranking |
 | `src/services/tcgdex.ts`, `src/types/tcgdex.ts` | TCGdex API layer and conversion to `Card` |

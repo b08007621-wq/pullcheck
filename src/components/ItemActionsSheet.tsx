@@ -26,10 +26,11 @@ type Props = {
   basis: ChangeBasis;
   onOpen: (item: CollectionItem) => void;
   onEditPaid: (item: CollectionItem) => void;
+  onGradeCheck: (item: CollectionItem) => void;
   onClose: () => void;
 };
 
-export function ItemActionsSheet({ item, basis, onOpen, onEditPaid, onClose }: Props) {
+export function ItemActionsSheet({ item, basis, onOpen, onEditPaid, onGradeCheck, onClose }: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
   const { items, setQuantity, setBinder, remove } = useCollection();
@@ -129,6 +130,20 @@ export function ItemActionsSheet({ item, basis, onOpen, onEditPaid, onClose }: P
           <Ionicons name="chevron-forward" size={16} color={styles.chevron.color} />
         </View>
       </Pressable>
+
+      {current.kind === 'card' && !current.grading ? (
+        <Pressable
+          onPress={() => onGradeCheck(current)}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.row, styles.tappable, pressed && styles.pressed]}
+        >
+          <Text style={styles.label}>Should I grade it?</Text>
+          <View style={styles.paid}>
+            <Text style={styles.paidValue}>Check centering</Text>
+            <Ionicons name="chevron-forward" size={16} color={styles.chevron.color} />
+          </View>
+        </Pressable>
+      ) : null}
 
       <View style={styles.actions}>
         <View style={styles.flex}>
