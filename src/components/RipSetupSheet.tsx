@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useCollection } from '@/hooks/useCollection';
+import { useSets } from '@/hooks/useSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { RipSource } from '@/types/rip';
@@ -26,6 +27,16 @@ export function RipSetupSheet({ onStart, onClose }: Props) {
   const presets = useMemo(() => presetOptions(), []);
   const [selectedId, setSelectedId] = useState(DEFAULT_OPTION);
   const [costText, setCostText] = useState<string | null>(null);
+  const [pickedSet, setPickedSet] = useState<string | null>(null);
+  const { sets } = useSets();
+  const recentSets = useMemo(
+    () =>
+      (sets ?? [])
+        .filter((set) => !/promo|energ|trainer kit|mcdonald/i.test(set.name) && set.total >= 60)
+        .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate))
+        .slice(0, 12),
+    [sets],
+  );
   const selected = [...owned, ...presets].find((option) => option.id === selectedId) ?? presets[0] ?? null;
   const cost = costText === null ? (selected?.cost ?? null) : parseMoney(costText);
   const invalid = costText !== null && cost === null;
@@ -43,6 +54,7 @@ export function RipSetupSheet({ onStart, onClose }: Props) {
       packs: selected.packs,
       sourceKey: selected.sourceKey,
       imageUrl: selected.imageUrl,
+      setName: selected.setName ?? pickedSet,
     });
     onClose();
   };
@@ -64,12 +76,33 @@ export function RipSetupSheet({ onStart, onClose }: Props) {
 
   return (
     <SheetModal onClose={onClose}>
-      <Text style={styles.heading}>Open packs</Text>
-      <Text style={styles.subheading}>Scan every card you pull to see if it paid off.</Text>
+      <Text style={styles.heading}>Pull</Text>
+      <Text style={styles.subheading}>Scan every hit. See if it paid off.</Text>
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {renderGroup('From your collection', owned)}
         {renderGroup('Products', presets)}
       </ScrollView>
+      {selected && !selected.setName && recentSets.length > 0 ? (
+        <View style={styles.group}>
+          <Text style={styles.groupTitle}>Which set?</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {recentSets.map((set) => {
+              const active = pickedSet === set.name;
+              return (
+                <Pressable
+                  key={set.id}
+                  onPress={() => setPickedSet(active ? null : set.name)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{set.name}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
       <View style={[styles.field, invalid && styles.fieldInvalid]}>
         <Text style={styles.fieldLabel}>Cost</Text>
         <Text style={styles.currency}>$</Text>
@@ -87,7 +120,7 @@ export function RipSetupSheet({ onStart, onClose }: Props) {
       </View>
       <View style={styles.actions}>
         <ActionButton label="Cancel" variant="secondary" onPress={onClose} />
-        <ActionButton label="Start" icon="scan" onPress={start} />
+        <ActionButton label="Start" icon="flash" onPress={start} />
       </View>
     </SheetModal>
   );
@@ -112,6 +145,26 @@ function createStyles(theme: AppTheme) {
     },
     group: {
       gap: spacing.xs,
+    },
+    chips: {
+      gap: spacing.sm,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: 7,
+      borderRadius: radius.pill,
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    chipActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    chipText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    chipTextActive: {
+      color: theme.colors.onAccent,
     },
     groupTitle: {
       ...typography.caption,

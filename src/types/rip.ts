@@ -15,6 +15,7 @@ export type RipSource = {
   packs: number | null;
   sourceKey: string | null;
   imageUrl: string | null;
+  setName?: string | null;
 };
 
 export type Rip = RipSource & {

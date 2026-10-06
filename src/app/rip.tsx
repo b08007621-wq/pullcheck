@@ -6,6 +6,7 @@ import { ActionButton } from '@/components/ActionButton';
 import { DetailLayout } from '@/components/DetailLayout';
 import { EmptyState } from '@/components/EmptyState';
 import { MoneyEditor } from '@/components/MoneyEditor';
+import { PossiblePulls } from '@/components/PossiblePulls';
 import { PullRow } from '@/components/PullRow';
 import { RipSummaryPanel } from '@/components/RipSummaryPanel';
 import { SectionPanel } from '@/components/SectionPanel';
@@ -13,6 +14,8 @@ import { SettingToggleRow } from '@/components/SettingToggleRow';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useRip } from '@/hooks/useRip';
+import { useSets } from '@/hooks/useSets';
+import { findSet } from '@/services/sets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useWishlist } from '@/hooks/useWishlist';
 import { type AppTheme, spacing, typography } from '@/theme';
@@ -27,6 +30,9 @@ export default function RipScreen() {
   const { items, addCards, setQuantity } = useCollection();
   const { fulfill } = useWishlist();
   const [editingCost, setEditingCost] = useState(false);
+  const { sets } = useSets();
+  const ripSet = useMemo(() => (rip?.setName && sets ? findSet(sets, rip.setName) : null), [rip, sets]);
+  const pulledIds = useMemo(() => new Set((rip?.pulls ?? []).map((pull) => pull.card.id)), [rip]);
   const [removeSource, setRemoveSource] = useState(true);
   const [closing, setClosing] = useState(false);
   const endOnLeave = useRef(false);
@@ -61,7 +67,7 @@ export default function RipScreen() {
       <DetailLayout centered>
         <EmptyState
           icon="gift-outline"
-          title="No pack opening"
+          title="No pulls going"
           message="Start one from the Scan tab and every card you scan gets tallied here."
           action={{ label: 'Go to Scan', icon: 'scan', onPress: () => router.dismissTo('/') }}
         />
@@ -128,7 +134,7 @@ export default function RipScreen() {
       ) : null}
       <SectionPanel title="Pulls" icon="sparkles">
         {pulls.length === 0 ? (
-          <Text style={styles.empty}>Nothing scanned yet. Head back and scan the first card you pulled.</Text>
+          <Text style={styles.empty}>Nothing yet. Scan your first pull.</Text>
         ) : (
           <View style={styles.list}>
             {pulls.map((pull) => (
@@ -143,6 +149,7 @@ export default function RipScreen() {
           </View>
         )}
       </SectionPanel>
+      {ripSet ? <PossiblePulls set={ripSet} pulledIds={pulledIds} /> : null}
       <Pressable onPress={discard} accessibilityRole="button" hitSlop={8} style={styles.discard}>
         <Text style={styles.discardText}>End without saving</Text>
       </Pressable>
