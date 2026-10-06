@@ -18,6 +18,7 @@ type Params = {
   foil?: string;
   border?: string;
   era?: string;
+  pattern?: string;
   back?: string;
 };
 
@@ -25,7 +26,10 @@ export default function ViewerScreen() {
   const router = useRouter();
   const theme = useTheme();
   const params = useLocalSearchParams<Params>();
-  const finish = useMemo(() => parseFinish(params.foil, params.border, params.era), [params.foil, params.border, params.era]);
+  const finish = useMemo(
+    () => parseFinish(params.foil, params.border, params.era, params.pattern),
+    [params.foil, params.border, params.era, params.pattern],
+  );
   const productId = params.product && /^\d+$/.test(params.product) ? Number(params.product) : null;
 
   if (!isModelKind(params.kind) || !params.image) {

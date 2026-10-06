@@ -18,6 +18,7 @@ export type ViewerParams = {
   foil?: string;
   border?: string;
   era?: string;
+  pattern?: string;
   back?: CardBack;
 };
 
@@ -31,6 +32,7 @@ export function cardViewerParams(card: Card, variant?: string | null): ViewerPar
     foil: finish.foil,
     border: finish.border,
     era: finish.era,
+    pattern: finish.pattern,
     back: 'international',
   };
 }
@@ -46,6 +48,7 @@ export function productViewerParams(product: SealedProduct): ViewerParams | null
       foil: finish.foil,
       border: finish.border,
       era: finish.era,
+      pattern: finish.pattern,
       back: singleBack(product),
     };
   }

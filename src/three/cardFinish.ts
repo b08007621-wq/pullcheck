@@ -1,7 +1,40 @@
 import type { Card } from '@/types/card';
 import type { SealedProduct } from '@/types/sealed';
 
-export type FoilKind = 'plain' | 'window' | 'full' | 'textured' | 'gold' | 'pikachu' | 'reverse' | 'cosmos';
+export type FoilKind =
+  | 'plain'
+  | 'window'
+  | 'full'
+  | 'textured'
+  | 'gold'
+  | 'pikachu'
+  | 'reverse'
+  | 'cosmos'
+  | 'rainbow'
+  | 'illustration'
+  | 'special'
+  | 'chrome'
+  | 'shiny';
+
+export type HoloPattern = 'starlight' | 'cosmos' | 'tinsel' | 'sheen' | 'waterweb' | 'line' | 'mirage';
+
+export const FOIL_KINDS: readonly FoilKind[] = [
+  'plain',
+  'window',
+  'full',
+  'textured',
+  'gold',
+  'pikachu',
+  'reverse',
+  'cosmos',
+  'rainbow',
+  'illustration',
+  'special',
+  'chrome',
+  'shiny',
+];
+
+const PATTERNS: readonly HoloPattern[] = ['starlight', 'cosmos', 'tinsel', 'sheen', 'waterweb', 'line', 'mirage'];
 
 export type BorderFoil = 'none' | 'silver' | 'gold';
 
@@ -13,10 +46,11 @@ export type CardFinish = {
   foil: FoilKind;
   border: BorderFoil;
   era: CardEra;
+  pattern: HoloPattern;
   window?: UvRect | null;
 };
 
-const PLAIN: CardFinish = { foil: 'plain', border: 'none', era: 'sv' };
+const PLAIN: CardFinish = { foil: 'plain', border: 'none', era: 'sv', pattern: 'mirage' };
 
 const ART_WINDOWS: Record<CardEra, UvRect> = {
   wotc: [0.11, 0.5, 0.89, 0.885],
@@ -27,23 +61,35 @@ const ART_WINDOWS: Record<CardEra, UvRect> = {
 };
 
 const REVERSE_VARIANT = /^reverse/i;
+const ALL_FOIL_SET = /30th celebration$/i;
 const HOLO_VARIANT = /holofoil/i;
 const PROMO = /^promo$/;
 const COSMOS = /cosmos/i;
 const RULE_BOX = /^(ex|EX|GX|V|VMAX|VSTAR|V-UNION|MEGA|TAG TEAM|BREAK|LV\.X|Prime|LEGEND|Radiant)$/;
 
-const PIKACHU = /pikachu rare/;
-const GOLD = /hyper rare|rare secret gold|gold star/;
-const TEXTURED =
-  /special illustration|illustration rare|ultra|full art|vmax|vstar|rainbow|secret|trainer gallery|shiny|ace spec|character|black white rare|mega attack/;
-const FULL = /double rare|holo ex|holo gx|holo v\b|holo lv|legend|amazing|radiant|shining|holo star|prism|break|futuristic|prime/;
-const WINDOW = /holo|promo|classic/;
+const RARITY_RULES: [RegExp, FoilKind][] = [
+  [/pikachu rare/, 'pikachu'],
+  [/futuristic/, 'chrome'],
+  [/rainbow/, 'rainbow'],
+  [/hyper rare|rare secret|gold star|\bgold\b/, 'gold'],
+  [/special illustration|mega attack|black white rare/, 'special'],
+  [/illustration rare|trainer gallery|character/, 'illustration'],
+  [/shiny|shining|radiant/, 'shiny'],
+  [/ultra|full art|vmax|vstar|ace spec|amazing/, 'textured'],
+  [/double rare|holo ex|holo gx|holo v\b|holo lv|legend|holo star|prism|break|prime/, 'full'],
+  [/holo|promo|classic/, 'window'],
+];
 const MODERN_RARE = /^rare$/;
 
-const JP_GOLD = /ultra rare|\bur\b|\bmur\b|hyper rare|gold/;
-const JP_TEXTURED =
-  /special art|art rare|super rare|secret|\bsar\b|\bar\b|\bsr\b|\bssr\b|\bhr\b|\bbwr\b|\bchr\b|\bcsr\b|character|mega attack|illustration|black white|shiny super/;
-const JP_FULL = /double rare|triple rare|\brr\b|\brrr\b|shiny rare|\bs\b|ace spec|radiant|amazing|prism|holo (ex|gx|v)|\bk\b/;
+const JP_RULES: [RegExp, FoilKind][] = [
+  [/special art|\bsar\b|character super|\bcsr\b|mega attack|\bma\b|black white|\bbwr\b/, 'special'],
+  [/art rare|\bar\b|character|\bchr\b|illustration/, 'illustration'],
+  [/hyper rare|\bhr\b/, 'rainbow'],
+  [/ultra rare|\bur\b|\bmur\b|gold/, 'gold'],
+  [/shiny|\bssr\b|\bs\b/, 'shiny'],
+  [/super rare|secret|\bsr\b/, 'textured'],
+  [/double rare|triple rare|\brr\b|\brrr\b|ace spec|radiant|amazing|prism|holo (ex|gx|v)|\bk\b/, 'full'],
+];
 const JP_WINDOW = /holo|^rare$|\br\b|promo|celebration|anniversary/;
 const JP_PLAIN = /^(common|uncommon|\bc\b|\bu\b|none|no rarity)?$/;
 const JP_PATTERN = /master ?ball|pok[eé] ?ball|reverse|mirror|pattern/i;
@@ -53,8 +99,11 @@ export function cardFinish(card: Card, variant?: string | null): CardFinish {
   const rarity = (card.rarity ?? '').toLowerCase();
   const era = eraOf(card.set.series);
   const border = borderOf(card.set.name);
-  if (variant && REVERSE_VARIANT.test(variant)) return { foil: 'reverse', border, era };
-  if (variant && !HOLO_VARIANT.test(variant)) return { foil: 'plain', border, era };
+  const pattern = patternOf(card.set.series, card.set.name);
+  if (variant && REVERSE_VARIANT.test(variant)) return { foil: 'reverse', border, era, pattern };
+  if (variant && !HOLO_VARIANT.test(variant) && !ALL_FOIL_SET.test(card.set.name)) {
+    return { foil: 'plain', border, era, pattern };
+  }
 
   const variants = Object.keys(card.tcgplayer?.prices ?? {});
   const holo = variants.some((key) => HOLO_VARIANT.test(key) && !REVERSE_VARIANT.test(key));
@@ -62,24 +111,33 @@ export function cardFinish(card: Card, variant?: string | null): CardFinish {
   if (!variant && variants.length > 0 && !holo) foil = 'plain';
   else if ((holo || variant) && foil === 'plain') foil = 'window';
   if (COSMOS.test(card.printing ?? '') && (foil === 'window' || foil === 'plain')) foil = 'cosmos';
-  return { foil, border, era };
+  if (ALL_FOIL_SET.test(card.set.name) && foil === 'plain') foil = 'window';
+  return { foil, border, era, pattern };
 }
 
 export function singleFinish(product: SealedProduct): CardFinish {
   const rarity = (product.rarity ?? '').toLowerCase().trim();
   const era = singleEra(product.setCode);
-  if (JP_PATTERN.test(product.name)) return { foil: 'reverse', border: 'none', era };
-  const foil: FoilKind = JP_GOLD.test(rarity)
-    ? 'gold'
-    : JP_TEXTURED.test(rarity)
-      ? 'textured'
-      : JP_FULL.test(rarity) || (JP_RULE_NAME.test(product.name) && !JP_PLAIN.test(rarity))
-        ? 'full'
-        : JP_WINDOW.test(rarity) || !JP_PLAIN.test(rarity)
-          ? 'window'
-          : 'plain';
-  return { foil, border: foil === 'plain' ? 'none' : 'silver', era };
+  const pattern = ERA_PATTERN[era];
+  if (JP_PATTERN.test(product.name)) return { foil: 'reverse', border: 'none', era, pattern };
+  const ruled = JP_RULES.find(([rule]) => rule.test(rarity))?.[1];
+  const foil: FoilKind =
+    ruled ??
+    (JP_RULE_NAME.test(product.name) && !JP_PLAIN.test(rarity)
+      ? 'full'
+      : JP_WINDOW.test(rarity) || !JP_PLAIN.test(rarity)
+        ? 'window'
+        : 'plain');
+  return { foil, border: foil === 'plain' ? 'none' : 'silver', era, pattern };
 }
+
+const ERA_PATTERN: Record<CardEra, HoloPattern> = {
+  wotc: 'cosmos',
+  ex: 'cosmos',
+  bw: 'tinsel',
+  swsh: 'line',
+  sv: 'mirage',
+};
 
 function singleEra(code: string | null | undefined): CardEra {
   const value = (code ?? '').toLowerCase();
@@ -94,13 +152,13 @@ export function artWindow(era: CardEra): UvRect {
   return ART_WINDOWS[era];
 }
 
-export function parseFinish(foil: unknown, border: unknown, era: unknown): CardFinish {
+export function parseFinish(foil: unknown, border: unknown, era: unknown, pattern?: unknown): CardFinish {
+  const parsedEra = isOneOf(era, ['wotc', 'ex', 'bw', 'swsh', 'sv']) ? era : PLAIN.era;
   return {
-    foil: isOneOf(foil, ['plain', 'window', 'full', 'textured', 'gold', 'pikachu', 'reverse', 'cosmos'])
-      ? foil
-      : PLAIN.foil,
+    foil: isOneOf(foil, FOIL_KINDS) ? foil : PLAIN.foil,
     border: isOneOf(border, ['none', 'silver', 'gold']) ? border : PLAIN.border,
-    era: isOneOf(era, ['wotc', 'ex', 'bw', 'swsh', 'sv']) ? era : PLAIN.era,
+    era: parsedEra,
+    pattern: isOneOf(pattern, PATTERNS) ? pattern : ERA_PATTERN[parsedEra],
   };
 }
 
@@ -126,13 +184,22 @@ function promoFoil(card: Card): FoilKind {
 }
 
 function foilOf(rarity: string, era: CardEra): FoilKind {
-  if (PIKACHU.test(rarity)) return 'pikachu';
-  if (GOLD.test(rarity)) return 'gold';
-  if (TEXTURED.test(rarity)) return 'textured';
-  if (FULL.test(rarity)) return 'full';
-  if (WINDOW.test(rarity)) return 'window';
+  const ruled = RARITY_RULES.find(([rule]) => rule.test(rarity))?.[1];
+  if (ruled) return ruled;
   if (era === 'sv' && MODERN_RARE.test(rarity)) return 'window';
   return 'plain';
+}
+
+function patternOf(series: string, setName: string): HoloPattern {
+  if (/^(base|jungle|fossil)$/i.test(setName.trim())) return 'starlight';
+  if (/^(base|gym|neo|legendary collection|e-card|other|ex|diamond|platinum|heartgold|pop|call of legends|np)/i.test(series)) {
+    return 'cosmos';
+  }
+  if (/^black/i.test(series)) return 'tinsel';
+  if (/^xy/i.test(series)) return 'sheen';
+  if (/^sun/i.test(series)) return 'waterweb';
+  if (/^sword/i.test(series)) return 'line';
+  return 'mirage';
 }
 
 function borderOf(setName: string): BorderFoil {
