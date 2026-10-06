@@ -5,12 +5,11 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useGroupArt } from '@/hooks/useGroupArt';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useJapaneseLogos } from '@/hooks/useJapaneseLogos';
 import { useJapaneseSets } from '@/hooks/useJapaneseSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { displaySetName, type TcgcsvGroup } from '@/services/tcgcsv';
-import { japaneseLogo } from '@/services/tcgdex';
+import { japaneseLogo } from '@/services/japaneseLogos';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { Market } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
@@ -32,7 +31,6 @@ export function JapaneseSetList({ onMarket }: Props) {
   const haptics = useHaptics();
   const styles = useThemedStyles(createStyles);
   const { data, error, retry } = useJapaneseSets();
-  const logos = useJapaneseLogos();
   const [query, setQuery] = useState('');
 
   const visible = useMemo(() => {
@@ -73,7 +71,7 @@ export function JapaneseSetList({ onMarket }: Props) {
           renderItem={({ item, index }) => (
             <JapaneseSetRow
               group={item}
-              logo={japaneseLogo(logos, item)}
+              logo={japaneseLogo(item)}
               position={rowPosition(index, visible.length)}
               onPress={openSet}
             />

@@ -10,11 +10,13 @@ type Props = {
   surface: string;
   gridColor?: string;
   activeIndex?: number | null;
+  guides?: number;
 };
 
-const PAD = 6;
+export const SPARK_PAD = 6;
+const PAD = SPARK_PAD;
 
-export function Sparkline({ values, width, height, color, surface, gridColor, activeIndex = null }: Props) {
+export function Sparkline({ values, width, height, color, surface, gridColor, activeIndex = null, guides = 0 }: Props) {
   const gradientId = `spark${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   if (values.length < 2 || width <= PAD * 2) return <View style={{ width, height }} />;
 
@@ -38,6 +40,24 @@ export function Sparkline({ values, width, height, color, surface, gridColor, ac
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </LinearGradient>
       </Defs>
+      {gridColor
+        ? Array.from({ length: guides }, (_, index) => {
+            const level = PAD + (index / Math.max(guides - 1, 1)) * (height - PAD * 2);
+            return (
+              <Line
+                key={index}
+                x1={0}
+                x2={width}
+                y1={level}
+                y2={level}
+                stroke={gridColor}
+                strokeWidth={1}
+                strokeDasharray="3 4"
+                opacity={0.6}
+              />
+            );
+          })
+        : null}
       {gridColor ? (
         <Line x1={0} x2={width} y1={height - 0.5} y2={height - 0.5} stroke={gridColor} strokeWidth={1} />
       ) : null}
