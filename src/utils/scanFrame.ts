@@ -6,6 +6,7 @@ const FRAME_WIDTH_RATIO = 0.78;
 const MAX_FRAME_WIDTH = 380;
 const FRAME_HEIGHT_FILL = 0.92;
 const CROP_MARGIN = 0.04;
+export const AUTO_CROP_MARGIN = 0.1;
 const MIN_CROP_SIDE = 32;
 
 export function computeScanFrame(view: Size, topReserve: number, bottomReserve: number): Rect {
@@ -27,14 +28,14 @@ export function computeScanFrame(view: Size, topReserve: number, bottomReserve: 
   };
 }
 
-export function frameToPhotoCrop(frame: Rect, view: Size, photo: Size): Rect | null {
+export function frameToPhotoCrop(frame: Rect, view: Size, photo: Size, margin = CROP_MARGIN): Rect | null {
   if (photo.width <= 0 || photo.height <= 0 || view.width <= 0 || view.height <= 0) return null;
 
   const scale = Math.max(view.width / photo.width, view.height / photo.height);
   const offsetX = (photo.width * scale - view.width) / 2;
   const offsetY = (photo.height * scale - view.height) / 2;
-  const marginX = frame.width * CROP_MARGIN;
-  const marginY = frame.height * CROP_MARGIN;
+  const marginX = frame.width * margin;
+  const marginY = frame.height * margin;
 
   const x = clamp(Math.round((frame.x - marginX + offsetX) / scale), 0, photo.width - 1);
   const y = clamp(Math.round((frame.y - marginY + offsetY) / scale), 0, photo.height - 1);

@@ -1,0 +1,64 @@
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { WebView } from 'react-native-webview';
+
+import { createOcrBridge, type OcrBridge, type OcrState } from '@/services/ocrBridge';
+import { OCR_BASE_URL, OCR_PAGE_HTML } from '@/services/ocrPage';
+
+type Props = {
+  onState: (state: OcrState) => void;
+};
+
+export function OcrHost({ onState }: Props) {
+  const webRef = useRef<WebView>(null);
+  const bridgeRef = useRef<OcrBridge | null>(null);
+  const [generation, setGeneration] = useState(0);
+
+  useEffect(() => {
+    const bridge = createOcrBridge((script) => webRef.current?.injectJavaScript(script), onState);
+    bridgeRef.current = bridge;
+    return () => {
+      bridge.dispose();
+      bridgeRef.current = null;
+      onState({ status: 'loading', handle: null });
+    };
+  }, [onState, generation]);
+
+  const restart = () => setGeneration((value) => value + 1);
+
+  return (
+    <View style={styles.host} pointerEvents="none">
+      <WebView
+        key={generation}
+        ref={webRef}
+        source={{ html: OCR_PAGE_HTML, baseUrl: OCR_BASE_URL }}
+        originWhitelist={['*']}
+        javaScriptEnabled
+        domStorageEnabled
+        cacheEnabled
+        onMessage={(event) => bridgeRef.current?.receive(event.nativeEvent.data)}
+        onError={(event) => onState({ status: 'failed', handle: null, message: event.nativeEvent.description })}
+        onContentProcessDidTerminate={restart}
+        onRenderProcessGone={restart}
+        style={styles.web}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  host: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 2,
+    height: 2,
+    opacity: 0.01,
+    overflow: 'hidden',
+  },
+  web: {
+    width: 2,
+    height: 2,
+    backgroundColor: 'transparent',
+  },
+});

@@ -95,5 +95,6 @@ function sanitize(stored: Partial<Settings>): Settings {
     motion: typeof stored.motion === 'boolean' ? stored.motion : DEFAULT_SETTINGS.motion,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     sounds: typeof stored.sounds === 'boolean' ? stored.sounds : DEFAULT_SETTINGS.sounds,
+    autoScan: typeof stored.autoScan === 'boolean' ? stored.autoScan : DEFAULT_SETTINGS.autoScan,
   };
 }

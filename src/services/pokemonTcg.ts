@@ -4,6 +4,7 @@ import { type CachePolicy, type Cached, cachedFetch } from './cache';
 import { buildNameQuery, normalizeCardName } from './cardQuery';
 import { getExtraCard, getExtraSetCards, isExtraCardId, isExtraSetId } from './extraCards';
 import { ApiError, getJson, toQueryString, withAbort } from './http';
+import { getDexCardAsCard, getDexSetCards, isDexCardId, isDexSetId } from './tcgdex';
 
 const BASE_URL = 'https://api.pokemontcg.io/v2';
 const CARD_FIELDS =
@@ -90,6 +91,11 @@ export async function getCard(id: string, signal?: AbortSignal, options: FetchOp
     knownCards.set(card.id, card);
     return card;
   }
+  if (isDexCardId(id)) {
+    const card = await getDexCardAsCard(id, signal);
+    knownCards.set(card.id, card);
+    return card;
+  }
   const { value } = await cachedFetch(
     id,
     CARD_CACHE,
@@ -111,6 +117,11 @@ export async function getSetCards(setId: string, signal?: AbortSignal, options: 
   if (isExtraSetId(setId)) {
     const cards = await withAbort(getExtraSetCards(setId, options), signal);
     if (cards.length === 0) throw new ApiError('notFound');
+    rememberCards(cards);
+    return { value: cards, stale: false };
+  }
+  if (isDexSetId(setId)) {
+    const cards = await getDexSetCards(setId, signal);
     rememberCards(cards);
     return { value: cards, stale: false };
   }

@@ -27,6 +27,7 @@ export type Settings = {
   motion: boolean;
   haptics: boolean;
   sounds: boolean;
+  autoScan: boolean;
   design: number;
 };
 
@@ -47,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: true,
   haptics: true,
   sounds: true,
+  autoScan: true,
   design: DESIGN_VERSION,
 };
 

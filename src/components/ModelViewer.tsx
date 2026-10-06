@@ -69,8 +69,7 @@ export function ModelViewer({ kind, image, productId, title, subtitle, finish, b
   const shape = productArt.data ? { aspect: productArt.data.aspect } : null;
 
   const flip = useCallback(() => {
-    if (isCard) haptics.flip();
-    else haptics.turn();
+    if (!isCard) haptics.turn();
     flipOrbit(orbit);
   }, [haptics, orbit, isCard]);
 

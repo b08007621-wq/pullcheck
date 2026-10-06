@@ -3,6 +3,7 @@ import type { Card } from '@/types/card';
 import { isExtraCardId } from './extraCards';
 import { rememberCards } from './pokemonTcg';
 import { normalizeText } from './sealedQuery';
+import { dexTcgplayer, findDexCardFor } from './tcgdex';
 import {
   type CardListing,
   displaySetName,
@@ -12,7 +13,36 @@ import {
   type TcgcsvGroup,
 } from './tcgcsv';
 
+const DEX_PRICE_LIMIT = 30;
+const DEX_BATCH = 6;
+
 export async function enrichCardPrices(cards: Card[]): Promise<Card[]> {
+  return enrichFromTcgdex(await enrichFromTcgcsv(cards));
+}
+
+async function enrichFromTcgdex(cards: Card[]): Promise<Card[]> {
+  const missing = cards.filter((card) => needsPrices(card) && !isExtraCardId(card.id)).slice(0, DEX_PRICE_LIMIT);
+  if (missing.length === 0) return cards;
+  const found = new Map<string, NonNullable<Card['tcgplayer']>>();
+  for (let index = 0; index < missing.length; index += DEX_BATCH) {
+    await Promise.all(
+      missing.slice(index, index + DEX_BATCH).map(async (card) => {
+        const dex = await findDexCardFor(card).catch(() => null);
+        const tcgplayer = dex ? dexTcgplayer(dex) : undefined;
+        if (tcgplayer) found.set(card.id, tcgplayer);
+      }),
+    );
+  }
+  if (found.size === 0) return cards;
+  const enriched = cards.map((card) => {
+    const tcgplayer = found.get(card.id);
+    return tcgplayer && needsPrices(card) ? { ...card, tcgplayer } : card;
+  });
+  rememberCards(enriched.filter((card, index) => card !== cards[index]));
+  return enriched;
+}
+
+async function enrichFromTcgcsv(cards: Card[]): Promise<Card[]> {
   const missing = cards.filter((card) => needsPrices(card) && !isExtraCardId(card.id));
   if (missing.length === 0) return cards;
 
