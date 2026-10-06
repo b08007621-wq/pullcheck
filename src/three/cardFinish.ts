@@ -40,10 +40,14 @@ const FULL = /double rare|holo ex|holo gx|holo v\b|holo lv|legend|amazing|radian
 const WINDOW = /holo|promo|classic/;
 const MODERN_RARE = /^rare$/;
 
-const JP_GOLD = /ultra rare|\bur\b/;
-const JP_TEXTURED = /special art|art rare|super rare|\bsar\b|\bar\b|\bsr\b|\bssr\b|character|mega attack|illustration/;
-const JP_FULL = /double rare|triple rare|\brr\b|\brrr\b|shiny rare|ace spec|radiant|amazing|prism|holo/;
-const JP_WINDOW = /^rare$|\br\b|promo/;
+const JP_GOLD = /ultra rare|\bur\b|\bmur\b|hyper rare|gold/;
+const JP_TEXTURED =
+  /special art|art rare|super rare|secret|\bsar\b|\bar\b|\bsr\b|\bssr\b|\bhr\b|\bbwr\b|\bchr\b|\bcsr\b|character|mega attack|illustration|black white|shiny super/;
+const JP_FULL = /double rare|triple rare|\brr\b|\brrr\b|shiny rare|\bs\b|ace spec|radiant|amazing|prism|holo (ex|gx|v)|\bk\b/;
+const JP_WINDOW = /holo|^rare$|\br\b|promo|celebration|anniversary/;
+const JP_PLAIN = /^(common|uncommon|\bc\b|\bu\b|none|no rarity)?$/;
+const JP_PATTERN = /master ?ball|pok[eé] ?ball|reverse|mirror|pattern/i;
+const JP_RULE_NAME = / (ex|EX|GX|V|VMAX|VSTAR)\b/;
 
 export function cardFinish(card: Card, variant?: string | null): CardFinish {
   const rarity = (card.rarity ?? '').toLowerCase();
@@ -62,17 +66,28 @@ export function cardFinish(card: Card, variant?: string | null): CardFinish {
 }
 
 export function singleFinish(product: SealedProduct): CardFinish {
-  const rarity = (product.rarity ?? '').toLowerCase();
+  const rarity = (product.rarity ?? '').toLowerCase().trim();
+  const era = singleEra(product.setCode);
+  if (JP_PATTERN.test(product.name)) return { foil: 'reverse', border: 'none', era };
   const foil: FoilKind = JP_GOLD.test(rarity)
     ? 'gold'
     : JP_TEXTURED.test(rarity)
       ? 'textured'
-      : JP_FULL.test(rarity)
+      : JP_FULL.test(rarity) || (JP_RULE_NAME.test(product.name) && !JP_PLAIN.test(rarity))
         ? 'full'
-        : JP_WINDOW.test(rarity)
+        : JP_WINDOW.test(rarity) || !JP_PLAIN.test(rarity)
           ? 'window'
           : 'plain';
-  return { foil, border: foil === 'plain' ? 'none' : 'silver', era: 'sv' };
+  return { foil, border: foil === 'plain' ? 'none' : 'silver', era };
+}
+
+function singleEra(code: string | null | undefined): CardEra {
+  const value = (code ?? '').toLowerCase();
+  if (/^(sv|m)/.test(value)) return 'sv';
+  if (/^(s|sm)/.test(value)) return 'swsh';
+  if (/^(xy|bw|cp)/.test(value)) return 'bw';
+  if (/^(dp|pt|l\d|ll|adv|pcg)/.test(value)) return 'ex';
+  return 'sv';
 }
 
 export function artWindow(era: CardEra): UvRect {

@@ -15,8 +15,12 @@ export function setCode(value: string | null | undefined): string {
 }
 
 export function japaneseLogo(group: TcgcsvGroup): string | null {
-  const prefix = /^([A-Za-z]{1,6}[\d.]*[a-z]?)\s*:/.exec(group.name)?.[1];
-  for (const code of [group.abbreviation, prefix]) {
+  return japaneseLogoFor(group.abbreviation, group.name);
+}
+
+export function japaneseLogoFor(abbreviation: string | null | undefined, name: string): string | null {
+  const prefix = /^([A-Za-z]{1,6}[\d.]*[a-z]?)\s*:/.exec(name)?.[1];
+  for (const code of [abbreviation, prefix]) {
     const key = setCode(code);
     if (key && JAPANESE_LOGOS.has(key)) return `${ASSET_BASE}/ja_${key}/logo.png`;
   }

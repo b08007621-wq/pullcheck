@@ -11,6 +11,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { MarketChart } from '@/components/MarketChart';
 import { OtherVersions } from '@/components/OtherVersions';
 import { OwnedPanel } from '@/components/OwnedPanel';
 import { RefreshNotice } from '@/components/RefreshNotice';
@@ -21,8 +22,10 @@ import { useCardDetail } from '@/hooks/useCardDetail';
 import { useCollection } from '@/hooks/useCollection';
 import { useJapaneseVersions } from '@/hooks/useCrossLanguage';
 import { useWishlist } from '@/hooks/useWishlist';
+import { estimatedPoints } from '@/services/marketHistory';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
 import {
+  cardVersionPrice,
   type CardVersion,
   defaultVersion,
   entryVersion,
@@ -67,6 +70,8 @@ export default function CardDetailScreen() {
     ),
   ).size;
   const open3d = () => router.push({ pathname: '/viewer', params: cardViewerParams(card, version.variant) });
+  const versionPrice = cardVersionPrice(card, version);
+  const marketUsd = versionPrice?.currency === 'USD' ? versionPrice.amount : null;
 
   return (
     <DetailLayout
@@ -135,6 +140,12 @@ export default function CardDetailScreen() {
           onVariantChange={(variant) => wishlist.setVariant(card.id, variant)}
         />
       ) : null}
+      <MarketChart
+        id={`${card.id}|${version.variant ?? '-'}`}
+        usd={marketUsd}
+        extra={matching?.history ?? []}
+        estimated={version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []}
+      />
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
       <OtherVersions language="jp" versions={japaneseVersions} />
       <CardFacts card={card} />
