@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuroraBackground } from '@/components/AuroraBackground';
 import { CustomThemeEditor } from '@/components/CustomThemeEditor';
 import { IconButton } from '@/components/IconButton';
 import { PressableScale } from '@/components/PressableScale';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { SettingToggleRow } from '@/components/SettingToggleRow';
 import { ThemePreview } from '@/components/ThemePreview';
 import { ThemeTile } from '@/components/ThemeTile';
@@ -15,7 +16,9 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useSettings } from '@/hooks/useSettings';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { ActionButton } from '@/components/ActionButton';
+import { importBackdropImage } from '@/services/backdropImage';
 import { savedTheme } from '@/state/savedTheme';
+import { BACKDROP_PRESETS, BACKDROP_STRENGTHS, type BackdropPreset } from '@/theme/backdrop';
 import {
   type AppTheme,
   buildCustomTheme,
@@ -162,6 +165,71 @@ export default function AppearanceScreen() {
           </>
         ) : null}
 
+        <Text style={styles.section}>Background</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          {[{ value: 'none', label: 'None' }, ...BACKDROP_PRESETS].map((option) => {
+            const active =
+              option.value === 'none'
+                ? settings.backdrop.kind === 'none'
+                : settings.backdrop.kind === 'preset' && settings.backdrop.preset === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => {
+                  haptics.selection();
+                  updateSettings({
+                    backdrop:
+                      option.value === 'none'
+                        ? { ...settings.backdrop, kind: 'none' }
+                        : { ...settings.backdrop, kind: 'preset', preset: option.value as BackdropPreset },
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={async () => {
+              haptics.selection();
+              const uri = await importBackdropImage(settings.backdrop.uri).catch(() => null);
+              if (uri) updateSettings({ backdrop: { ...settings.backdrop, kind: 'image', uri } });
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: settings.backdrop.kind === 'image' }}
+            style={[styles.chip, settings.backdrop.kind === 'image' && styles.chipActive]}
+          >
+            <Text style={[styles.chipText, settings.backdrop.kind === 'image' && styles.chipTextActive]}>
+              {settings.backdrop.kind === 'image' ? 'Photo ✓' : 'Your photo'}
+            </Text>
+          </Pressable>
+        </ScrollView>
+        {settings.backdrop.kind !== 'none' ? (
+          <SegmentedControl
+            options={BACKDROP_STRENGTHS}
+            value={BACKDROP_STRENGTHS.reduce((best, entry) =>
+              Math.abs(entry.amount - settings.backdrop.strength) < Math.abs(best.amount - settings.backdrop.strength) ? entry : best,
+            ).value}
+            onChange={(value) => {
+              const amount = BACKDROP_STRENGTHS.find((entry) => entry.value === value)?.amount;
+              if (amount) updateSettings({ backdrop: { ...settings.backdrop, strength: amount } });
+            }}
+          />
+        ) : null}
+        <SettingToggleRow
+          icon="water-outline"
+          title="Glass panels"
+          description="See-through cards and panels that let your background show."
+          value={settings.backdrop.glass}
+          onChange={(glass) => {
+            haptics.selection();
+            updateSettings({ backdrop: { ...settings.backdrop, glass } });
+          }}
+        />
+
         <Text style={styles.section}>Feel</Text>
         <SettingToggleRow
           icon="color-wand"
@@ -244,6 +312,26 @@ function createStyles(theme: AppTheme) {
     newText: {
       ...typography.label,
       color: theme.colors.text,
+    },
+    chips: {
+      gap: spacing.sm,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    chipActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    chipText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    chipTextActive: {
+      color: theme.colors.onAccent,
     },
     themeActions: {
       flexDirection: 'row',
