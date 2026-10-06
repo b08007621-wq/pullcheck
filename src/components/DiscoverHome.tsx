@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useDiscover } from '@/hooks/useDiscover';
+import { useDiscover, useRisingExtra } from '@/hooks/useDiscover';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import type { DiscoverPick } from '@/services/discover';
@@ -32,6 +32,8 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
   const haptics = useHaptics();
   const styles = useThemedStyles(createStyles);
   const { discover, error, retry } = useDiscover(true);
+  const risingExtra = useRisingExtra(true);
+  const rising = useMemo(() => mergeRising(discover?.rising ?? [], risingExtra ?? []), [discover, risingExtra]);
   const [autoRetries, setAutoRetries] = useState(0);
 
   useEffect(() => {
@@ -94,15 +96,15 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
             delay={140}
             title="Rising"
             subtitle={since ? `Climbing the most since ${formatShortDate(since)}` : 'Climbing the most this week'}
-            scroll={discover.rising.length > 0}
+            scroll={rising.length > 0}
           >
-            {discover.rising.length > 0 ? (
-              discover.rising.map((pick) => (
+            {rising.length > 0 ? (
+              rising.map((pick) => (
                 <DiscoverCardTile key={pick.card.id} pick={pick} badge="change" onPress={openCard} />
               ))
             ) : (
               <Text style={styles.note}>
-                Nothing has climbed more than 3% recently. Quiet market.
+                {risingExtra === null ? 'Checking price trends…' : 'Nothing has climbed more than 3% recently. Quiet market.'}
               </Text>
             )}
           </DiscoverSection>
@@ -147,6 +149,14 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
       )}
     </ScrollView>
   );
+}
+
+function mergeRising(first: DiscoverPick[], second: DiscoverPick[]): DiscoverPick[] {
+  const seen = new Set<string>();
+  return [...first, ...second]
+    .filter((pick) => (seen.has(pick.card.id) ? false : (seen.add(pick.card.id), true)))
+    .sort((a, b) => (b.change ?? 0) - (a.change ?? 0))
+    .slice(0, 12);
 }
 
 function createStyles(theme: AppTheme) {

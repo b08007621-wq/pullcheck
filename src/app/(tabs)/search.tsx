@@ -27,20 +27,21 @@ const MODES: { value: SearchMode; label: string }[] = [
 export default function SearchScreen() {
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
-  const { q } = useLocalSearchParams<{ q?: string }>();
+  const { q, market: marketParam } = useLocalSearchParams<{ q?: string; market?: string }>();
+  const paramKey = q ? `${q}|${marketParam ?? 'en'}` : undefined;
   const [mode, setMode] = useState<SearchMode>('cards');
   const [market, setMarket] = useState<Market>('en');
   const [cardText, setCardText] = useState(q ?? '');
   const [sealedText, setSealedText] = useState('');
-  const [appliedQuery, setAppliedQuery] = useState(q);
+  const [appliedQuery, setAppliedQuery] = useState(paramKey);
   const cardRecent = useRecentSearches('cards');
   const sealedRecent = useRecentSearches('sealed');
 
-  if (q !== appliedQuery) {
-    setAppliedQuery(q);
+  if (paramKey !== appliedQuery) {
+    setAppliedQuery(paramKey);
     if (q) {
       setMode('cards');
-      setMarket('en');
+      setMarket(marketParam === 'jp' ? 'jp' : 'en');
       setCardText(q);
     }
   }
