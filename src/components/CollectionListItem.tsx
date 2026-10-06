@@ -33,7 +33,8 @@ function CollectionListItemView({ item, position, onPress }: Props) {
       : null);
   const version = item.kind === 'card' ? versionLabel(item.card, entryVersion(item), 'short') : null;
   const binder = itemBinder(item);
-  const subtitle = [itemSubtitle(item), version, binder === 'personal' ? null : binderLabel(binder)]
+  const graded = item.kind === 'card' && item.grading ? `${item.grading.company} ${item.grading.grade}` : null;
+  const subtitle = [itemSubtitle(item), graded ?? version, binder === 'personal' ? null : binderLabel(binder)]
     .filter(Boolean)
     .join(' · ');
 

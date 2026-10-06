@@ -6,6 +6,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { OtherVersions } from '@/components/OtherVersions';
 import { OwnedPanel } from '@/components/OwnedPanel';
 import { ProductHero } from '@/components/ProductHero';
 import { RefreshNotice } from '@/components/RefreshNotice';
@@ -14,6 +15,7 @@ import { SealedFacts } from '@/components/SealedFacts';
 import { SealedPricePanel } from '@/components/SealedPricePanel';
 import { View3DButton } from '@/components/View3DButton';
 import { useCollection } from '@/hooks/useCollection';
+import { useEnglishVersions } from '@/hooks/useCrossLanguage';
 import { useSealedDetail } from '@/hooks/useSealedDetail';
 import { useSetLogo } from '@/hooks/useSetLogo';
 import type { Market } from '@/types/sealed';
@@ -28,6 +30,9 @@ export default function SealedDetailScreen() {
   const market: Market = params.market === 'jp' ? 'jp' : 'en';
   const { product, owned, isFresh, error, retry } = useSealedDetail(Number(params.id), Number(params.groupId), market);
   const { addSealed, setQuantity, remove, setPaid } = useCollection();
+  const englishVersions = useEnglishVersions(
+    product && product.cardNumber && product.market === 'jp' ? product : null,
+  );
   const logo = useSetLogo(product && (product.market ?? 'en') === 'en' ? product.setName : null);
 
   if (!product) {
@@ -82,6 +87,7 @@ export default function SealedDetailScreen() {
         />
       ) : null}
       <SealedPricePanel product={product} />
+      {single && japanese ? <OtherVersions language="en" versions={englishVersions} /> : null}
       {single ? null : <SealedContents description={product.description} />}
       <SealedFacts product={product} />
     </DetailLayout>

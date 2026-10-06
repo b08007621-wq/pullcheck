@@ -33,11 +33,20 @@ type CollectedBase = {
   history?: PricePoint[];
 };
 
+export type GradingCompany = 'PSA' | 'BGS' | 'CGC' | 'TAG';
+
+export type Grading = {
+  company: GradingCompany;
+  grade: string;
+  value: number | null;
+};
+
 export type CollectedCard = CollectedBase & {
   kind: 'card';
   card: Card;
   variant?: string | null;
   condition?: Condition;
+  grading?: Grading | null;
 };
 
 export type CollectedSealed = CollectedBase & {

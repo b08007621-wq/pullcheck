@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useReducer, useRef, us
 import { fetchCollectionPrices } from '@/services/collectionRefresh';
 import { readJson, STORAGE_KEYS, writeJson } from '@/services/storage';
 import type { Card } from '@/types/card';
-import type { Binder, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
+import type { Binder, CollectionItem, CollectionMeta, Grading, PaidPrice } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 import type { CardVersion } from '@/utils/cardVersion';
 
@@ -69,6 +69,10 @@ export function CollectionProvider({ children }: Props) {
     [],
   );
   const setPaid = useCallback((key: string, paid: PaidPrice | null) => dispatch({ type: 'setPaid', key, paid }), []);
+  const setGrading = useCallback(
+    (key: string, grading: Grading | null) => dispatch({ type: 'setGrading', key, grading, at: now() }),
+    [],
+  );
   const setBinder = useCallback((key: string, binder: Binder) => dispatch({ type: 'setBinder', key, binder }), []);
 
   const refreshPrices = useCallback(async (force: boolean) => {
@@ -116,6 +120,7 @@ export function CollectionProvider({ children }: Props) {
       refreshPrices,
       setPaid,
       setBinder,
+      setGrading,
     }),
     [
       state,
@@ -131,6 +136,7 @@ export function CollectionProvider({ children }: Props) {
       refreshPrices,
       setPaid,
       setBinder,
+      setGrading,
     ],
   );
 

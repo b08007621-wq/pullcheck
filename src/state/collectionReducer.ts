@@ -1,5 +1,5 @@
 import type { Card } from '@/types/card';
-import type { Binder, CollectedCard, CollectedSealed, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
+import type { Binder, CollectedCard, Grading, CollectedSealed, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 import { type CardVersion, cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
 import { itemPrice, summarizeCollection } from '@/utils/collectionValue';
@@ -32,7 +32,8 @@ export type CollectionAction =
   | { type: 'refreshSealed'; product: SealedProduct; at: string }
   | { type: 'applyRefresh'; cards: Card[]; products: SealedProduct[]; pricesAsOf: string | null; at: string }
   | { type: 'setPaid'; key: string; paid: PaidPrice | null }
-  | { type: 'setBinder'; key: string; binder: Binder };
+  | { type: 'setBinder'; key: string; binder: Binder }
+  | { type: 'setGrading'; key: string; grading: Grading | null; at: string };
 
 export const EMPTY_META: CollectionMeta = { lastRefreshAt: null, pricesAsOf: null, valueHistory: [] };
 
@@ -81,6 +82,12 @@ export function collectionReducer(state: CollectionState, action: CollectionActi
         meta: { ...updated.meta, lastRefreshAt: action.at, pricesAsOf: action.pricesAsOf ?? updated.meta.pricesAsOf ?? null },
       };
     }
+    case 'setGrading':
+      return withValue(
+        state,
+        state.items.map((item) => (item.key === action.key && item.kind === 'card' ? { ...item, grading: action.grading } : item)),
+        action.at,
+      );
     case 'setBinder':
       return {
         ...state,

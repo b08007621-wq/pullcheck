@@ -15,6 +15,7 @@ import { BINDERS, itemBinder } from '@/utils/binder';
 import { ActionButton } from './ActionButton';
 import { EditableValue } from './EditableValue';
 import { FactRow } from './FactRow';
+import { GradingEditor, gradingLabel } from './GradingEditor';
 import { MoneyEditor } from './MoneyEditor';
 import { type OwnedVersion, OwnedVersionTabs } from './OwnedVersionTabs';
 import { PriceChange } from './PriceChange';
@@ -46,8 +47,10 @@ export function OwnedPanel({
 }: Props) {
   const theme = useTheme();
   const haptics = useHaptics();
-  const { meta, setBinder } = useCollection();
+  const { meta, setBinder, setGrading } = useCollection();
   const [editingPaid, setEditingPaid] = useState(false);
+  const [editingGrade, setEditingGrade] = useState(false);
+  const grading = item.kind === 'card' ? (item.grading ?? null) : null;
   const profit = itemProfit(item);
   const addedAt = parseDate(item.addedAt);
   const lastAddedAt = parseDate(item.lastAddedAt);
@@ -98,6 +101,24 @@ export function OwnedPanel({
       <View style={styles.binder}>
         <SegmentedControl options={BINDERS} value={itemBinder(item)} onChange={(value) => setBinder(item.key, value)} />
       </View>
+      {item.kind === 'card' ? (
+        <FactRow
+          label="Graded"
+          value={
+            <EditableValue
+              value={
+                grading
+                  ? [gradingLabel(grading), grading.value ? formatMoney(grading.value, 'USD') : null].filter(Boolean).join(' · ')
+                  : null
+              }
+              placeholder="Add grade"
+              accessibilityLabel={grading ? `Graded ${gradingLabel(grading)}. Edit` : 'Add a grade'}
+              onPress={() => setEditingGrade(true)}
+            />
+          }
+          hint={grading ? undefined : 'PSA, BGS, CGC or TAG slab'}
+        />
+      ) : null}
       <FactRow
         label="You paid"
         value={
@@ -167,6 +188,16 @@ export function OwnedPanel({
       <View style={styles.remove}>
         <ActionButton label="Remove from collection" icon="trash-outline" variant="secondary" onPress={confirmRemove} />
       </View>
+      {editingGrade ? (
+        <GradingEditor
+          initial={grading}
+          onSave={(next) => {
+            haptics.tap();
+            setGrading(item.key, next);
+          }}
+          onClose={() => setEditingGrade(false)}
+        />
+      ) : null}
       {editingPaid ? (
         <MoneyEditor
           initial={item.paid ?? null}

@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
 import type { Card } from '@/types/card';
-import type { Binder, CollectionItem, CollectionMeta, PaidPrice } from '@/types/collection';
+import type { Binder, CollectionItem, CollectionMeta, Grading, PaidPrice } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 import type { CardVersion } from '@/utils/cardVersion';
 
@@ -23,6 +23,7 @@ export type CollectionContextValue = {
   refreshPrices: (force: boolean) => Promise<void>;
   setPaid: (key: string, paid: PaidPrice | null) => void;
   setBinder: (key: string, binder: Binder) => void;
+  setGrading: (key: string, grading: Grading | null) => void;
 };
 
 export const CollectionContext = createContext<CollectionContextValue>({
@@ -41,6 +42,7 @@ export const CollectionContext = createContext<CollectionContextValue>({
   refreshPrices: async () => {},
   setPaid: () => {},
   setBinder: () => {},
+  setGrading: () => {},
 });
 
 export function cardKey(id: string, version: CardVersion): string {

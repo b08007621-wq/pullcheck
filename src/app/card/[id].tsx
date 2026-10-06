@@ -11,6 +11,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { OtherVersions } from '@/components/OtherVersions';
 import { OwnedPanel } from '@/components/OwnedPanel';
 import { RefreshNotice } from '@/components/RefreshNotice';
 import { View3DButton } from '@/components/View3DButton';
@@ -18,6 +19,7 @@ import { WishButton } from '@/components/WishButton';
 import { WishPanel } from '@/components/WishPanel';
 import { useCardDetail } from '@/hooks/useCardDetail';
 import { useCollection } from '@/hooks/useCollection';
+import { useJapaneseVersions } from '@/hooks/useCrossLanguage';
 import { useWishlist } from '@/hooks/useWishlist';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
 import {
@@ -36,6 +38,7 @@ export default function CardDetailScreen() {
   const router = useRouter();
   const { id, entry } = useLocalSearchParams<{ id: string; entry?: string }>();
   const { card, owned, isFresh, error, retry } = useCardDetail(id ?? '');
+  const japaneseVersions = useJapaneseVersions(card ?? null);
   const { items, addCard, setQuantity, remove, setPaid } = useCollection();
   const wishlist = useWishlist();
   const [picked, setPicked] = useState<CardVersion | null>(null);
@@ -133,6 +136,7 @@ export default function CardDetailScreen() {
         />
       ) : null}
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
+      <OtherVersions language="jp" versions={japaneseVersions} />
       <CardFacts card={card} />
       <CardGameplay card={card} />
     </DetailLayout>

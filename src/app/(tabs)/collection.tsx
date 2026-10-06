@@ -10,6 +10,7 @@ import { CollectionListItem } from '@/components/CollectionListItem';
 import { CollectionShortcuts } from '@/components/CollectionShortcuts';
 import { rowPosition } from '@/components/ListRow';
 import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
+import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonRows } from '@/components/SkeletonRows';
 import { Screen } from '@/components/Screen';
@@ -178,6 +179,7 @@ export default function CollectionScreen() {
             refreshing={refreshing}
             refreshFailed={refreshFailed}
           />
+          <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />
           <CollectionShortcuts />
           {toolbar}
         </View>

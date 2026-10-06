@@ -24,6 +24,9 @@ export type ItemProfit = {
 };
 
 export function itemPrice(item: CollectionItem): MarketPrice | null {
+  if (item.kind === 'card' && item.grading?.value) {
+    return { amount: item.grading.value, currency: 'USD', source: 'graded', basis: 'market' };
+  }
   return item.kind === 'card' ? cardVersionPrice(item.card, entryVersion(item)) : getSealedMarketPrice(item.product);
 }
 
