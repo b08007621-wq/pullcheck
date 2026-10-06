@@ -1,0 +1,33 @@
+import { Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
+
+import { useTheme } from '@/hooks/useTheme';
+import { toNavigationTheme } from '@/theme';
+
+export function AppNavigator() {
+  const theme = useTheme();
+  const navigationTheme = useMemo(() => toNavigationTheme(theme), [theme]);
+
+  return (
+    <ThemeProvider value={navigationTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.colors.background },
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="card/[id]" />
+        <Stack.Screen name="sealed/[id]" />
+        <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="rip" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="sets" />
+        <Stack.Screen name="set/[id]" />
+        <Stack.Screen name="wishlist" />
+        <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+      </Stack>
+      <StatusBar style={theme.mode === 'light' ? 'dark' : 'light'} />
+    </ThemeProvider>
+  );
+}
