@@ -1,12 +1,11 @@
 # PullCheck handoff (from cloud session, 2026-10-06)
 
-All work is merged into the `claude/sharp-curie-y20pyw` branch on GitHub (remote `pc` on the local PC).
+`main` is the current branch on GitHub (remote `pc` on the local PC). Local work happens on `expo-app` and is pushed to both.
 
 ## Open items
-- Graded section not showing. Check `http://localhost:8081/api/pokeprice?id=517045` with the dev server running.
-  - `not_configured` → add `POKEPRICE_API_KEY` to `.env.local` and restart.
-  - Returns data with `ebay` → server works; debug card → TCGplayer product lookup in `src/hooks/useGradedPrices.ts` / `locateTcgProduct` in `src/services/cardPrices.ts`.
-- Daily price collector (`.github/workflows/price-history.yml` + `scripts/price-history/collect.mjs`) only runs on schedule from the default branch `main`. Copy both files to `main` so it runs nightly. It publishes to the `price-history` branch, read by `src/services/priceHistory.ts` via jsDelivr.
+- Graded section: fixed 2026-10-06 (the key line in `.env.local` was missing its `POKEPRICE_API_KEY=` name). Check `http://localhost:8081/api/pokeprice?id=517045` if it goes blank again.
+- Daily price collector (`.github/workflows/price-history.yml` + `scripts/price-history/collect.mjs`) is on `main` since 2026-10-06 and runs nightly at 21:43 UTC. It publishes to the `price-history` branch, read by `src/services/priceHistory.ts` via jsDelivr.
+- Auto scan (on-device OCR + TCGdex) is built but not yet tested on an iPhone. Design in `SCANNER_ARCHITECTURE.md`.
 - "Heating up" needs 2+ days of collector data (or fresh Cardmarket averages).
 - PokemonPriceTracker free plan: no history (3 days max), 100 credits/day, TCGplayer numeric ids only. Used for graded eBay prices only via `src/app/api/pokeprice+api.ts`.
 - TCGCSV price archive is offline; history only builds forward from 2026-10-06.
