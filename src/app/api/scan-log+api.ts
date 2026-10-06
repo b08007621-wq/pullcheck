@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const DIRECTORY = path.join(process.cwd(), 'scan-log');
-const EVENTS = new Set(['shown', 'yes', 'notit', 'picked', 'unsure']);
+const EVENTS = new Set(['shown', 'yes', 'notit', 'picked', 'unsure', 'reader']);
 const MAX_FRAME_CHARS = 4_000_000;
 const KEEP_FILES = 800;
 

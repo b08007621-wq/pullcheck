@@ -17,13 +17,14 @@ type Props = {
   number: string;
   card: Card | null;
   failed: boolean;
+  variant?: string | null;
 };
 
 const IMAGE_HEIGHT = 236;
 
-export function ScanResultBody({ media, name, image, setName, number, card, failed }: Props) {
+export function ScanResultBody({ media, name, image, setName, number, card, failed, variant }: Props) {
   const theme = useTheme();
-  const version = card ? defaultVersion(card) : null;
+  const version = card ? (variant === undefined ? defaultVersion(card) : { variant, condition: 'NM' as const }) : null;
   const price = card && version ? cardVersionPrice(card, version) : null;
   const priceCaption = price
     ? [price.currency === 'EUR' ? 'Cardmarket trend' : 'TCGplayer market', version?.variant ? variantLabel(version.variant) : null]

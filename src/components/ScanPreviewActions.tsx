@@ -77,6 +77,14 @@ export function ScanPreviewActions({
             {ripping ? pulledLabel(match.card, reading) : `Found ${match.card.name} · ${match.card.set.name}`}
           </Text>
         </View>
+        <View style={styles.buttons}>
+          <ActionButton label="Retake" icon="camera-reverse-outline" variant="secondary" onPress={onRetake} />
+          <ActionButton
+            label={ripping ? 'Add to pull' : 'Open card'}
+            icon={ripping ? 'add' : 'arrow-forward'}
+            onPress={() => onOpenCard(match.card)}
+          />
+        </View>
       </View>
     );
   }
@@ -132,7 +140,7 @@ function pulledLabel(card: Card, reading: CardReading | null): string {
   const version = { variant: variantForFinish(card, reading?.finish), condition: 'NM' as const };
   const price = cardVersionPrice(card, version);
   const label = versionLabel(card, version, 'short');
-  return [`Added ${card.name}`, label, price ? formatPrice(price) : 'no price yet'].filter(Boolean).join(' · ');
+  return [card.name, label, price ? formatPrice(price) : 'no price yet'].filter(Boolean).join(' · ');
 }
 
 function truncate(text: string): string {

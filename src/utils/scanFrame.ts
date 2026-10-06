@@ -6,7 +6,7 @@ const FRAME_WIDTH_RATIO = 0.78;
 const MAX_FRAME_WIDTH = 380;
 const FRAME_HEIGHT_FILL = 0.92;
 const CROP_MARGIN = 0.04;
-export const AUTO_CROP_MARGIN = 0.1;
+export const AUTO_CROP_MARGIN = 0.18;
 const MIN_CROP_SIDE = 32;
 
 export function computeScanFrame(view: Size, topReserve: number, bottomReserve: number): Rect {

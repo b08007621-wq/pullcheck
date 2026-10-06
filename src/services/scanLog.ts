@@ -3,12 +3,17 @@ import { Platform } from 'react-native';
 import { apiUrl } from './apiBase';
 import type { VisionMatch } from './ocrBridge';
 
-export type ScanLogEvent = 'shown' | 'yes' | 'notit' | 'picked' | 'unsure';
+export type ScanLogEvent = 'shown' | 'yes' | 'notit' | 'picked' | 'unsure' | 'reader';
 
 const UNSURE_EVERY_MS = 4000;
 const SUMMARY_RESULTS = 6;
 
 let lastUnsure = 0;
+let reader: Record<string, unknown> = {};
+
+export function setScanLogReader(state: Record<string, unknown>) {
+  reader = state;
+}
 
 export function logScan(event: ScanLogEvent, frame: string | null, details: Record<string, unknown>) {
   if (!__DEV__) return;
@@ -20,7 +25,7 @@ export function logScan(event: ScanLogEvent, frame: string | null, details: Reco
   fetch(apiUrl('/api/scan-log'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, frame, platform: Platform.OS, at: new Date().toISOString(), ...details }),
+    body: JSON.stringify({ event, frame, platform: Platform.OS, at: new Date().toISOString(), reader, ...details }),
   }).catch(() => {});
 }
 

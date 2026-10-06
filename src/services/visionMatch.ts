@@ -1,7 +1,7 @@
 import type { DexLanguage } from '@/types/tcgdex';
 import type { ScanText } from '@/utils/scanText';
 
-import type { VisionMatch } from './ocrBridge';
+import type { FoilDrift, VisionMatch } from './ocrBridge';
 import type { ScanCandidate } from './scanMatch';
 import { getDexCard } from './tcgdex';
 
@@ -11,6 +11,8 @@ const STEADY_SCORE = 0.7;
 const STEADY_GAP = 0.02;
 const PRESENT_SCORE = 0.68;
 const GUESS_SCORE = 0.62;
+const STRONG_SCORE = 0.9;
+const STRONG_GAP = 0.1;
 const FINE_SURE = 0.55;
 const FINE_SURE_GAP = 0.15;
 const FINE_BACKUP = 0.45;
@@ -25,6 +27,15 @@ const LANGUAGES: DexLanguage[] = ['en', 'ja'];
 
 export type VisionVerdict = 'sure' | 'maybe' | 'none';
 
+const FOIL_FRAMES = 2;
+const FOIL_FLOOR = 8;
+const FOIL_RATIO = 2;
+
+export function looksReverseHolo(foil: FoilDrift | null | undefined): boolean {
+  if (!foil || foil.frames < FOIL_FRAMES) return false;
+  return foil.body >= FOIL_FLOOR && foil.body >= foil.art * FOIL_RATIO;
+}
+
 export function judgeMatch(match: VisionMatch, previousTop: string | null): VisionVerdict {
   const top = match.results[0]?.key ?? null;
   if (!top) return 'none';
@@ -34,6 +45,7 @@ export function judgeMatch(match: VisionMatch, previousTop: string | null): Visi
     if (steady && match.best >= STEADY_SCORE && match.gap >= STEADY_GAP) return 'sure';
     return match.best >= PRESENT_SCORE ? 'maybe' : 'none';
   }
+  if (match.best >= STRONG_SCORE && match.gap >= STRONG_GAP) return 'sure';
   if (match.fine >= FINE_SURE && match.fineGap >= FINE_SURE_GAP) return 'sure';
   if (match.best >= SURE_SCORE && match.gap >= SURE_GAP && match.fine >= FINE_BACKUP) return 'sure';
   if (steady && match.fine >= FINE_STEADY && match.fineGap >= FINE_STEADY_GAP) return 'sure';

@@ -10,20 +10,22 @@ import { loadScanCard, useScanCard } from '@/hooks/useScanCard';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
 import { previewCard } from '@/services/tcgdex';
+import { looksReverseHolo } from '@/services/visionMatch';
 import { radius, spacing, typography, withAlpha } from '@/theme';
 import type { Card } from '@/types/card';
-import { cardVersionPrice, defaultVersion, resolveVersion } from '@/utils/cardVersion';
-import { formatPrice } from '@/utils/price';
+import { cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
+import { defaultVariant, formatPrice, getVariantOptions } from '@/utils/price';
 
 import { GlassSurface } from './GlassSurface';
 import { PressableScale } from './PressableScale';
+import { VariantPills } from './VariantPills';
 
 type Props = {
   guess: AutoScanGuess | null;
   ripping: boolean;
   bottom: number;
   onOpen: () => void;
-  onAdded: (card: Card) => void;
+  onAdded: (card: Card, variant: string | null) => void;
   onNotIt: () => Promise<void>;
   onAddPull: (card: Card) => void;
 };
@@ -41,6 +43,7 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
   const [added, setAdded] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [picked, setPicked] = useState<{ id: number; variant: string } | null>(null);
   const [presence] = useState(() => new Animated.Value(0));
   const guessId = guess?.id ?? null;
 
@@ -69,7 +72,11 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
     [candidate],
   );
   const priced = card ?? preview;
-  const price = priced ? cardVersionPrice(priced, defaultVersion(priced)) : null;
+  const variants = priced ? getVariantOptions(priced) : [];
+  const detected = looksReverseHolo(shown?.foil) && variants.includes('reverseHolofoil') ? 'reverseHolofoil' : null;
+  const variant =
+    picked && shown && picked.id === shown.id ? picked.variant : (detected ?? (priced ? defaultVariant(priced) : null));
+  const price = priced ? cardVersionPrice(priced, { variant, condition: 'NM' }) : null;
   const done = shown !== null && added === shown.id;
   const others = (shown?.candidates.length ?? 1) - 1;
 
@@ -79,7 +86,7 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
     setAdding(true);
     try {
       const target = card ?? (await loadScanCard(candidate));
-      const version = resolveVersion(target, defaultVersion(target));
+      const version = resolveVersion(target, { variant, condition: 'NM' });
       const value = cardVersionPrice(target, version);
       if (value && value.currency === 'USD' && value.amount >= BIG_PULL_USD) haptics.hit();
       else haptics.collect();
@@ -89,13 +96,13 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
         fulfill([target.id]);
       }
       setAdded(id);
-      onAdded(target);
+      onAdded(target, version.variant);
     } catch {
       haptics.remove();
     } finally {
       setAdding(false);
     }
-  }, [shown, candidate, added, adding, card, ripping, haptics, onAddPull, addCard, fulfill, onAdded]);
+  }, [shown, candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, fulfill, onAdded]);
 
   const reject = useCallback(async () => {
     if (rejecting) return;
@@ -157,6 +164,13 @@ export function ScanGuess({ guess, ripping, bottom, onOpen, onAdded, onNotIt, on
             </View>
           </View>
         </PressableScale>
+        {variants.length > 1 && !done ? (
+          <VariantPills
+            variants={variants}
+            value={variant}
+            onChange={(next) => shown && setPicked({ id: shown.id, variant: next })}
+          />
+        ) : null}
         <View style={styles.buttons}>
           <View style={styles.flex}>
             <PressableScale

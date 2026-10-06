@@ -160,8 +160,8 @@ function headingFor(identify: CardIdentify, photo: ScanPhoto, ripTitle: string |
     case 'done':
       if (identify.match?.status === 'single') {
         return ripTitle
-          ? { title: 'Pulled!', subtitle: 'Added to this opening' }
-          : { title: 'Found it!', subtitle: 'Opening the card' };
+          ? { title: 'Is this it?', subtitle: 'Add it to this opening' }
+          : { title: 'Found it!', subtitle: 'Check it’s your card' };
       }
       if (identify.match?.status === 'multiple') return { title: 'Close match', subtitle: 'Pick your exact printing' };
       return { title: 'No match', subtitle: 'Try a clearer shot or search by name' };

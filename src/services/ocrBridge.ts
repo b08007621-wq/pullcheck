@@ -14,11 +14,18 @@ export type VisionResult = {
   same: boolean;
 };
 
+export type FoilDrift = {
+  art: number;
+  body: number;
+  frames: number;
+};
+
 export type VisionMatch = {
   best: number;
   gap: number;
   fine: number | null;
   fineGap: number;
+  foil: FoilDrift | null;
   results: VisionResult[];
 };
 
@@ -34,6 +41,7 @@ export type OcrState = {
   handle: OcrHandle | null;
   text: ReaderStatus;
   vision: ReaderStatus;
+  visionError?: string;
 };
 
 export const READER_LOADING: OcrState = { handle: null, text: 'loading', vision: 'loading' };
@@ -113,12 +121,12 @@ export function createOcrBridge(run: (script: string) => void, onState: (state: 
     if (message.type === 'boot') update({ handle });
     else if (message.type === 'ready') update({ handle, text: 'ready' });
     else if (message.type === 'failed') update({ handle, text: 'failed' });
-    else if (message.type === 'vision') update({ handle, vision: message.status });
+    else if (message.type === 'vision') update({ handle, vision: message.status, visionError: message.message });
     else if (message.type === 'loaded') settle(message.id, { value: { width: message.width, height: message.height } });
     else if (message.type === 'text') settle(message.id, { value: message.text });
     else if (message.type === 'match') {
-      const { best, gap, fine, fineGap, results } = message;
-      settle(message.id, { value: { best, gap, fine, fineGap, results } });
+      const { best, gap, fine, fineGap, foil, results } = message;
+      settle(message.id, { value: { best, gap, fine, fineGap, foil: foil ?? null, results } });
     } else if (message.type === 'error') settle(message.id, { error: message.message ?? 'Card reader error' });
   };
 

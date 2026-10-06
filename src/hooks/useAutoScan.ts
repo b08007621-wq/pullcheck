@@ -1,7 +1,7 @@
 import type { CameraView } from 'expo-camera';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 
-import type { OcrHandle, OcrRegion, OcrState, VisionMatch } from '@/services/ocrBridge';
+import type { FoilDrift, OcrHandle, OcrRegion, OcrState, VisionMatch } from '@/services/ocrBridge';
 import { captureScanFrame } from '@/services/scanImage';
 import { logScan, summarizeMatch } from '@/services/scanLog';
 import { findScanCandidates, isConfirmed, type ScanCandidate } from '@/services/scanMatch';
@@ -34,6 +34,7 @@ export type AutoScanResult = {
 export type AutoScanGuess = AutoScanResult & {
   key: string;
   alternatives: string[];
+  foil: FoilDrift | null;
   seenAt: number;
 };
 
@@ -262,7 +263,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
       }
       const current = guessRef.current;
       if (current && current.key === found.key) {
-        setGuess({ ...current, seenAt: Date.now() });
+        setGuess({ ...current, foil: found.match?.foil ?? current.foil, seenAt: Date.now() });
         return;
       }
       if (found.source === 'text') {
@@ -280,6 +281,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
         printed: found.printed,
         candidates: found.candidates.map((candidate) => `${candidate.language}:${candidate.card.id}`),
         match: found.match ? summarizeMatch(found.match) : null,
+        foil: found.match?.foil ?? null,
       });
       setGuess({
         id: sequenceRef.current,
@@ -290,6 +292,7 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
         alternatives: found.alternatives,
         confirmed: found.confirmed,
         frame: found.frame,
+        foil: found.match?.foil ?? null,
         seenAt: Date.now(),
       });
     };
@@ -362,11 +365,11 @@ export function useAutoScan({ camera, frame, view, reader, enabled }: Options) {
     if (current) open(current);
   }, [open]);
 
-  const confirmGuess = useCallback((cardId: string) => {
+  const confirmGuess = useCallback((cardId: string, variant: string | null) => {
     const current = guessRef.current;
     if (!current) return;
     memoryRef.current.handled = current.key;
-    logScan('yes', current.frame, { key: current.key, added: cardId });
+    logScan('yes', current.frame, { key: current.key, added: cardId, variant, foil: current.foil });
   }, []);
 
   const rejectGuess = useCallback(async () => {

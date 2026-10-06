@@ -21,13 +21,20 @@ If the app ever moves to a dev build, swap `OcrHost` for an ML Kit / Vision fram
 
 One plain-JS module, `PullVision`, shipped as a string. The phone runs it inside the hidden WebView, and the nightly index builder runs the exact same code in Node, so the fingerprints always agree.
 
-1. **Find the card.** Shrink the frame to about 240 px wide, then take color Sobel gradients. Score straight-line candidates for each side (±8° tilt), keeping up to 6 peaks per side. Pick the 4-line combination with the best edge strength × card aspect (63:88) × size near the on-screen guide. Each chosen line is then refit to sub-pixel accuracy with trimmed least squares. This finds the card's outer edge even when a silver border sits on a white table.
+1. **Find the card.**
+   - Shrink the frame to about 240 px wide, then take color Sobel gradients.
+   - Score straight-line candidates for each side (±15° tilt) on the **middle band only** (25–75% of the frame), so a small card's edges aren't outscored by long background lines. Keep up to 8 peaks per side.
+   - Score the 4-line combinations on edge strength × card aspect (63:88) × a loose size prior.
+   - Re-score the best 120 on the **border strip**. A real card has an evenly colored strip just inside every edge, it's the same color on all four sides, and it contrasts with what's outside. Background seams and table edges fail this.
+   - The best 4 distinct outlines, plus the plain guide area, all go to the matcher, and **the outline that matches a card best wins** (`describeQuery` returns descriptors for each).
+   - Each chosen line is refit to sub-pixel accuracy with trimmed least squares.
+   - Auto scan captures the guide + 18% margin (`AUTO_CROP_MARGIN`), so cards held bigger than the guide still fit.
 2. **Flatten it.** Perspective-warp to 64×88 with 4×4 supersampling.
 3. **Fingerprint.** YCbCr DCT coefficients for the whole card (8×8 luma + 4×4 Cb/Cr) and the art box (same again), with each block normalized and weighted. That's 190 numbers, stored as int8.
 4. **Match.** Dot product against the whole index (about 15 ms for 23.5k cards). The query is described 3 ways, as found, 2.5% tighter and 3.5% looser, because TCGdex scans of some eras (HGSS, SM) are cropped slightly inside the card. Each card keeps its best score.
 5. **Close-up check.** The page downloads TCGdex's `low.webp` for the top 6 matches. They're cached in memory, and the CDN caches them for a year. Each card and the photo are compared as 60×84 grayscale with local contrast normalization (lighting and color shifts cancel out), allowing ±2 px of shift. `regroup` re-ranks by `coarse + 2 × close-up`. On synthetic shots, the right card has a median close-up score of 0.84 and the best wrong card 0.35.
 6. **Confidence** (`src/services/visionMatch.ts`). "Same picture" = cards whose fingerprints have cosine ≥ 0.93 with the best match (reprints, EN/JA prints of the same art). `gap` = best score minus the best score of a *different* picture.
-   - **sure**: close-up ≥ 0.55 with a 0.15 lead over the best different picture; or score ≥ 0.75, gap ≥ 0.05 and close-up ≥ 0.45; or close-up ≥ 0.50 with a 0.10 lead and the same top card two frames in a row → show "Is this it?". Without close-up scores (images unreachable), the coarse-only rule is: score ≥ 0.75 and gap ≥ 0.05, or 0.70 / 0.02 when steady.
+   - **sure**: quick score ≥ 0.90 with a 0.10 lead (0 wrong and 0.4% of not-in-index cards in tests); or close-up ≥ 0.55 with a 0.15 lead over the best different picture; or score ≥ 0.75, gap ≥ 0.05 and close-up ≥ 0.45; or close-up ≥ 0.50 with a 0.10 lead and the same top card two frames in a row → show "Is this it?". Without close-up scores (images unreachable), the coarse-only rule is: score ≥ 0.75 and gap ≥ 0.05, or 0.70 / 0.02 when steady.
    - **maybe** + the number reader reads a number → if one of the 12 picture matches has that number, it wins (picture + number together).
    - **maybe** (score ≥ 0.68): try the number reader.
    - **none**: empty frame, skip OCR entirely.
@@ -135,6 +142,14 @@ The old moving scan line is gone, and the frame corners lock while a guess is sh
 
 The sheet's cards are a horizontal snap carousel (`CandidateCarousel`) with the neighbors peeking in at the sides. Swipe it or tap a neighbor. The sheet's own drag only claims mostly-vertical moves, so sideways swipes reach the carousel. "None of these? Search instead" shows whenever there's more than one possible card.
 
+### Card versions (normal / reverse / holo)
+
+Matching can't see the version, because the art is identical. The preview and sheet show `VariantPills` (Normal / Reverse / Holo…, from the card's TCGplayer variants), and the price follows the chip. Experimental auto-detect: the page compares consecutive frames of the same card (`foilDrift`). A reverse holo's body shimmers while its art box doesn't, so when body drift ≥ 8 and ≥ 2× the art drift over 2+ frames, Reverse is preselected (`looksReverseHolo`). The thresholds are guesses until real reverse holo frames are logged. `foil` is included in shown/yes/picked logs, along with the chosen `variant`.
+
+### Index loading on the phone
+
+The WebView keeps the index in IndexedDB. Downloads use `cache: 'no-store'` plus an `at=` query, because jsDelivr's 7-day max-age once left a phone stuck on an old `meta.json`, which silently turned picture matching off. A cached index without `series` still works (no close-up check) and refreshes in the background. If picture matching still fails, the hint reads "Picture scan is offline · reading card numbers" and a `reader` log entry records why.
+
 ### Real-device data (`scan-log/`)
 
 In development builds only, `logScan` posts the frame (the same 1280 px crop the matcher saw) plus the match summary to the dev server's `/api/scan-log`, which writes `scan-log/<time>-<event>.jpg/.json` in the project folder. The folder is gitignored, and only the newest 800 files are kept.
@@ -145,6 +160,9 @@ Events:
 - `notit`: rejected.
 - `picked`: added from the sheet, labeled with the card.
 - `unsure`: something card-like but not sure, at most every 4 s.
+- `reader`: picture matching failed to load, with the error.
+
+Every entry includes the reader state (`reader.vision`, `reader.text`).
 
 Use these to tune `visionMatch.ts` thresholds and `PullVision` against real iPhone frames.
 

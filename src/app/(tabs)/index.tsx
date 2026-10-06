@@ -29,7 +29,7 @@ import { useRip } from '@/hooks/useRip';
 import { useScanSession } from '@/hooks/useScanSession';
 import { useSettings } from '@/hooks/useSettings';
 import { type OcrState, READER_LOADING, type ReaderStatus } from '@/services/ocrBridge';
-import { logScan } from '@/services/scanLog';
+import { logScan, setScanLogReader } from '@/services/scanLog';
 import type { Card } from '@/types/card';
 import type { IconName } from '@/types/icon';
 import type { Size } from '@/types/scan';
@@ -116,6 +116,11 @@ export default function ScanScreen() {
     () => (view ? computeScanFrame(view, insets.top + SCAN_HEADER_HEIGHT, bottomReserve) : null),
     [view, insets.top, bottomReserve],
   );
+
+  useEffect(() => {
+    setScanLogReader({ vision: reader.vision, text: reader.text });
+    if (reader.vision === 'failed') logScan('reader', null, { visionError: reader.visionError ?? null });
+  }, [reader.vision, reader.text, reader.visionError]);
 
   const auto = useAutoScan({
     camera: cameraRef,
@@ -249,6 +254,7 @@ export default function ScanScreen() {
   const hint = resolveHint(error ?? mountError, holding ? 'processing' : session.phase, cameraReady, ripping, {
     on: autoOn,
     status: readerStatus(reader),
+    pictures: reader.vision !== 'failed',
     phase: auto.phase,
   });
 
@@ -343,7 +349,7 @@ export default function ScanScreen() {
         ripping={ripping}
         bottom={tabBarHeight + spacing.md}
         onOpen={auto.openGuess}
-        onAdded={(card) => auto.confirmGuess(card.id)}
+        onAdded={(card, variant) => auto.confirmGuess(card.id, variant)}
         onNotIt={auto.rejectGuess}
         onAddPull={(card) => addPull(card, 'unknown')}
       />
@@ -359,9 +365,10 @@ export default function ScanScreen() {
             router.push({ pathname: '/card/[id]', params: { id: card.id } });
           }}
           onAddPull={(card) => addPull(card, 'unknown')}
-          onAdded={(key) =>
+          onAdded={(key, variant) =>
             logScan('picked', auto.result?.frame ?? null, {
               key,
+              variant,
               shown: auto.result?.candidates.map((entry) => `${entry.language}:${entry.card.id}`),
             })
           }
@@ -380,6 +387,7 @@ export default function ScanScreen() {
 type AutoHint = {
   on: boolean;
   status: ReaderStatus;
+  pictures: boolean;
   phase: AutoScanPhase;
 };
 
@@ -409,6 +417,9 @@ function resolveHint(
   }
   if (auto.on && auto.phase === 'handled') {
     return { message: 'Swap in the next card', icon: 'checkmark-circle-outline', tone: 'neutral' };
+  }
+  if (auto.on && !auto.pictures && auto.status === 'ready') {
+    return { message: 'Picture scan is offline · reading card numbers', icon: 'cloud-offline-outline', tone: 'neutral' };
   }
   if (ripping) return { message: 'Scan each card you pulled', icon: 'gift-outline', tone: 'neutral' };
   if (auto.on) return { message: 'Hold a card in the frame', icon: 'scan-outline', tone: 'neutral' };

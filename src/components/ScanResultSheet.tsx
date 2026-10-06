@@ -24,9 +24,11 @@ import type { Card } from '@/types/card';
 import type { Binder } from '@/types/collection';
 import type { DexLanguage } from '@/types/tcgdex';
 import { binderLabel } from '@/utils/binder';
-import { cardVersionPrice, defaultVersion, resolveVersion } from '@/utils/cardVersion';
+import { cardVersionPrice, resolveVersion } from '@/utils/cardVersion';
+import { defaultVariant, getVariantOptions } from '@/utils/price';
 
 import { CandidateCarousel } from './CandidateCarousel';
+import { VariantPills } from './VariantPills';
 import { GlassSurface } from './GlassSurface';
 import { LanguagePills } from './LanguagePills';
 import { PagerDots } from './PagerDots';
@@ -40,7 +42,7 @@ type Props = {
   onClose: () => void;
   onOpenCard: (card: Card) => void;
   onAddPull: (card: Card) => void;
-  onAdded?: (key: string) => void;
+  onAdded?: (key: string, variant: string | null) => void;
   onSearch?: (name: string) => void;
 };
 
@@ -80,6 +82,11 @@ export function ScanResultSheet({
     [candidate],
   );
   const count = result.candidates.length;
+  const [variantPick, setVariantPick] = useState<{ index: number; variant: string } | null>(null);
+  const priced = card ?? preview;
+  const variants = priced ? getVariantOptions(priced) : [];
+  const variant =
+    variantPick && variantPick.index === index ? variantPick.variant : priced ? defaultVariant(priced) : null;
 
   useEffect(() => {
     Animated.spring(offset, { toValue: 0, speed: 16, bounciness: 3, useNativeDriver: true }).start();
@@ -148,7 +155,7 @@ export function ScanResultSheet({
       setAdding(true);
       try {
         const target = card ?? (await loadScanCard(candidate));
-        const version = resolveVersion(target, defaultVersion(target));
+        const version = resolveVersion(target, { variant, condition: 'NM' });
         const price = cardVersionPrice(target, version);
         if (price && price.currency === 'USD' && price.amount >= BIG_PULL_USD) haptics.hit();
         else haptics.collect();
@@ -161,14 +168,14 @@ export function ScanResultSheet({
           fulfill([target.id]);
           setAdded(binder ? `Added to ${binderLabel(binder)}` : 'Added to collection');
         }
-        onAdded?.(`${candidate.language}:${candidate.card.id}`);
+        onAdded?.(`${candidate.language}:${candidate.card.id}`, version.variant);
       } catch {
         haptics.remove();
       } finally {
         setAdding(false);
       }
     },
-    [candidate, added, adding, card, ripping, haptics, onAddPull, addCard, setBinder, fulfill, onAdded],
+    [candidate, added, adding, card, variant, ripping, haptics, onAddPull, addCard, setBinder, fulfill, onAdded],
   );
 
   useEffect(() => {
@@ -227,9 +234,19 @@ export function ScanResultSheet({
               image={images[index] ?? null}
               setName={shown?.setName ?? card?.set.name ?? candidate.card.set.name}
               number={card?.number ?? preview?.number ?? candidate.card.localId}
-              card={card ?? preview}
+              card={priced}
+              variant={variant}
               failed={error !== null}
             />
+          ) : null}
+          {variants.length > 1 && !added ? (
+            <View style={styles.languages}>
+              <VariantPills
+                variants={variants}
+                value={variant}
+                onChange={(next) => setVariantPick({ index, variant: next })}
+              />
+            </View>
           ) : null}
           <View style={styles.languages}>
             <LanguagePills

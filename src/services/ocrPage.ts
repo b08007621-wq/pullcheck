@@ -8,6 +8,7 @@ const MATCH_RESULTS = 12;
 const FINE_RESULTS = 6;
 const FINE_CACHE = 400;
 const FINE_TIMEOUT_MS = 3000;
+const FOIL_FRAMES = 6;
 
 export const OCR_BASE_URL = `${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/`;
 
@@ -68,24 +69,26 @@ export const OCR_PAGE_HTML = `<!doctype html>
     });
   };
   var INDEX_KEY = 'index-v${CARD_VISION_VERSION}';
+  var fresh = function (url) {
+    return fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'at=' + Date.now(), { cache: 'no-store' });
+  };
   var download = function () {
-    return Promise.all([
-      fetch('${INDEX_URL}meta.json').then(function (response) {
-        if (!response.ok) throw new Error('Card index unavailable');
-        return response.json();
-      }),
-      fetch('${INDEX_URL}vectors.bin').then(function (response) {
-        if (!response.ok) throw new Error('Card index unavailable');
+    return fresh('${INDEX_URL}meta.json').then(function (response) {
+      if (!response.ok) throw new Error('Card index unavailable (' + response.status + ')');
+      return response.json();
+    }).then(function (meta) {
+      return fresh('${INDEX_URL}vectors.bin').then(function (response) {
+        if (!response.ok) throw new Error('Card index unavailable (' + response.status + ')');
         return response.arrayBuffer();
-      })
-    ]).then(function (parts) {
-      var entry = { meta: parts[0], vectors: parts[1], savedAt: Date.now() };
-      stored('readwrite', function (store) { return store.put(entry, INDEX_KEY); }).catch(function () {});
-      return entry;
+      }).then(function (vectors) {
+        var entry = { meta: meta, vectors: vectors, savedAt: Date.now() };
+        if (usable(entry)) stored('readwrite', function (store) { return store.put(entry, INDEX_KEY); }).catch(function () {});
+        return entry;
+      });
     });
   };
   var usable = function (entry) {
-    return !!(entry && entry.meta && entry.meta.series && entry.vectors && entry.meta.dims === PullVision.DIMS &&
+    return !!(entry && entry.meta && entry.meta.ids && entry.vectors && entry.meta.dims === PullVision.DIMS &&
       entry.vectors.byteLength === entry.meta.ids.length * entry.meta.dims);
   };
   var visionIndex = null;
@@ -97,6 +100,24 @@ export const OCR_PAGE_HTML = `<!doctype html>
       count: entry.meta.ids.length,
       data: new Int8Array(entry.vectors)
     };
+  };
+
+  var foil = { key: null, raster: null, art: [], body: [] };
+  var trackFoil = function (key, raster) {
+    if (key !== foil.key) {
+      foil = { key: key, raster: raster, art: [], body: [] };
+      return null;
+    }
+    var drift = PullVision.foilDrift(raster, foil.raster);
+    foil.raster = raster;
+    foil.art.push(drift.art);
+    foil.body.push(drift.body);
+    if (foil.art.length > ${FOIL_FRAMES}) { foil.art.shift(); foil.body.shift(); }
+    var middle = function (values) {
+      var sorted = values.slice().sort(function (a, b) { return a - b; });
+      return sorted[Math.floor(sorted.length / 2)];
+    };
+    return { art: middle(foil.art), body: middle(foil.body), frames: foil.art.length };
   };
 
   var fineCache = new Map();
@@ -141,13 +162,13 @@ export const OCR_PAGE_HTML = `<!doctype html>
     .catch(function () { return null; })
     .then(function (cached) {
       if (!usable(cached)) return download();
-      if (Date.now() - cached.savedAt > ${INDEX_REFRESH_MS}) {
-        download().then(function (fresh) { if (usable(fresh)) adopt(fresh); }, function () {});
+      if (!cached.meta.series || Date.now() - cached.savedAt > ${INDEX_REFRESH_MS}) {
+        download().then(function (next) { if (usable(next)) adopt(next); }, function () {});
       }
       return cached;
     })
     .then(function (entry) {
-      if (!usable(entry)) throw new Error('Card index is out of date');
+      if (!usable(entry)) throw new Error('Card index doesn’t match this app version');
       adopt(entry);
     });
 
@@ -236,6 +257,7 @@ export const OCR_PAGE_HTML = `<!doctype html>
           return { index: result.index, score: result.score, fine: ref ? PullVision.fineScore(query.fine, ref) : null };
         });
         var final = PullVision.regroup(visionIndex.data, visionIndex.dims, scored);
+        var top = final.results[0];
         send({
           type: 'match',
           id: id,
@@ -243,6 +265,7 @@ export const OCR_PAGE_HTML = `<!doctype html>
           gap: final.gap,
           fine: final.fine,
           fineGap: final.fineGap,
+          foil: top ? trackFoil(visionIndex.ids[top.index], query.raster) : null,
           results: final.results.map(function (result) {
             return { key: visionIndex.ids[result.index], score: result.score, fine: result.fine, same: result.same };
           })

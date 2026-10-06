@@ -7,7 +7,11 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
   var CARD_ASPECT = 63 / 88;
   var SUPER = 4;
   var SIZE_PRIOR = 0.97;
-  var SIZE_SPREAD = 0.16;
+  var SIZE_SPREAD = 0.35;
+  var QUAD_CANDIDATES = 4;
+  var PEAKS = 8;
+  var SPAN = [0.25, 0.75];
+  var MAX_TILT = 0.27;
 
   var shrink = function (img, targetWidth) {
     var factor = Math.max(1, Math.floor(img.width / targetWidth));
@@ -218,8 +222,8 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     var across = vertical ? w : h;
     var lo = Math.max(1, Math.round(from * across)), hi = Math.min(across - 2, Math.round(to * across));
     var a0 = 0.25 * along, a1 = 0.75 * along;
-    var tilt = Math.round(0.5 * along * 0.16);
-    var t0 = Math.round(0.08 * along), t1 = Math.round(0.92 * along);
+    var tilt = Math.round(0.5 * along * MAX_TILT);
+    var t0 = Math.round(SPAN[0] * along), t1 = Math.round(SPAN[1] * along);
     var best = [];
     for (var pa = lo; pa <= hi; pa += 1) {
       var top = 0, topPb = pa;
@@ -247,7 +251,7 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
       if (isPeak) peaks.push(best[i]);
     }
     peaks.sort(function (a, b) { return b.score - a.score; });
-    return peaks.slice(0, 6).map(function (peak) {
+    return peaks.slice(0, PEAKS).map(function (peak) {
       return { a0: a0, a1: a1, pa: peak.pa, pb: peak.pb, score: peak.score, vertical: vertical };
     });
   };
@@ -257,7 +261,7 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     var across = line.vertical ? w : h;
     var slope = (line.pb - line.pa) / (line.a1 - line.a0);
     var ts = [], ps = [];
-    for (var t = Math.round(0.08 * along); t <= Math.round(0.92 * along); t += 1) {
+    for (var t = Math.round(SPAN[0] * along); t <= Math.round(SPAN[1] * along); t += 1) {
       var center = line.pa + slope * (t - line.a0);
       var bestP = -1, bestG = 0;
       for (var p = Math.round(center) - 2; p <= Math.round(center) + 2; p += 1) {
@@ -301,6 +305,67 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     return [x, hz.pa + sh * (x - hz.a0)];
   };
 
+  var quadDistance = function (a, b) {
+    var d = 0;
+    for (var i = 0; i < 4; i += 1) d = Math.max(d, Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]));
+    return d;
+  };
+
+  var pixelAt = function (img, x, y) {
+    var ix = Math.max(0, Math.min(img.width - 2, Math.floor(x)));
+    var iy = Math.max(0, Math.min(img.height - 2, Math.floor(y)));
+    var d = img.data, r = 0, g = 0, b = 0;
+    for (var dy = 0; dy < 2; dy += 1) {
+      for (var dx = 0; dx < 2; dx += 1) {
+        var k = ((iy + dy) * img.width + ix + dx) * 4;
+        r += d[k]; g += d[k + 1]; b += d[k + 2];
+      }
+    }
+    return [r / 4, g / 4, b / 4];
+  };
+
+  var BORDER_SAMPLES = 20;
+
+  var borderScore = function (img, quad) {
+    var cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+    var cy = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+    var width = Math.hypot(quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]);
+    var total = 0, sideMeans = [];
+    for (var s = 0; s < 4; s += 1) {
+      var p = quad[s], q = quad[(s + 1) % 4];
+      var mx = (p[0] + q[0]) / 2 - cx, my = (p[1] + q[1]) / 2 - cy;
+      var len = Math.hypot(mx, my) || 1;
+      var nx = mx / len, ny = my / len;
+      var inner = 0.022 * width, outer = 0.02 * width;
+      var ins = [], contrast = 0;
+      for (var i = 1; i <= BORDER_SAMPLES; i += 1) {
+        var t = 0.12 + (0.76 * (i - 0.5)) / BORDER_SAMPLES;
+        var ex = p[0] + (q[0] - p[0]) * t, ey = p[1] + (q[1] - p[1]) * t;
+        var a = pixelAt(img, ex - nx * inner, ey - ny * inner);
+        var o = pixelAt(img, ex + nx * outer, ey + ny * outer);
+        ins.push(a);
+        contrast += Math.abs(a[0] - o[0]) + Math.abs(a[1] - o[1]) + Math.abs(a[2] - o[2]);
+      }
+      var mean = [0, 0, 0];
+      for (var j = 0; j < ins.length; j += 1) for (var c = 0; c < 3; c += 1) mean[c] += ins[j][c] / ins.length;
+      var spread = 0;
+      for (var m = 0; m < ins.length; m += 1) {
+        spread += Math.abs(ins[m][0] - mean[0]) + Math.abs(ins[m][1] - mean[1]) + Math.abs(ins[m][2] - mean[2]);
+      }
+      spread /= ins.length;
+      contrast /= BORDER_SAMPLES;
+      sideMeans.push(mean);
+      total += Math.exp(-spread / 45) * Math.min(1, contrast / 60);
+    }
+    var all = [0, 0, 0];
+    for (var u = 0; u < 4; u += 1) for (var v = 0; v < 3; v += 1) all[v] += sideMeans[u][v] / 4;
+    var cross = 0;
+    for (var w2 = 0; w2 < 4; w2 += 1) {
+      cross += Math.abs(sideMeans[w2][0] - all[0]) + Math.abs(sideMeans[w2][1] - all[1]) + Math.abs(sideMeans[w2][2] - all[2]);
+    }
+    return (total / 4) * Math.exp(-cross / 4 / 60);
+  };
+
   var locate = function (img, margin) {
     var w = img.width, h = img.height;
     var g = gradients(img);
@@ -310,25 +375,40 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     var tops = scanSide(g.gy, w, h, false, 0, 0.36, capY);
     var bottoms = scanSide(g.gy, w, h, false, 0.64, 1, capY);
     var guideW = w / (1 + 2 * margin);
-    var best = null;
+    var combos = [];
     for (var a = 0; a < lefts.length; a += 1) for (var b = 0; b < rights.length; b += 1) for (var c = 0; c < tops.length; c += 1) for (var e = 0; e < bottoms.length; e += 1) {
       var L = lefts[a], R = rights[b], T = tops[c], B = bottoms[e];
       var tl = intersect(L, T), tr = intersect(R, T), br = intersect(R, B), bl = intersect(L, B);
       var width = (Math.hypot(tr[0] - tl[0], tr[1] - tl[1]) + Math.hypot(br[0] - bl[0], br[1] - bl[1])) / 2;
       var height = (Math.hypot(bl[0] - tl[0], bl[1] - tl[1]) + Math.hypot(br[0] - tr[0], br[1] - tr[1])) / 2;
-      if (width < 0.45 * w || height < 0.45 * h) continue;
+      if (width < 0.3 * w || height < 0.3 * h) continue;
       var aspect = width / height;
       var fit = Math.exp(-Math.pow((aspect - CARD_ASPECT) / 0.05, 2));
       var size = Math.exp(-Math.pow((width / guideW - SIZE_PRIOR) / SIZE_SPREAD, 2));
       var lines = (L.score + R.score + T.score + B.score) / 4;
       var weakest = Math.min(L.score, R.score, T.score, B.score);
-      var score = (lines * 0.7 + weakest * 0.3) * fit * size;
-      if (!best || score > best.score) best = { score: score, lines: lines, sides: [L, R, T, B] };
+      var score = (lines * 0.7 + weakest * 0.3) * fit * (0.4 + 0.6 * size);
+      combos.push({ score: score, lines: lines, sides: [L, R, T, B], quad: [tl, tr, br, bl] });
     }
-    if (!best) return null;
-    var sides = best.sides.map(function (line) { return refine(line, line.vertical ? g.gx : g.gy, w, h); });
-    var Lr = sides[0], Rr = sides[1], Tr = sides[2], Br = sides[3];
-    return { score: best.score, lines: best.lines, quad: [intersect(Lr, Tr), intersect(Rr, Tr), intersect(Rr, Br), intersect(Lr, Br)] };
+    combos.sort(function (x, y) { return y.score - x.score; });
+    combos = combos.slice(0, 120);
+    for (var z = 0; z < combos.length; z += 1) {
+      combos[z].border = borderScore(img, combos[z].quad);
+      combos[z].score *= 0.25 + 0.75 * combos[z].border;
+    }
+    combos.sort(function (x, y) { return y.score - x.score; });
+    var picked = [];
+    for (var i = 0; i < combos.length && picked.length < QUAD_CANDIDATES; i += 1) {
+      var combo = combos[i];
+      var distinct = true;
+      for (var j = 0; j < picked.length; j += 1) if (quadDistance(picked[j].quad, combo.quad) < 0.04 * w) distinct = false;
+      if (distinct) picked.push(combo);
+    }
+    return picked.map(function (combo) {
+      var sides = combo.sides.map(function (line) { return refine(line, line.vertical ? g.gx : g.gy, w, h); });
+      var Lr = sides[0], Rr = sides[1], Tr = sides[2], Br = sides[3];
+      return { score: combo.score, lines: combo.lines, quad: [intersect(Lr, Tr), intersect(Rr, Tr), intersect(Rr, Br), intersect(Lr, Br)] };
+    });
   };
 
   var guideQuad = function (img, margin) {
@@ -414,19 +494,59 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
     return best;
   };
 
+  var FOIL_ART = [0.08, 0.11, 0.92, 0.52];
+  var FOIL_BODY = [0.08, 0.58, 0.92, 0.9];
+
+  var regionDrift = function (a, b, box) {
+    var x0 = Math.round(box[0] * RASTER_W), x1 = Math.round(box[2] * RASTER_W);
+    var y0 = Math.round(box[1] * RASTER_H), y1 = Math.round(box[3] * RASTER_H);
+    var la = 0, lb = 0, n = 0;
+    for (var y = y0; y < y1; y += 1) {
+      for (var x = x0; x < x1; x += 1) {
+        var k = (y * RASTER_W + x) * 3;
+        la += a[k] + a[k + 1] + a[k + 2];
+        lb += b[k] + b[k + 1] + b[k + 2];
+        n += 1;
+      }
+    }
+    var gain = lb > 0 ? la / lb : 1;
+    var drift = 0;
+    for (var yy = y0; yy < y1; yy += 1) {
+      for (var xx = x0; xx < x1; xx += 1) {
+        var p = (yy * RASTER_W + xx) * 3;
+        drift += Math.abs(a[p] - b[p] * gain) + Math.abs(a[p + 1] - b[p + 1] * gain) + Math.abs(a[p + 2] - b[p + 2] * gain);
+      }
+    }
+    return drift / (3 * n);
+  };
+
+  var foilDrift = function (a, b) {
+    return { art: regionDrift(a, b, FOIL_ART), body: regionDrift(a, b, FOIL_BODY) };
+  };
+
   var HYPOTHESES = [[0, 0], [0.025, 0.0175], [-0.035, -0.025]];
 
   var describeQuery = function (img, margin) {
     var work = shrink(img, WORK_WIDTH);
     var found = locate(work, margin);
-    var base = found && found.lines > 0.18 ? found.quad : guideQuad(work, margin);
-    var out = [], fine = [];
-    for (var i = 0; i < HYPOTHESES.length; i += 1) {
-      var quad = scaleQuad(base, HYPOTHESES[i][0], HYPOTHESES[i][1]);
-      out.push(describeRaster(warp(work, quad, RASTER_W, RASTER_H)));
-      fine.push(fineFrom(work, quad));
+    var quads = [];
+    for (var f = 0; f < found.length; f += 1) if (found[f].lines > 0.18) quads.push(found[f].quad);
+    var guide = guideQuad(work, margin);
+    var near = false;
+    for (var k = 0; k < quads.length; k += 1) if (quadDistance(quads[k], guide) < 0.04 * work.width) near = true;
+    if (!near) quads.push(guide);
+    var out = [], fine = [], raster = null;
+    for (var q = 0; q < quads.length; q += 1) {
+      var hypotheses = q < 2 ? HYPOTHESES : HYPOTHESES.slice(0, 1);
+      for (var i = 0; i < hypotheses.length; i += 1) {
+        var quad = scaleQuad(quads[q], hypotheses[i][0], hypotheses[i][1]);
+        var flat = warp(work, quad, RASTER_W, RASTER_H);
+        if (raster === null) raster = flat;
+        out.push(describeRaster(flat));
+        fine.push(fineFrom(work, quad));
+      }
     }
-    return { descriptors: out, fine: fine, quad: base, found: found };
+    return { descriptors: out, fine: fine, raster: raster, quad: quads[0], quads: quads, found: found[0] || null };
   };
 
   var describeReference = function (img) {
@@ -527,6 +647,7 @@ export const CARD_VISION_JS = String.raw`var PullVision = (function () {
   return {
     DIMS: DIMS,
     regroup: regroup,
+    foilDrift: foilDrift,
     rank: rank,
     fineReference: fineReference,
     fineScore: fineScore,
