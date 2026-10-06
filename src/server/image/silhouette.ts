@@ -7,6 +7,7 @@ export type Silhouette = {
   mask: Uint8Array;
   background: 'white' | 'black' | 'none';
   coverage: number;
+  backgroundMask: Uint8Array;
 };
 
 type Tone = 0 | 1 | 2;
@@ -75,7 +76,7 @@ export function findSilhouette(raster: Raster, limits: ToneLimits = STRICT_TONES
   const coverage = filled / (width * height);
   const bgPixels = whiteCount + blackCount;
   const kind = bgPixels < width * height * 0.004 ? 'none' : whiteCount >= blackCount ? 'white' : 'black';
-  return { width, height, mask, background: kind, coverage };
+  return { width, height, mask, background: kind, coverage, backgroundMask: background };
 }
 
 export function boundaryPoints(silhouette: Silhouette): Point[] {

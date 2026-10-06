@@ -1,10 +1,12 @@
 import { PNG } from 'pngjs';
 
+import { convexHull, type Point } from './image/geometry';
 import { decodeImage, downscale } from './image/raster';
-import { findSilhouette, SOFT_TONES } from './image/silhouette';
+import { boundaryPoints, findSilhouette } from './image/silhouette';
 import { fetchProductImage } from './remoteImage';
 
 const CACHE_LIMIT = 120;
+const MIN_PIECE_SHARE = 0.05;
 const cache = new Map<string, Promise<Uint8Array>>();
 
 export function getProductCutout(productId: number, size: number): Promise<Uint8Array> {
@@ -29,9 +31,9 @@ export function getProductCutout(productId: number, size: number): Promise<Uint8
 function cutout(bytes: Uint8Array, size: number): Uint8Array {
   const { raster } = downscale(decodeImage(bytes), size);
   const { width, height, data } = raster;
-  const silhouette = findSilhouette(raster, SOFT_TONES);
-  const solid = new Uint8Array(width * height);
-  for (let index = 0; index < solid.length; index++) solid[index] = silhouette.mask[index] ? 1 : 0;
+  const silhouette = findSilhouette(raster);
+  const solid = keepLargePieces(silhouette.backgroundMask, width, height);
+  fillHull(solid, width, height, convexHull(boundaryPoints({ ...silhouette, mask: solid })));
 
   const eroded = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
@@ -67,4 +69,57 @@ function cutout(bytes: Uint8Array, size: number): Uint8Array {
     }
   }
   return new Uint8Array(PNG.sync.write(out));
+}
+
+function fillHull(solid: Uint8Array, width: number, height: number, hull: Point[]) {
+  if (hull.length < 3) return;
+  for (let y = 0; y < height; y++) {
+    const scan = y + 0.5;
+    let left = Infinity;
+    let right = -Infinity;
+    for (let index = 0; index < hull.length; index++) {
+      const from = hull[index]!;
+      const to = hull[(index + 1) % hull.length]!;
+      if ((from.y <= scan && to.y > scan) || (to.y <= scan && from.y > scan)) {
+        const x = from.x + ((scan - from.y) / (to.y - from.y)) * (to.x - from.x);
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      }
+    }
+    if (left > right) continue;
+    for (let x = Math.max(0, Math.ceil(left)); x < Math.min(width, Math.floor(right)); x++) solid[y * width + x] = 1;
+  }
+}
+
+function keepLargePieces(background: Uint8Array, width: number, height: number): Uint8Array {
+  const total = width * height;
+  const labels = new Int32Array(total).fill(-1);
+  const queue = new Int32Array(total);
+  const sizes: number[] = [];
+  for (let start = 0; start < total; start++) {
+    if (background[start] || labels[start] !== -1) continue;
+    const label = sizes.length;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    labels[start] = label;
+    while (head < tail) {
+      const index = queue[head++]!;
+      const x = index % width;
+      const neighbors = [x > 0 ? index - 1 : -1, x < width - 1 ? index + 1 : -1, index >= width ? index - width : -1, index < total - width ? index + width : -1];
+      for (const neighbor of neighbors) {
+        if (neighbor < 0 || background[neighbor] || labels[neighbor] !== -1) continue;
+        labels[neighbor] = label;
+        queue[tail++] = neighbor;
+      }
+    }
+    sizes.push(tail);
+  }
+  const largest = Math.max(0, ...sizes);
+  const solid = new Uint8Array(total);
+  for (let index = 0; index < total; index++) {
+    const label = labels[index]!;
+    if (label >= 0 && sizes[label]! >= largest * MIN_PIECE_SHARE) solid[index] = 1;
+  }
+  return solid;
 }
