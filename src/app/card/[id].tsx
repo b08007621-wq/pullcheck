@@ -145,6 +145,7 @@ export default function CardDetailScreen() {
         usd={marketUsd}
         extra={matching?.history ?? []}
         estimated={version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []}
+        source={{ kind: 'card', card, variant: version.variant ?? null }}
       />
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
       <OtherVersions language="jp" versions={japaneseVersions} />

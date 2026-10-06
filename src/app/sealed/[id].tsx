@@ -100,6 +100,7 @@ export default function SealedDetailScreen() {
         id={`sealed:${product.productId}`}
         usd={marketPrice?.currency === 'USD' ? marketPrice.amount : null}
         extra={owned?.history ?? []}
+        source={{ kind: 'product', market, groupId: product.groupId, productId: product.productId }}
       />
       <SealedPricePanel product={product} />
       {single && japanese ? <OtherVersions language="en" versions={englishVersions} /> : null}
