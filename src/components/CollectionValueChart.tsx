@@ -27,7 +27,7 @@ export function CollectionValueChart({ items, history, onOpen }: Props) {
   const { gainers, losers } = useMemo(() => findMovers(items, range), [items, range]);
 
   return (
-    <SectionPanel title="Value over time">
+    <SectionPanel title="Value">
       <View style={styles.range}>
         <SegmentedControl options={RANGES} value={range} onChange={setRange} />
       </View>
@@ -35,12 +35,12 @@ export function CollectionValueChart({ items, history, onOpen }: Props) {
         points={points}
         currency="USD"
         height={120}
-        emptyMessage="The chart fills in as PullCheck records your collection’s value each day."
+        emptyMessage="Builds up daily."
       />
       {gainers.length > 0 || losers.length > 0 ? (
         <View style={styles.movers}>
-          <MoverColumn title="Top gainers" movers={gainers} onOpen={onOpen} />
-          <MoverColumn title="Top losers" movers={losers} onOpen={onOpen} />
+          <MoverColumn title="Up" movers={gainers} onOpen={onOpen} />
+          <MoverColumn title="Down" movers={losers} onOpen={onOpen} />
         </View>
       ) : null}
     </SectionPanel>

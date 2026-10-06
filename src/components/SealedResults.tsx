@@ -11,6 +11,7 @@ import type { SealedProduct } from '@/types/sealed';
 
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
+import { MarketHomeView } from './MarketHomeView';
 import { SealedListItem } from './SealedListItem';
 import { SkeletonRows } from './SkeletonRows';
 import { SuggestionChips } from './SuggestionChips';
@@ -67,32 +68,23 @@ export function SealedResults({ search, bottomInset, onSuggestion, recent, onCle
 
   if (search.status === 'idle') {
     return (
-      <EmptyState
-        icon={singles ? 'albums-outline' : 'cube-outline'}
-        title={singles ? 'Japanese cards' : japanese ? 'Japanese sealed' : 'Sealed products'}
-        message={
-          singles
-            ? 'Japanese singles with TCGplayer prices. Add a set name like “151” or “Terastal Festival” to dig into a set.'
-            : japanese
-              ? 'Japanese booster boxes, packs and special sets with TCGplayer prices.'
-              : 'ETBs, booster boxes, bundles, tins, ex boxes and more, with market value against MSRP. Add a set name to dig into older sets.'
-        }
-        bottomInset={bottomInset}
-      >
+      <MarketHomeView market={search.market} kind={search.kind} bottomInset={bottomInset}>
         <SuggestionChips
           title="Recent"
           icon="time-outline"
           suggestions={recent}
           onSelect={onSuggestion}
           onClear={onClearRecent}
+          align="start"
         />
         <SuggestionChips
           title="Try"
           icon="sparkles-outline"
           suggestions={singles ? SUGGESTIONS.jpSingles : japanese ? SUGGESTIONS.jpSealed : SUGGESTIONS.sealed}
           onSelect={onSuggestion}
+          align="start"
         />
-      </EmptyState>
+      </MarketHomeView>
     );
   }
 

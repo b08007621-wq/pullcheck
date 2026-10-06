@@ -59,7 +59,7 @@ export function WishPanel({ wish, pickedVariant, onTargetChange, onVariantChange
         value={
           <View style={styles.now}>
             <Text style={styles.nowText}>{status.price !== null ? formatMoney(status.price) : 'No price yet'}</Text>
-            {change !== null ? <PriceChange percent={change} prefix="since added" /> : null}
+            {change !== null ? <PriceChange percent={change} prefix="since wished" /> : null}
           </View>
         }
       />

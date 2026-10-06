@@ -100,14 +100,14 @@ function changeLine(summary: CollectionSummary): { amount: number; percent: numb
     return {
       amount: summary.paidNowUsd - summary.paidUsd,
       percent: percentChange(summary.paidUsd, summary.paidNowUsd),
-      caption: summary.paidItems === 1 ? 'vs what you paid' : `vs paid · ${summary.paidItems} items`,
+      caption: 'vs cost',
     };
   }
   if (summary.totalAtAddUsd > 0) {
     return {
       amount: summary.comparableNowUsd - summary.totalAtAddUsd,
       percent: percentChange(summary.totalAtAddUsd, summary.comparableNowUsd),
-      caption: 'since you added them',
+      caption: 'all time',
     };
   }
   return null;

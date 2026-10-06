@@ -40,7 +40,7 @@ export function CollectionShortcuts() {
       <ShortcutTile
         icon="calendar-outline"
         title="Upcoming sets"
-        detail="Pre-order prices"
+        detail="Pre-orders"
         position="middle"
         onPress={() => {
           haptics.tap();
@@ -49,8 +49,8 @@ export function CollectionShortcuts() {
       />
       <ShortcutTile
         icon="swap-horizontal-outline"
-        title="Trade checker"
-        detail="Compare values"
+        title="Trade check"
+        detail="Who wins?"
         position="middle"
         onPress={() => {
           haptics.tap();

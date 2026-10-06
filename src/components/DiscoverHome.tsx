@@ -70,22 +70,11 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.chips}>
-        <SuggestionChips
-          title="Recent"
-          icon="time-outline"
-          suggestions={recent}
-          onSelect={onSuggestion}
-          onClear={onClearRecent}
-          align="start"
-        />
-        <SuggestionChips title="Try" icon="sparkles-outline" suggestions={suggestions} onSelect={onSuggestion} align="start" />
-      </View>
 
       {discover ? (
         <>
           {discover.chase.length > 0 ? (
-            <DiscoverSection delay={60} title="Chase cards" subtitle={`The most valuable pulls in ${setNames}`}>
+            <DiscoverSection delay={60} title="Chase cards" subtitle={setNames}>
               {discover.chase.map((pick) => (
                 <DiscoverCardTile key={pick.card.id} pick={pick} badge="none" onPress={openCard} />
               ))}
@@ -94,8 +83,8 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
 
           <DiscoverSection
             delay={140}
-            title="Rising"
-            subtitle={since ? `Climbing the most since ${formatShortDate(since)}` : 'Climbing the most this week'}
+            title="Heating up"
+            subtitle={since ? `Since ${formatShortDate(since)}` : 'This week'}
             scroll={rising.length > 0}
           >
             {rising.length > 0 ? (
@@ -104,13 +93,13 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
               ))
             ) : (
               <Text style={styles.note}>
-                {risingExtra === null ? 'Checking price trends…' : 'Nothing has climbed more than 3% recently. Quiet market.'}
+                {risingExtra === null ? 'Checking…' : 'Quiet week.'}
               </Text>
             )}
           </DiscoverSection>
 
           {discover.sleepers.length > 0 ? (
-            <DiscoverSection delay={220} title="Sleepers" subtitle="Chase cards priced well under their set’s average">
+            <DiscoverSection delay={220} title="Sleepers" subtitle="Cheap for their rarity">
               {discover.sleepers.map((pick) => (
                 <DiscoverCardTile key={pick.card.id} pick={pick} badge="under" onPress={openCard} />
               ))}
@@ -127,7 +116,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
             <ShortcutTile
               icon="calendar-outline"
               title="Upcoming sets"
-              detail="Pre-order prices"
+              detail="Pre-orders"
               position="only"
               onPress={() => {
                 haptics.tap();
@@ -147,6 +136,17 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
           ))}
         </View>
       )}
+      <View style={styles.chips}>
+        <SuggestionChips
+          title="Recent"
+          icon="time-outline"
+          suggestions={recent}
+          onSelect={onSuggestion}
+          onClear={onClearRecent}
+          align="start"
+        />
+        <SuggestionChips title="Try" icon="sparkles-outline" suggestions={suggestions} onSelect={onSuggestion} align="start" />
+      </View>
     </ScrollView>
   );
 }
