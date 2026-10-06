@@ -6,6 +6,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { MarketChart } from '@/components/MarketChart';
 import { OtherVersions } from '@/components/OtherVersions';
 import { OwnedPanel } from '@/components/OwnedPanel';
 import { ProductHero } from '@/components/ProductHero';
@@ -18,6 +19,8 @@ import { useCollection } from '@/hooks/useCollection';
 import { useEnglishVersions } from '@/hooks/useCrossLanguage';
 import { useSealedDetail } from '@/hooks/useSealedDetail';
 import { useSetLogo } from '@/hooks/useSetLogo';
+import { baseCardName } from '@/services/crossLanguage';
+import { japaneseLogoFor } from '@/services/japaneseLogos';
 import type { Market } from '@/types/sealed';
 import { formatShortDate, parseDate } from '@/utils/date';
 import { getSealedMarketPrice } from '@/utils/sealed';
@@ -52,6 +55,7 @@ export default function SealedDetailScreen() {
   const single = Boolean(product.cardNumber);
   const released = parseDate(product.productReleasedOn ?? product.releasedOn ?? product.setReleasedOn);
   const japanese = (product.market ?? 'en') === 'jp';
+  const marketPrice = getSealedMarketPrice(product);
 
   return (
     <DetailLayout
@@ -60,9 +64,15 @@ export default function SealedDetailScreen() {
       <ProductHero product={product} onPress={open3d} />
       {open3d ? <View3DButton onPress={open3d} /> : null}
       <DetailTitle
-        title={product.name}
+        title={single ? baseCardName(product.name) : product.name}
         subtitle={single ? `${product.setName} · #${product.cardNumber}` : product.setName}
-        logo={logo}
+        logo={japanese ? japaneseLogoFor(product.setCode, product.setName) : logo}
+        logoAction={japanese ? 'See the whole set' : undefined}
+        onLogoPress={
+          japanese
+            ? () => router.push({ pathname: '/jpset/[id]', params: { id: String(product.groupId) } })
+            : undefined
+        }
         logoLabel={product.setName}
         logoCaption={single ? `#${product.cardNumber}` : undefined}
         chips={
@@ -86,6 +96,11 @@ export default function SealedDetailScreen() {
           onPaidChange={(paid) => setPaid(owned.key, paid)}
         />
       ) : null}
+      <MarketChart
+        id={`sealed:${product.productId}`}
+        usd={marketPrice?.currency === 'USD' ? marketPrice.amount : null}
+        extra={owned?.history ?? []}
+      />
       <SealedPricePanel product={product} />
       {single && japanese ? <OtherVersions language="en" versions={englishVersions} /> : null}
       {single ? null : <SealedContents description={product.description} />}
