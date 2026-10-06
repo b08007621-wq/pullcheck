@@ -1,0 +1,1743 @@
+[
+ {
+  "product": "PokemonTCG_Card",
+  "objects": [
+   {
+    "name": "PokemonTCG_Card_Main",
+    "triangles": 172,
+    "materials": [
+     "CardFront",
+     "CardBack",
+     "CardEdge"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.5,
+     0.3,
+     88.9
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 172,
+  "target": [
+   100,
+   400
+  ],
+  "materialCount": 3,
+  "sizeMm": [
+   63.5,
+   0.3,
+   88.9
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_SinglePack",
+  "objects": [
+   {
+    "name": "PokemonTCG_SinglePack_Main",
+    "triangles": 320,
+    "materials": [
+     "FoilFront",
+     "FoilBack",
+     "FoilEdge"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     5.2,
+     104.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_SinglePack_CrimpTop",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "FoilBack",
+     "FoilEdge"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_SinglePack_CrimpBottom",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "FoilBack",
+     "FoilEdge"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 560,
+  "target": [
+   500,
+   1000
+  ],
+  "materialCount": 3,
+  "sizeMm": [
+   70.0,
+   5.2,
+   122.0
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_SleevedBooster",
+  "objects": [
+   {
+    "name": "PokemonTCG_SleevedBooster_Main",
+    "triangles": 200,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardEdge"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     75.6,
+     5.0,
+     136.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 200,
+  "target": [
+   150,
+   800
+  ],
+  "materialCount": 3,
+  "sizeMm": [
+   75.6,
+   5.0,
+   136.0
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_BlisterPack",
+  "objects": [
+   {
+    "name": "PokemonTCG_BlisterPack_Cardboard",
+    "triangles": 136,
+    "materials": [
+     "BoardFront",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     158.0,
+     0.8,
+     192.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_Pack_01",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     5.2,
+     104.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_Pack_01_CrimpTop",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_Pack_01_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_PromoCard",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.5,
+     0.3,
+     88.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_Coin",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "FoilFront"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     34.0,
+     3.0,
+     34.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_BlisterPack_Blister",
+    "triangles": 288,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 32,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     154.0,
+     9.0,
+     150.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 916,
+  "target": [
+   800,
+   2000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   158.0,
+   10.0,
+   192.0
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_2PackBlister",
+  "objects": [
+   {
+    "name": "PokemonTCG_2PackBlister_Cardboard",
+    "triangles": 136,
+    "materials": [
+     "BoardFront",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     205.0,
+     0.8,
+     232.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_01",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     77.1,
+     5.2,
+     108.6
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_01_CrimpTop",
+    "triangles": 90,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 4,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     70.5,
+     0.4,
+     13.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_01_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.5,
+     0.4,
+     13.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_02",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     77.1,
+     5.2,
+     108.6
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_02_CrimpTop",
+    "triangles": 89,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 3,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     70.5,
+     0.4,
+     13.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Pack_02_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.5,
+     0.4,
+     13.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_PromoCard",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.5,
+     0.3,
+     88.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Coin",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "FoilFront"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     40.0,
+     3.0,
+     40.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_2PackBlister_Blister",
+    "triangles": 288,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 32,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     201.0,
+     14.0,
+     174.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 1215,
+  "target": [
+   700,
+   1500
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   205.0,
+   15.0,
+   232.0
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_3PackBlister",
+  "objects": [
+   {
+    "name": "PokemonTCG_3PackBlister_Cardboard",
+    "triangles": 136,
+    "materials": [
+     "BoardFront",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     200.0,
+     0.8,
+     296.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_01",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     80.5,
+     5.2,
+     110.7
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_01_CrimpTop",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.6,
+     0.4,
+     16.3
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_01_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.6,
+     0.4,
+     16.3
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_02",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     80.5,
+     5.2,
+     110.7
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_02_CrimpTop",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.6,
+     0.4,
+     16.3
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_02_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.6,
+     0.4,
+     16.3
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_03",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     5.2,
+     104.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_03_CrimpTop",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Pack_03_CrimpBottom",
+    "triangles": 88,
+    "materials": [
+     "FoilFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     70.0,
+     0.4,
+     9.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_PromoCard",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.5,
+     0.3,
+     88.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Coin",
+    "triangles": 120,
+    "materials": [
+     "FoilFront",
+     "FoilFront"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     42.0,
+     3.0,
+     42.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Blister",
+    "triangles": 288,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 32,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     194.0,
+     14.0,
+     150.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_3PackBlister_Blister_02",
+    "triangles": 288,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 32,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     194.0,
+     8.0,
+     112.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 1796,
+  "target": [
+   1000,
+   3000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   200.0,
+   15.0,
+   296.0
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_BoosterBundle",
+  "objects": [
+   {
+    "name": "PokemonTCG_BoosterBundle_Body",
+    "triangles": 188,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     150.0,
+     78.0,
+     178.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 188,
+  "target": [
+   700,
+   1500
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   150.0,
+   78.0,
+   178.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_ETB",
+  "objects": [
+   {
+    "name": "PokemonTCG_ETB_Body",
+    "triangles": 108,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     206.8,
+     86.8,
+     179.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_ETB_Lid",
+    "triangles": 116,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     210.0,
+     90.0,
+     171.1
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 224,
+  "target": [
+   1000,
+   2500
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   210.0,
+   90.0,
+   183.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_PokemonCenterETB",
+  "objects": [
+   {
+    "name": "PokemonTCG_PokemonCenterETB_Body",
+    "triangles": 108,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     207.8,
+     88.8,
+     182.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_PokemonCenterETB_Lid",
+    "triangles": 116,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     211.0,
+     92.0,
+     173.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_PokemonCenterETB_Sleeve",
+    "triangles": 28,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     210.8,
+     93.6,
+     175.5
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 252,
+  "target": [
+   1000,
+   2500
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   211.0,
+   93.6,
+   186.8
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_Tin",
+  "objects": [
+   {
+    "name": "PokemonTCG_Tin_Lid",
+    "triangles": 480,
+    "materials": [
+     "TinLid",
+     "TinSide",
+     "TinBottom"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     140.4,
+     23.6,
+     190.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_Tin_Body",
+    "triangles": 240,
+    "materials": [
+     "TinLid",
+     "TinSide",
+     "TinBottom"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     139.0,
+     74.1,
+     189.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 720,
+  "target": [
+   500,
+   1500
+  ],
+  "materialCount": 3,
+  "sizeMm": [
+   140.4,
+   76.6,
+   190.4
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_MiniTin",
+  "objects": [
+   {
+    "name": "PokemonTCG_MiniTin_Lid",
+    "triangles": 384,
+    "materials": [
+     "TinLid",
+     "TinSide",
+     "TinBottom"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     64.4,
+     9.8,
+     101.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_MiniTin_Body",
+    "triangles": 192,
+    "materials": [
+     "TinLid",
+     "TinSide",
+     "TinBottom"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.0,
+     21.1,
+     100.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 576,
+  "target": [
+   400,
+   1000
+  ],
+  "materialCount": 3,
+  "sizeMm": [
+   64.4,
+   22.8,
+   101.4
+  ],
+  "underTarget": false
+ },
+ {
+  "product": "PokemonTCG_CollectionBox",
+  "objects": [
+   {
+    "name": "PokemonTCG_CollectionBox_Body",
+    "triangles": 124,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     235.0,
+     58.0,
+     172.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_CollectionBox_Window",
+    "triangles": 2,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 4,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     110.4,
+     0.0,
+     130.7
+    ]
+   },
+   {
+    "name": "PokemonTCG_CollectionBox_CardStack_01",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     66.3,
+     0.3,
+     90.8
+    ]
+   },
+   {
+    "name": "PokemonTCG_CollectionBox_CardStack_02",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     64.9,
+     0.3,
+     89.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_CollectionBox_PromoCard",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     67.7,
+     0.3,
+     91.8
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 354,
+  "target": [
+   1000,
+   3000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   235.0,
+   58.0,
+   172.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_SpecialCollectionBox",
+  "objects": [
+   {
+    "name": "PokemonTCG_SpecialCollectionBox_Body",
+    "triangles": 124,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     258.0,
+     64.0,
+     190.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_SpecialCollectionBox_Window",
+    "triangles": 2,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 4,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     116.1,
+     0.0,
+     152.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_SpecialCollectionBox_PromoCard_01",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     69.1,
+     0.3,
+     92.7
+    ]
+   },
+   {
+    "name": "PokemonTCG_SpecialCollectionBox_PromoCard_02",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     73.1,
+     0.3,
+     95.2
+    ]
+   },
+   {
+    "name": "PokemonTCG_SpecialCollectionBox_Coin",
+    "triangles": 80,
+    "materials": [
+     "BoardFront",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     44.0,
+     3.2,
+     44.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 358,
+  "target": [
+   1000,
+   3000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   258.0,
+   64.0,
+   190.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_PremiumCollectionBox",
+  "objects": [
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_Body",
+    "triangles": 124,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     292.0,
+     76.0,
+     216.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_Window",
+    "triangles": 2,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 4,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     163.5,
+     0.0,
+     181.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_PromoCard_01",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     67.7,
+     0.3,
+     91.8
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_PromoCard_02",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     71.8,
+     0.3,
+     94.4
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_PromoCard_03",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     75.6,
+     0.3,
+     96.7
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_Coin",
+    "triangles": 80,
+    "materials": [
+     "BoardFront",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     48.0,
+     3.2,
+     48.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_PremiumCollectionBox_Accessory_01",
+    "triangles": 80,
+    "materials": [
+     "BoardFront",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     32.0,
+     3.2,
+     32.0
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 514,
+  "target": [
+   2000,
+   5000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   292.0,
+   76.0,
+   216.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_PosterCollection",
+  "objects": [
+   {
+    "name": "PokemonTCG_PosterCollection_Body",
+    "triangles": 124,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     300.0,
+     36.0,
+     225.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_PosterCollection_Window",
+    "triangles": 2,
+    "materials": [
+     "Plastic"
+    ],
+    "nonManifoldEdges": 4,
+    "openShell": true,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": null,
+    "uvInRange": true,
+    "sizeMm": [
+     117.0,
+     0.0,
+     117.0
+    ]
+   },
+   {
+    "name": "PokemonTCG_PosterCollection_PromoCard_01",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     67.7,
+     0.3,
+     91.8
+    ]
+   },
+   {
+    "name": "PokemonTCG_PosterCollection_PromoCard_02",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     63.5,
+     0.3,
+     88.9
+    ]
+   },
+   {
+    "name": "PokemonTCG_PosterCollection_PromoCard_03",
+    "triangles": 76,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardBack"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     67.7,
+     0.3,
+     91.8
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 354,
+  "target": [
+   1000,
+   3000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   300.0,
+   36.0,
+   225.0
+  ],
+  "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_LargePremiumBox",
+  "objects": [
+   {
+    "name": "PokemonTCG_LargePremiumBox_Body",
+    "triangles": 108,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     376.8,
+     101.8,
+     299.5
+    ]
+   },
+   {
+    "name": "PokemonTCG_LargePremiumBox_Lid",
+    "triangles": 116,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     380.0,
+     105.0,
+     286.7
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 224,
+  "target": [
+   2000,
+   5000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   380.0,
+   105.0,
+   305.0
+  ],
+  "underTarget": true
+ }
+]
