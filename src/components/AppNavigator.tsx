@@ -14,6 +14,10 @@ export function AppNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 280,
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >

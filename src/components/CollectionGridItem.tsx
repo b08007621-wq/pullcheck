@@ -8,6 +8,7 @@ import type { CollectionItem } from '@/types/collection';
 import { itemPrice, itemTitle } from '@/utils/collectionValue';
 import { formatPrice } from '@/utils/price';
 
+import { FadeInView } from './FadeInView';
 import { PressableScale } from './PressableScale';
 import { ProductImage } from './ProductImage';
 
@@ -25,35 +26,37 @@ function CollectionGridItemView({ item, width, onPress }: Props) {
   const imageHeight = item.kind === 'card' ? width / CARD_RATIO : width;
 
   return (
-    <PressableScale
-      onPress={() => onPress(item)}
-      accessibilityRole="button"
-      accessibilityLabel={itemTitle(item)}
-      style={[styles.tile, { width }]}
-    >
-      <View style={{ width, height: imageHeight }}>
-        {item.kind === 'card' ? (
-          <Image
-            source={item.card.images.small}
-            style={styles.image}
-            contentFit="contain"
-            recyclingKey={item.key}
-            transition={150}
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <ProductImage product={item.product} size={320} style={styles.image} transition={150} />
-        )}
-        {item.quantity > 1 ? (
-          <View style={styles.count}>
-            <Text style={styles.countText}>{`×${item.quantity}`}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text style={styles.price} numberOfLines={1}>
-        {price ? formatPrice(price) : '—'}
-      </Text>
-    </PressableScale>
+    <FadeInView>
+      <PressableScale
+        onPress={() => onPress(item)}
+        accessibilityRole="button"
+        accessibilityLabel={itemTitle(item)}
+        style={[styles.tile, { width }]}
+      >
+        <View style={{ width, height: imageHeight }}>
+          {item.kind === 'card' ? (
+            <Image
+              source={item.card.images.small}
+              style={styles.image}
+              contentFit="contain"
+              recyclingKey={item.key}
+              transition={150}
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <ProductImage product={item.product} size={320} style={styles.image} transition={150} />
+          )}
+          {item.quantity > 1 ? (
+            <View style={styles.count}>
+              <Text style={styles.countText}>{`×${item.quantity}`}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.price} numberOfLines={1}>
+          {price ? formatPrice(price) : '—'}
+        </Text>
+      </PressableScale>
+    </FadeInView>
   );
 }
 
