@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -12,6 +11,7 @@ import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
 import { MsrpCompare } from './MsrpCompare';
 import { OwnedBadge } from './OwnedBadge';
 import { PressableScale } from './PressableScale';
+import { ProductImage } from './ProductImage';
 import { PriceTag } from './PriceTag';
 
 type Props = {
@@ -32,14 +32,7 @@ function SealedListItemView({ product, ownedQuantity, onPress }: Props) {
       style={styles.row}
     >
       <View style={styles.imageWrap}>
-        <Image
-          source={product.imageUrl}
-          style={styles.image}
-          contentFit="contain"
-          transition={150}
-          recyclingKey={String(product.productId)}
-          accessibilityIgnoresInvertColors
-        />
+        <ProductImage product={product} size={240} style={styles.image} transition={150} />
       </View>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={2}>
@@ -77,9 +70,8 @@ function createStyles(theme: AppTheme) {
       width: 72,
       height: 72,
       borderRadius: radius.md,
-      backgroundColor: '#FFFFFF',
       overflow: 'hidden',
-      padding: 4,
+      padding: 2,
     },
     image: {
       flex: 1,
