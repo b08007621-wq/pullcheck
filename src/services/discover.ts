@@ -3,6 +3,7 @@ import type { SetInfo } from '@/types/set';
 import { getMarketPrice } from '@/utils/price';
 
 import { enrichCardPrices } from './cardPrices';
+import { extraSets } from './extraCards';
 import { getSetCards } from './pokemonTcg';
 import { compareSnapshots, dayStamp, recordSnapshot } from './priceSnapshots';
 import { loadSets } from './sets';
@@ -40,7 +41,7 @@ const RISING_WINDOW_DAYS = 7;
 
 async function pickCandidates(signal?: AbortSignal): Promise<SetInfo[]> {
   const today = dayStamp();
-  return (await loadSets(signal))
+  return [...(await loadSets(signal)), ...extraSets()]
     .filter((set) => set.total >= MIN_SET_SIZE && !SKIP_SET.test(set.name) && !SKIP_SERIES.test(set.series))
     .filter((set) => set.releaseDate.replace(/\//g, '-') <= today)
     .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate))
