@@ -83,7 +83,7 @@ export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {
     pricedSetNames: pricedNames,
     chase: [...priced].sort((first, second) => second.price - first.price).slice(0, LIST_SIZE),
     sleepers: findSleepers(priced),
-    rising: comparison ? findRising(pricedAll, comparison.changes) : [],
+    rising: findRising(pricedAll, comparison?.changes ?? new Map()),
     risingSince: comparison?.from ?? null,
     trackedDays: Object.keys(store).length,
   };
@@ -111,10 +111,18 @@ function findSleepers(priced: DiscoverPick[]): DiscoverPick[] {
   return sleepers.sort((first, second) => (first.change ?? 0) - (second.change ?? 0)).slice(0, LIST_SIZE);
 }
 
+function marketMomentum(card: Card): number | undefined {
+  const prices = card.cardmarket?.prices;
+  const recent = prices?.avg1 ?? prices?.trendPrice;
+  const base = prices?.avg7 ?? prices?.avg30;
+  if (!recent || !base || base <= 0) return undefined;
+  return (recent - base) / base;
+}
+
 function findRising(priced: DiscoverPick[], changes: Map<string, number>): DiscoverPick[] {
   return priced
     .flatMap((pick) => {
-      const change = changes.get(pick.card.id);
+      const change = changes.get(pick.card.id) ?? marketMomentum(pick.card);
       return change !== undefined && change >= RISING_MIN_CHANGE && pick.price >= RISING_FLOOR ? [{ ...pick, change }] : [];
     })
     .sort((first, second) => (second.change ?? 0) - (first.change ?? 0))

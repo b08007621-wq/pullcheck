@@ -91,7 +91,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
 
           <DiscoverSection
             title="Rising"
-            subtitle={since ? `Climbing the most since ${formatShortDate(since)}` : undefined}
+            subtitle={since ? `Climbing the most since ${formatShortDate(since)}` : 'Climbing the most this week'}
             scroll={discover.rising.length > 0}
           >
             {discover.rising.length > 0 ? (
@@ -100,9 +100,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
               ))
             ) : (
               <Text style={styles.note}>
-                {discover.trackedDays <= 1
-                  ? 'Price tracking started today. Cards climbing in the newest sets show up here from tomorrow.'
-                  : 'Nothing has climbed more than 8% this week. Quiet market.'}
+                Nothing has climbed more than 8% this week. Quiet market.
               </Text>
             )}
           </DiscoverSection>
