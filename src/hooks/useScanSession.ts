@@ -1,7 +1,7 @@
 import type { CameraView } from 'expo-camera';
 import { useCallback, useState } from 'react';
 
-import { pickLibraryImage, prepareScanImage } from '@/services/scanImage';
+import { pickLibraryImage, type PreparedImage, prepareScanImage } from '@/services/scanImage';
 import type { Rect, ScanPhase, ScanPhoto, Size } from '@/types/scan';
 import { frameToPhotoCrop } from '@/utils/scanFrame';
 
@@ -33,25 +33,36 @@ export function useScanSession() {
     }
   }, []);
 
-  const pickFromLibrary = useCallback(async () => {
+  const pickPhoto = useCallback(async () => {
     setError(null);
     try {
       const picked = await pickLibraryImage();
-      if (!picked) return;
+      if (!picked) return null;
       setPhase('processing');
       const prepared = await prepareScanImage(picked, null);
-      setPhoto({
-        ...prepared,
-        source: 'library',
-        capturedAt: new Date().toISOString(),
-        cropped: false,
-      });
-      setPhase('preview');
+      setPhase('camera');
+      return prepared;
     } catch {
       setError(LIBRARY_ERROR);
       setPhase('camera');
+      return null;
     }
   }, []);
+
+  const showPhoto = useCallback((prepared: PreparedImage) => {
+    setPhoto({
+      ...prepared,
+      source: 'library',
+      capturedAt: new Date().toISOString(),
+      cropped: false,
+    });
+    setPhase('preview');
+  }, []);
+
+  const pickFromLibrary = useCallback(async () => {
+    const prepared = await pickPhoto();
+    if (prepared) showPhoto(prepared);
+  }, [pickPhoto, showPhoto]);
 
   const retake = useCallback(() => {
     setPhoto(null);
@@ -61,5 +72,5 @@ export function useScanSession() {
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { phase, photo, error, capture, pickFromLibrary, retake, clearError };
+  return { phase, photo, error, capture, pickPhoto, showPhoto, pickFromLibrary, retake, clearError };
 }

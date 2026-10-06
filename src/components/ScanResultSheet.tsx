@@ -194,8 +194,8 @@ export function ScanResultSheet({ result, ripping, bottomInset, onClose, onOpenC
             <View style={styles.pickHeader}>
               <Text style={[styles.pickTitle, { color: theme.colors.textMuted }]}>
                 {count > 1
-                  ? `${result.printed} matches ${count} cards · swipe to pick`
-                  : `Best guess for ${result.printed} · check it’s yours`}
+                  ? `${result.printed ? `${result.printed} matches ${count} cards` : `${count} possible cards`} · swipe to pick`
+                  : `Best guess${result.printed ? ` for ${result.printed}` : ''} · check it’s yours`}
               </Text>
               <PagerDots count={count} index={index} />
             </View>

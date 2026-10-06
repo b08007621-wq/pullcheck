@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect, useRef } from 'react';
 
-import { createOcrBridge, type OcrState } from '@/services/ocrBridge';
+import { createOcrBridge, type OcrState, READER_LOADING } from '@/services/ocrBridge';
 import { OCR_PAGE_HTML } from '@/services/ocrPage';
 
 type Props = {
@@ -26,11 +26,11 @@ export function OcrHost({ onState }: Props) {
     return () => {
       window.removeEventListener('message', listener);
       bridge.dispose();
-      onState({ status: 'loading', handle: null });
+      onState(READER_LOADING);
     };
   }, [onState]);
 
-  return <iframe ref={frameRef} srcDoc={OCR_PAGE_HTML} title="Card text reader" aria-hidden tabIndex={-1} style={HIDDEN} />;
+  return <iframe ref={frameRef} srcDoc={OCR_PAGE_HTML} title="Card reader" aria-hidden tabIndex={-1} style={HIDDEN} />;
 }
 
 const HIDDEN: CSSProperties = {

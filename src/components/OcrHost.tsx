@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { createOcrBridge, type OcrBridge, type OcrState } from '@/services/ocrBridge';
+import { createOcrBridge, type OcrBridge, type OcrState, READER_FAILED, READER_LOADING } from '@/services/ocrBridge';
 import { OCR_BASE_URL, OCR_PAGE_HTML } from '@/services/ocrPage';
 
 type Props = {
@@ -20,7 +20,7 @@ export function OcrHost({ onState }: Props) {
     return () => {
       bridge.dispose();
       bridgeRef.current = null;
-      onState({ status: 'loading', handle: null });
+      onState(READER_LOADING);
     };
   }, [onState, generation]);
 
@@ -37,7 +37,7 @@ export function OcrHost({ onState }: Props) {
         domStorageEnabled
         cacheEnabled
         onMessage={(event) => bridgeRef.current?.receive(event.nativeEvent.data)}
-        onError={(event) => onState({ status: 'failed', handle: null, message: event.nativeEvent.description })}
+        onError={() => onState(READER_FAILED)}
         onContentProcessDidTerminate={restart}
         onRenderProcessGone={restart}
         style={styles.web}

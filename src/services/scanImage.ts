@@ -9,14 +9,14 @@ import { AUTO_CROP_MARGIN, frameToPhotoCrop } from '@/utils/scanFrame';
 
 const MAX_LONG_EDGE = 1400;
 const JPEG_QUALITY = 0.85;
-const FRAME_WIDTH = 1600;
+const FRAME_WIDTH = 1280;
 const FRAME_QUALITY = 0.9;
 
 type SourceImage = Size & {
   uri: string;
 };
 
-type PreparedImage = SourceImage & {
+export type PreparedImage = SourceImage & {
   base64: string | null;
 };
 

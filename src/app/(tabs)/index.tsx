@@ -19,6 +19,7 @@ import { ScanHeader, SCAN_HEADER_HEIGHT } from '@/components/ScanHeader';
 import { ScannerControls, SCANNER_CONTROLS_HEIGHT } from '@/components/ScannerControls';
 import { ScannerOverlay } from '@/components/ScannerOverlay';
 import { ScanPreview } from '@/components/ScanPreview';
+import { ScanGuess } from '@/components/ScanGuess';
 import { ScanResultSheet } from '@/components/ScanResultSheet';
 import { Screen } from '@/components/Screen';
 import { type AutoScanPhase, useAutoScan } from '@/hooks/useAutoScan';
@@ -27,7 +28,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useRip } from '@/hooks/useRip';
 import { useScanSession } from '@/hooks/useScanSession';
 import { useSettings } from '@/hooks/useSettings';
-import type { OcrState } from '@/services/ocrBridge';
+import { type OcrState, READER_LOADING, type ReaderStatus } from '@/services/ocrBridge';
 import type { Card } from '@/types/card';
 import type { IconName } from '@/types/icon';
 import type { Size } from '@/types/scan';
@@ -60,7 +61,7 @@ export default function ScanScreen() {
   const [cameraKey, setCameraKey] = useState(0);
   const [setupOpen, setSetupOpen] = useState(false);
   const [holding, setHolding] = useState(false);
-  const [ocr, setOcr] = useState<OcrState>({ status: 'loading', handle: null });
+  const [reader, setReader] = useState<OcrState>(READER_LOADING);
   const { settings, updateSettings } = useSettings();
   const autoOn = settings.autoScan;
   const { rip, start: startRip, addPull } = useRip();
@@ -132,7 +133,7 @@ export default function ScanScreen() {
     camera: cameraRef,
     frame,
     view,
-    ocr: ocr.handle,
+    reader,
     enabled:
       autoOn && focused && cameraReady && !mountError && !holding && !setupOpen && session.phase === 'camera',
   });
@@ -150,7 +151,23 @@ export default function ScanScreen() {
     setHolding(true);
     try {
       await auto.whenIdle();
-      await session.capture(camera, frame, view);
+      const found = auto.ready ? await auto.scanCamera() : false;
+      if (!found) await session.capture(camera, frame, view);
+    } finally {
+      setHolding(false);
+    }
+  };
+
+  const pickLibrary = async () => {
+    if (holding) return;
+    const picked = await session.pickPhoto();
+    if (!picked) return;
+    setHolding(true);
+    try {
+      await auto.whenIdle();
+      const found =
+        auto.ready && picked.base64 ? await auto.scanSource(`data:image/jpeg;base64,${picked.base64}`) : false;
+      if (!found) session.showPhoto(picked);
     } finally {
       setHolding(false);
     }
@@ -241,9 +258,9 @@ export default function ScanScreen() {
     );
   }
 
-  const hint = resolveHint(error ?? mountError, session.phase, cameraReady, ripping, {
+  const hint = resolveHint(error ?? mountError, holding ? 'processing' : session.phase, cameraReady, ripping, {
     on: autoOn,
-    status: ocr.status,
+    status: readerStatus(reader),
     phase: auto.phase,
   });
 
@@ -284,8 +301,7 @@ export default function ScanScreen() {
         <ScannerOverlay
           frame={frame}
           view={view}
-          locked={session.phase === 'processing' || (autoOn && auto.phase === 'reading')}
-          scanning={cameraReady && session.phase === 'camera'}
+          locked={session.phase === 'processing' || auto.guess !== null || (autoOn && auto.phase === 'reading')}
         />
       ) : null}
 
@@ -324,15 +340,24 @@ export default function ScanScreen() {
 
       <ScannerControls
         onShutter={takePhoto}
-        onLibrary={session.pickFromLibrary}
+        onLibrary={pickLibrary}
         onTorch={toggleTorch}
         torchOn={torchOn}
-        busy={session.phase === 'processing'}
+        busy={session.phase === 'processing' || holding}
         cameraReady={cameraReady && !mountError}
         bottomInset={tabBarHeight}
+        hidden={auto.guess !== null}
       />
 
-      {autoOn ? <OcrHost onState={setOcr} /> : null}
+      <OcrHost onState={setReader} />
+      <ScanGuess
+        guess={auto.guess}
+        ripping={ripping}
+        bottom={tabBarHeight + spacing.md}
+        onOpen={auto.openGuess}
+        onAdded={auto.settleGuess}
+        onAddPull={(card) => addPull(card, 'unknown')}
+      />
       {auto.result ? (
         <ScanResultSheet
           key={auto.result.id}
@@ -355,9 +380,14 @@ export default function ScanScreen() {
 
 type AutoHint = {
   on: boolean;
-  status: OcrState['status'];
+  status: ReaderStatus;
   phase: AutoScanPhase;
 };
+
+function readerStatus(reader: OcrState): ReaderStatus {
+  if (reader.vision === 'ready' || reader.text === 'ready') return 'ready';
+  return reader.vision === 'failed' && reader.text === 'failed' ? 'failed' : 'loading';
+}
 
 function resolveHint(
   error: string | null,

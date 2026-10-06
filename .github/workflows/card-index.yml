@@ -1,0 +1,50 @@
+name: Card index
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
+  push:
+    branches: [main]
+    paths:
+      - src/services/cardVisionSource.ts
+      - scripts/card-index/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: card-index
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install image decoder
+        run: npm install --prefix scripts/card-index --no-save --no-package-lock jpeg-js@0.4.4
+      - name: Load existing index
+        run: |
+          mkdir -p data
+          if git ls-remote --exit-code origin refs/heads/card-index >/dev/null; then
+            git fetch --depth 1 origin card-index
+            git --work-tree=data checkout FETCH_HEAD -- .
+            git reset -q
+          fi
+      - name: Describe new cards
+        run: node scripts/card-index/build.mjs data
+      - name: Publish
+        run: |
+          cd data
+          git init -q -b card-index
+          git config user.name "pullcheck-bot"
+          git config user.email "pullcheck-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Card index $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" card-index
+          du -sh .

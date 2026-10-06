@@ -1,8 +1,8 @@
 # Scanner architecture
 
-Auto scan reads the collector number off a card held in the Scan frame, matches it against TCGdex, and opens a swipeable sheet with the card, its TCGplayer market price and one-tap Add / Add to binder. Everything except the TCGdex lookup runs on the phone, and none of it costs money.
+Auto scan recognizes a card held in the Scan frame by its picture, the way the big scanner apps do, and shows a small "Is this it?" card above the tab bar while you hold it there. The card's price shows right away, and **+** adds it in one tap. Tap the preview for the full sheet (versions, languages, binders). Move the card away and the preview fades 2 seconds after the scanner last saw it. Everything except the TCGdex card lookup runs on the phone, and none of it costs money.
 
-The older shutter flow (photo → `/api/identify` vision model) is untouched and still works as the manual fallback.
+Reading the printed number (OCR) is now the tie-breaker between printings that share the same art, plus the fallback for cards missing from the picture index. The shutter and Photos buttons use the same on-phone matcher first. The old `/api/identify` vision server is only the last resort when the phone finds nothing.
 
 ## Constraint: Expo Go
 
@@ -16,6 +16,37 @@ PullCheck is tested only in Expo Go on an iPhone, with no Mac and no custom dev 
 | On-device OCR | `tesseract.js` 7 (WASM) inside a hidden `react-native-webview` | Hermes can't run WASM, WKWebView can. `react-native-webview` 13.16.1 is bundled in Expo Go SDK 57 |
 
 If the app ever moves to a dev build, swap `OcrHost` for an ML Kit / Vision frame processor. The `OcrHandle` interface (`load(image)`, `read(region, width)`) stays the same.
+
+## Picture matching (`src/services/cardVisionSource.ts`)
+
+One plain-JS module, `PullVision`, shipped as a string. The phone runs it inside the hidden WebView, and the nightly index builder runs the exact same code in Node, so the fingerprints always agree.
+
+1. **Find the card.** Shrink the frame to about 240 px wide, then take color Sobel gradients. Score straight-line candidates for each side (±8° tilt), keeping up to 6 peaks per side. Pick the 4-line combination with the best edge strength × card aspect (63:88) × size near the on-screen guide. Each chosen line is then refit to sub-pixel accuracy with trimmed least squares. This finds the card's outer edge even when a silver border sits on a white table.
+2. **Flatten it.** Perspective-warp to 64×88 with 4×4 supersampling.
+3. **Fingerprint.** YCbCr DCT coefficients for the whole card (8×8 luma + 4×4 Cb/Cr) and the art box (same again), with each block normalized and weighted. That's 190 numbers, stored as int8.
+4. **Match.** Dot product against the whole index (about 15 ms for 23.5k cards). The query is described 3 ways, as found, 2.5% tighter and 3.5% looser, because TCGdex scans of some eras (HGSS, SM) are cropped slightly inside the card. Each card keeps its best score.
+5. **Confidence** (`src/services/visionMatch.ts`). "Same picture" = cards whose fingerprints have cosine ≥ 0.93 with the best match (reprints, EN/JA prints of the same art). `gap` = best score minus the best score of a *different* picture.
+   - **sure**: score ≥ 0.75 and gap ≥ 0.05, or score ≥ 0.70 and gap ≥ 0.02 with the same top card two frames in a row → show "Is this it?"
+   - **maybe** (score ≥ 0.68): try the number reader.
+   - **none**: empty frame, skip OCR entirely.
+   - If the "same picture" group has more than one card, read the number to choose the printing.
+
+Measured on 400 synthetic phone shots made from the 600 px scans (random tilt, perspective, blur up to σ 1.8 px, glare, holo rainbow, sleeve haze, fingers, wood/white/black tables, JPEG), matched against the full 23,545-card index:
+
+| | Right on first try | Right or same-art reprint | In top 5 |
+| --- | --- | --- | --- |
+| Normal | 91% | 98.3% | 99% |
+| Harsh (blur σ 2.6, glare 70%, cards held small) | 85% | 90% | 92% |
+
+With the "sure" thresholds, 90% of correct matches show immediately. Over 1,800 trials, 0 wrong matches and 0 of 200 empty frames triggered, while 8% of cards missing from the index got a confident wrong guess. That last case is why the UI asks "Is this it?" instead of adding the card automatically.
+
+### Index (`scripts/card-index/build.mjs`, `.github/workflows/card-index.yml`)
+
+- Every TCGdex card with an image: about 19.7k English (TCG Pocket excluded) and 3.9k Japanese. Fingerprints come from each card's `low.jpg`.
+- Published to the orphan branch `card-index` as `v<CARD_VISION_VERSION>/meta.json` (ids like `en:sv01-045`) plus `vectors.bin` (int8, N × 190, about 4.5 MB). It's served by jsDelivr: `cdn.jsdelivr.net/gh/b08007621-wq/pullcheck@card-index/v1/`.
+- The workflow runs daily at 09:17 UTC and on pushes that touch the matcher. Each run reuses existing vectors and only downloads new cards.
+- **Changing the fingerprint math means bumping `CARD_VISION_VERSION`**, so old app builds keep reading the old folder.
+- The WebView caches the index in IndexedDB and refreshes it in the background after 3 days.
 
 ## Camera → OCR bridge
 
@@ -38,7 +69,15 @@ OcrHost (hidden 2×2 WebView)  ◀─injectJavaScript─  ocrBridge.ts   (reques
 
 ## Frame loop
 
-`src/hooks/useAutoScan.ts` runs only while the Scan tab is focused, the camera is ready, Auto is on, no sheet or setup is open, and the manual shutter isn't in use. It runs one step at a time:
+`src/hooks/useAutoScan.ts` runs only while the Scan tab is focused, the camera is ready, Auto is on, no sheet or setup is open, and the manual shutter isn't in use. Each step captures one frame (1280 px wide) and runs the picture match first:
+
+- **sure** → `guess` (the "Is this it?" preview). The same card in later frames just refreshes `seenAt`, and the preview hides `GUESS_HIDE_MS` (2 s) after the last sighting. A blurry frame whose top match is still the shown card counts as a sighting.
+- **none** → nothing, no OCR.
+- **maybe**, or the index isn't loaded yet → the number-reading path below.
+
+After **+** or after the sheet closes, that card is "handled" and won't prompt again until the frame has been empty twice.
+
+Number-reading path:
 
 1. Capture and load one frame.
 2. OCR the bottom-left strip (modern cards). If no number is found, OCR the bottom-right strip (WotC to XY era). Whichever side works becomes sticky.
@@ -83,6 +122,8 @@ TCGdex `pricing.tcgplayer` (updated daily) is converted to the app's `tcgplayer.
 
 ## Collection integration
 
+`src/components/ScanGuess.tsx` is the "Is this it?" preview: thumbnail, name, set and number, today's price, and a round **+**. It fades and springs in over the shutter row, which fades out underneath it (`ScannerControls hidden`). **+** adds the default version, NM, or adds to the pull in Pull mode, where confirmed matches add themselves after 1.1 s. Tapping the preview opens the full sheet. The old moving scan line is gone, and the frame corners lock while a guess is showing.
+
 `src/components/ScanResultSheet.tsx`: a modal sheet that springs up from the bottom.
 
 - Swipe down (more than 110 px or a fast flick) or tap outside to dismiss. Swipe sideways to move between candidates (`PagerDots`).
@@ -99,7 +140,11 @@ Auto is a persisted setting (`settings.autoScan`, default on), toggled with the 
 | File | Role |
 | --- | --- |
 | `src/app/(tabs)/index.tsx` | Scan screen: Auto pill, hints, `OcrHost`, `ScanResultSheet` |
-| `src/hooks/useAutoScan.ts` | Frame loop, bands, consensus, dedupe |
+| `src/hooks/useAutoScan.ts` | Frame loop, picture-first recognition, preview timing, shutter/Photos recognition |
+| `src/services/cardVisionSource.ts` | Card finder + fingerprint + search (shared by the phone and the index builder) |
+| `src/services/visionMatch.ts` | Confidence rules, same-art printings, number tie-break |
+| `scripts/card-index/build.mjs` | Builds/updates the picture index |
+| `src/components/ScanGuess.tsx` | "Is this it?" preview |
 | `src/hooks/useScanCard.ts` | Candidate → app `Card`, localized names |
 | `src/services/ocrPage.ts`, `ocrBridge.ts` | WebView OCR page and message bridge |
 | `src/components/OcrHost.tsx`, `OcrHost.web.tsx` | Hidden OCR host (WebView / iframe) |
@@ -110,6 +155,16 @@ Auto is a persisted setting (`settings.autoScan`, default on), toggled with the 
 | `src/components/ScanResultSheet.tsx`, `ScanResultBody.tsx`, `ScanResultActions.tsx`, `BinderChoice.tsx`, `LanguagePills.tsx`, `PagerDots.tsx`, `AutoScanButton.tsx` | UI |
 
 ## Verified so far, and what isn't
+
+Picture matching, verified Oct 6 2026 on the web build with a fake camera (headless Edge + y4m):
+- Gyarados ex showed "Is this it?" within a few seconds of load, including the 4.5 MB index download from jsDelivr, and faded about 3 s after the card left.
+- Base Set Charizard was next.
+- **+** stored `card:sv1-45|holofoil|NM`.
+- Shutter with Auto off recognized a blurred, tilted Celebi V in 0.4 s with zero `/api/identify` calls.
+
+Still not verified on an iPhone.
+
+Earlier OCR-only checks:
 
 Verified on Windows with the real web build in headless Edge, using a fake camera stream of card scans on a desk:
 

@@ -1,4 +1,5 @@
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
 
 import { spacing } from '@/theme';
 
@@ -13,6 +14,7 @@ type Props = {
   busy: boolean;
   cameraReady: boolean;
   bottomInset: number;
+  hidden?: boolean;
 };
 
 export const SCANNER_CONTROLS_HEIGHT = 128;
@@ -25,9 +27,19 @@ export function ScannerControls({
   busy,
   cameraReady,
   bottomInset,
+  hidden = false,
 }: Props) {
+  const [visibility] = useState(() => new Animated.Value(hidden ? 0 : 1));
+
+  useEffect(() => {
+    Animated.timing(visibility, { toValue: hidden ? 0 : 1, duration: 220, useNativeDriver: true }).start();
+  }, [hidden, visibility]);
+
   return (
-    <View style={[styles.bar, { bottom: bottomInset + spacing.md }]}>
+    <Animated.View
+      pointerEvents={hidden ? 'none' : 'box-none'}
+      style={[styles.bar, { bottom: bottomInset + spacing.md, opacity: visibility }]}
+    >
       <CameraToolButton icon="images" label="Photos" onPress={onLibrary} disabled={busy} />
       <ShutterButton onPress={onShutter} busy={busy} disabled={!cameraReady} />
       <CameraToolButton
@@ -37,7 +49,7 @@ export function ScannerControls({
         active={torchOn}
         disabled={!cameraReady}
       />
-    </View>
+    </Animated.View>
   );
 }
 

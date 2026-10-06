@@ -1,5 +1,10 @@
+import { CARD_VISION_JS, CARD_VISION_VERSION } from './cardVisionSource';
+
 const TESSERACT_VERSION = '7.0.0';
 const CDN = 'https://cdn.jsdelivr.net/npm';
+const INDEX_URL = `https://cdn.jsdelivr.net/gh/b08007621-wq/pullcheck@card-index/v${CARD_VISION_VERSION}/`;
+const INDEX_REFRESH_MS = 3 * 24 * 60 * 60 * 1000;
+const MATCH_RESULTS = 12;
 
 export const OCR_BASE_URL = `${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/`;
 
@@ -9,9 +14,11 @@ export const OCR_PAGE_HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js"></script>
+<script>${CARD_VISION_JS}</script>
 </head>
 <body style="margin:0;background:transparent">
 <canvas id="pc-canvas" style="display:none"></canvas>
+<canvas id="pc-vision" style="display:none"></canvas>
 <script>
 (function () {
   var send = function (message) {
@@ -23,7 +30,10 @@ export const OCR_PAGE_HTML = `<!doctype html>
     return String((error && error.message) || error || 'unknown');
   };
   var canvas = document.getElementById('pc-canvas');
+  var visionCanvas = document.getElementById('pc-vision');
   var image = null;
+  send({ type: 'boot' });
+
   var ready = window.Tesseract
     ? window.Tesseract.createWorker('eng', 1, {
         workerPath: '${CDN}/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js',
@@ -35,6 +45,68 @@ export const OCR_PAGE_HTML = `<!doctype html>
     : Promise.reject(new Error('Text reader failed to download'));
 
   ready.then(function () { send({ type: 'ready' }); }, function (error) { send({ type: 'failed', message: describe(error) }); });
+
+  var database = function () {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) return reject(new Error('No storage'));
+      var request = indexedDB.open('pullcheck-vision', 1);
+      request.onupgradeneeded = function () { request.result.createObjectStore('files'); };
+      request.onsuccess = function () { resolve(request.result); };
+      request.onerror = function () { reject(request.error); };
+    });
+  };
+  var stored = function (mode, work) {
+    return database().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var request = work(db.transaction('files', mode).objectStore('files'));
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    });
+  };
+  var INDEX_KEY = 'index-v${CARD_VISION_VERSION}';
+  var download = function () {
+    return Promise.all([
+      fetch('${INDEX_URL}meta.json').then(function (response) {
+        if (!response.ok) throw new Error('Card index unavailable');
+        return response.json();
+      }),
+      fetch('${INDEX_URL}vectors.bin').then(function (response) {
+        if (!response.ok) throw new Error('Card index unavailable');
+        return response.arrayBuffer();
+      })
+    ]).then(function (parts) {
+      var entry = { meta: parts[0], vectors: parts[1], savedAt: Date.now() };
+      stored('readwrite', function (store) { return store.put(entry, INDEX_KEY); }).catch(function () {});
+      return entry;
+    });
+  };
+  var usable = function (entry) {
+    return !!(entry && entry.meta && entry.vectors && entry.meta.dims === PullVision.DIMS &&
+      entry.vectors.byteLength === entry.meta.ids.length * entry.meta.dims);
+  };
+  var visionIndex = null;
+  var adopt = function (entry) {
+    visionIndex = { ids: entry.meta.ids, dims: entry.meta.dims, count: entry.meta.ids.length, data: new Int8Array(entry.vectors) };
+  };
+  var indexReady = stored('readonly', function (store) { return store.get(INDEX_KEY); })
+    .catch(function () { return null; })
+    .then(function (cached) {
+      if (!usable(cached)) return download();
+      if (Date.now() - cached.savedAt > ${INDEX_REFRESH_MS}) {
+        download().then(function (fresh) { if (usable(fresh)) adopt(fresh); }, function () {});
+      }
+      return cached;
+    })
+    .then(function (entry) {
+      if (!usable(entry)) throw new Error('Card index is out of date');
+      adopt(entry);
+    });
+
+  indexReady.then(
+    function () { send({ type: 'vision', status: 'ready', count: visionIndex.count }); },
+    function (error) { send({ type: 'vision', status: 'failed', message: describe(error) }); }
+  );
 
   var stretch = function (context, width, height) {
     var pixels = context.getImageData(0, 0, width, height);
@@ -91,6 +163,34 @@ export const OCR_PAGE_HTML = `<!doctype html>
     }).then(function (result) {
       send({ type: 'text', id: id, text: result.data.text || '', confidence: result.data.confidence || 0 });
     }, function (error) {
+      send({ type: 'error', id: id, message: describe(error) });
+    });
+  };
+
+  window.pullcheckMatch = function (id, margin) {
+    indexReady.then(function () {
+      if (!image) throw new Error('No frame loaded');
+      var factor = Math.max(1, Math.floor(image.naturalWidth / 240));
+      var width = Math.max(2, Math.floor(image.naturalWidth / factor));
+      var height = Math.max(2, Math.floor(image.naturalHeight / factor));
+      visionCanvas.width = width;
+      visionCanvas.height = height;
+      var context = visionCanvas.getContext('2d', { willReadFrequently: true });
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(image, 0, 0, width, height);
+      var query = PullVision.describeQuery(context.getImageData(0, 0, width, height), margin);
+      var ranked = PullVision.rank(visionIndex.data, visionIndex.dims, visionIndex.count, query.descriptors, ${MATCH_RESULTS});
+      send({
+        type: 'match',
+        id: id,
+        best: ranked.best,
+        gap: ranked.gap,
+        results: ranked.results.map(function (result) {
+          return { key: visionIndex.ids[result.index], score: result.score, same: result.same };
+        })
+      });
+    }).catch(function (error) {
       send({ type: 'error', id: id, message: describe(error) });
     });
   };
