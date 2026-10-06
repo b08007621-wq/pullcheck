@@ -287,3 +287,9 @@ function todayStamp(): string {
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export async function extraProduct(id: string): Promise<{ groupId: number; productId: number } | null> {
+  const entries = await loadExtraIndex();
+  const entry = entries.find((item) => item.card.id === id);
+  return entry ? { groupId: entry.group.groupId, productId: entry.productId } : null;
+}

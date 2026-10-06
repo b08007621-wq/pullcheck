@@ -3,23 +3,17 @@ import { View } from 'react-native';
 
 import { readJson, STORAGE_KEYS, writeJson } from '@/services/storage';
 import {
-  buildCustomTheme,
   DEFAULT_THEME_ID,
-  isThemeChoice,
   sanitizeCustomTheme,
   type ThemeChoice,
   THEMES,
 } from '@/theme';
 
-import { DEFAULT_SETTINGS, DESIGN_VERSION, type Settings, SettingsContext } from './settingsContext';
+import { savedTheme } from './savedTheme';
+import { DEFAULT_SETTINGS, DESIGN_VERSION, type SavedTheme, type Settings, SettingsContext } from './settingsContext';
 
 type Props = {
   children: ReactNode;
-};
-
-const RETIRED_THEMES: Record<string, ThemeChoice> = {
-  classic: 'cardBack',
-  ember: 'amethyst',
 };
 
 export function SettingsProvider({ children }: Props) {
@@ -41,10 +35,10 @@ export function SettingsProvider({ children }: Props) {
     setSettings((current) => ({ ...current, ...changes }));
   }, []);
 
-  const theme = useMemo(
-    () => (settings.themeId === 'custom' ? buildCustomTheme(settings.custom) : THEMES[settings.themeId]),
-    [settings.themeId, settings.custom],
-  );
+  const theme = useMemo(() => {
+    const saved = settings.savedThemes.find((entry) => `saved:${entry.id}` === settings.themeId);
+    return saved ? savedTheme(saved) : THEMES[DEFAULT_THEME_ID];
+  }, [settings.themeId, settings.savedThemes]);
 
   const value = useMemo(() => ({ settings, theme, updateSettings }), [settings, theme, updateSettings]);
 
@@ -56,14 +50,32 @@ export function SettingsProvider({ children }: Props) {
 }
 
 function sanitize(stored: Partial<Settings>): Settings {
-  const retired = typeof stored.themeId === 'string' ? RETIRED_THEMES[stored.themeId] : undefined;
   const redesigned = typeof stored.design !== 'number' || stored.design < DESIGN_VERSION;
+  const savedThemes: SavedTheme[] = Array.isArray(stored.savedThemes)
+    ? stored.savedThemes
+        .filter((entry) => entry && typeof entry.id === 'string' && typeof entry.name === 'string')
+        .map((entry) => ({ id: entry.id, name: entry.name.slice(0, 24), custom: sanitizeCustomTheme(entry.custom) }))
+    : [];
+  let themeId: ThemeChoice = DEFAULT_THEME_ID;
+  if (!redesigned && stored.themeId === 'custom') {
+    if (savedThemes.length === 0) {
+      savedThemes.push({ id: 'mine', name: 'My theme', custom: sanitizeCustomTheme(stored.custom) });
+    }
+    themeId = `saved:${savedThemes[0]?.id ?? 'mine'}`;
+  } else if (
+    !redesigned &&
+    typeof stored.themeId === 'string' &&
+    savedThemes.some((entry) => `saved:${entry.id}` === stored.themeId)
+  ) {
+    themeId = stored.themeId as ThemeChoice;
+  }
+  const view = stored.collectionView;
   return {
     design: DESIGN_VERSION,
-    themeId: redesigned
-      ? DEFAULT_THEME_ID
-      : (retired ?? (isThemeChoice(stored.themeId) ? stored.themeId : DEFAULT_SETTINGS.themeId)),
+    themeId,
     custom: sanitizeCustomTheme(stored.custom),
+    savedThemes,
+    collectionView: view === 'grid' || view === 'cover' ? view : 'list',
     motion: typeof stored.motion === 'boolean' ? stored.motion : DEFAULT_SETTINGS.motion,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     sounds: typeof stored.sounds === 'boolean' ? stored.sounds : DEFAULT_SETTINGS.sounds,

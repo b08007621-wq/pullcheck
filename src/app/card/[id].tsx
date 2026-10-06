@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { CardFacts } from '@/components/CardFacts';
 import { CardGameplay } from '@/components/CardGameplay';
@@ -11,6 +11,7 @@ import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { GradedPanel } from '@/components/GradedPanel';
 import { MarketChart } from '@/components/MarketChart';
 import { OtherVersions } from '@/components/OtherVersions';
 import { OwnedPanel } from '@/components/OwnedPanel';
@@ -21,7 +22,9 @@ import { WishPanel } from '@/components/WishPanel';
 import { useCardDetail } from '@/hooks/useCardDetail';
 import { useCollection } from '@/hooks/useCollection';
 import { useJapaneseVersions } from '@/hooks/useCrossLanguage';
+import { useGradedPrices } from '@/hooks/useGradedPrices';
 import { useWishlist } from '@/hooks/useWishlist';
+import { gradedPriceFor } from '@/services/graded';
 import { estimatedPoints } from '@/services/marketHistory';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
 import {
@@ -42,9 +45,19 @@ export default function CardDetailScreen() {
   const { id, entry } = useLocalSearchParams<{ id: string; entry?: string }>();
   const { card, owned, isFresh, error, retry } = useCardDetail(id ?? '');
   const japaneseVersions = useJapaneseVersions(card ?? null);
-  const { items, addCard, setQuantity, remove, setPaid } = useCollection();
+  const { items, addCard, setQuantity, remove, setPaid, setGrading } = useCollection();
+  const graded = useGradedPrices(card ?? null);
   const wishlist = useWishlist();
   const [picked, setPicked] = useState<CardVersion | null>(null);
+
+  useEffect(() => {
+    if (!graded || graded.length === 0) return;
+    for (const item of owned) {
+      if (item.kind !== 'card' || !item.grading || item.grading.value) continue;
+      const value = gradedPriceFor(graded, item.grading.company, item.grading.grade);
+      if (value) setGrading(item.key, { ...item.grading, value });
+    }
+  }, [graded, owned, setGrading]);
 
   if (!card) {
     return (
@@ -145,7 +158,9 @@ export default function CardDetailScreen() {
         usd={marketUsd}
         extra={matching?.history ?? []}
         estimated={version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []}
+        source={{ kind: 'card', card, variant: version.variant ?? null }}
       />
+      <GradedPanel prices={graded} />
       <CardPricePanel card={card} version={version} onVersionChange={setPicked} />
       <OtherVersions language="jp" versions={japaneseVersions} />
       <CardFacts card={card} />

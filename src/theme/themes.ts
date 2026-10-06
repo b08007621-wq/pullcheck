@@ -1,6 +1,6 @@
 export type ThemeId = 'graphite' | 'paper' | 'amethyst' | 'liquidGlass' | 'pokeball' | 'cardBack' | 'midnight';
 
-export type ThemeChoice = ThemeId | 'custom';
+export type ThemeChoice = ThemeId | 'custom' | `saved:${string}`;
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -231,5 +231,8 @@ export const THEME_ORDER: ThemeId[] = ['graphite', 'paper', 'liquidGlass', 'midn
 export const DEFAULT_THEME_ID: ThemeId = 'graphite';
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
-  return value === 'custom' || (typeof value === 'string' && value in THEMES);
+  return (
+    value === 'custom' ||
+    (typeof value === 'string' && (value in THEMES || value.startsWith('saved:')))
+  );
 }

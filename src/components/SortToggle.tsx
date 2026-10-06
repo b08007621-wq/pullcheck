@@ -11,6 +11,7 @@ import { GlassSurface } from './GlassSurface';
 type Props = {
   value: CollectionSort;
   onChange: (value: CollectionSort) => void;
+  compact?: boolean;
 };
 
 const LABEL: Record<CollectionSort, string> = {
@@ -23,7 +24,7 @@ const DESCRIPTION: Record<CollectionSort, string> = {
   recent: 'recently added',
 };
 
-export function SortToggle({ value, onChange }: Props) {
+export function SortToggle({ value, onChange, compact = false }: Props) {
   const theme = useTheme();
   const haptics = useHaptics();
 
@@ -40,7 +41,7 @@ export function SortToggle({ value, onChange }: Props) {
         }}
       >
         <Ionicons name={value === 'value' ? 'trending-up' : 'time-outline'} size={15} color={theme.colors.textMuted} />
-        <Text style={[styles.text, { color: theme.colors.textMuted }]}>{LABEL[value]}</Text>
+        {compact ? null : <Text style={[styles.text, { color: theme.colors.textMuted }]}>{LABEL[value]}</Text>}
       </Pressable>
     </GlassSurface>
   );
