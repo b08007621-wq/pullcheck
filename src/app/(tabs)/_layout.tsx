@@ -22,6 +22,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Collection',
+          tabBarBadge: hits > 0 ? hits : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
           title: 'Scan',
         }}
       />
@@ -29,13 +36,6 @@ export default function TabsLayout() {
         name="search"
         options={{
           title: 'Search',
-        }}
-      />
-      <Tabs.Screen
-        name="collection"
-        options={{
-          title: 'Collection',
-          tabBarBadge: hits > 0 ? hits : undefined,
         }}
       />
     </Tabs>

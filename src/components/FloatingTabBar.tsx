@@ -15,9 +15,9 @@ import { GlassSurface } from './GlassSurface';
 type IconName = keyof typeof Ionicons.glyphMap;
 
 const ICONS: Record<string, { active: IconName; idle: IconName; label: string }> = {
-  index: { active: 'scan', idle: 'scan-outline', label: 'Scan' },
+  index: { active: 'albums', idle: 'albums-outline', label: 'Collection' },
+  scan: { active: 'scan', idle: 'scan-outline', label: 'Scan' },
   search: { active: 'search', idle: 'search-outline', label: 'Search' },
-  collection: { active: 'albums', idle: 'albums-outline', label: 'Collection' },
 };
 
 const PADDING = 6;
@@ -130,7 +130,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
                 onPress={onPress}
                 style={styles.item}
               >
-                <TabIcon focused={focused} icon={icon} landing={route.name === 'collection'} />
+                <TabIcon focused={focused} icon={icon} landing={route.name === 'index'} />
                 {badge ? (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>{String(badge)}</Text>

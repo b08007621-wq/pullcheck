@@ -119,7 +119,18 @@ function sanitize(stored: Partial<Settings>): Settings {
       typeof stored.gradingCost === 'number' && Number.isFinite(stored.gradingCost)
         ? Math.min(GRADING_COST_RANGE[1], Math.max(GRADING_COST_RANGE[0], stored.gradingCost))
         : DEFAULT_SETTINGS.gradingCost,
+    setOrder: sanitizeSetOrder(stored.setOrder),
+    tourDone: stored.tourDone === true,
   };
+}
+
+function sanitizeSetOrder(stored: unknown): Record<string, string[]> {
+  if (!stored || typeof stored !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(stored as Record<string, unknown>)
+      .filter((entry): entry is [string, unknown[]] => Array.isArray(entry[1]))
+      .map(([section, ids]) => [section, ids.filter((id): id is string => typeof id === 'string')]),
+  );
 }
 
 const BASES: ChangeBasis[] = ['auto', 'added', 'paid', 'day', 'week', 'month'];

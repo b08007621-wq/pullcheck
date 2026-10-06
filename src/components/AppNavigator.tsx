@@ -2,11 +2,15 @@ import { Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 
+import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { toNavigationTheme } from '@/theme';
 
+import { WelcomeTour } from './WelcomeTour';
+
 export function AppNavigator() {
   const theme = useTheme();
+  const { settings, updateSettings } = useSettings();
   const navigationTheme = useMemo(() => toNavigationTheme(theme), [theme]);
 
   return (
@@ -37,6 +41,7 @@ export function AppNavigator() {
         <Stack.Screen name="centering" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>
+      {settings.tourDone ? null : <WelcomeTour onDone={() => updateSettings({ tourDone: true })} />}
       <StatusBar style={theme.mode === 'light' ? 'dark' : 'light'} />
     </ThemeProvider>
   );

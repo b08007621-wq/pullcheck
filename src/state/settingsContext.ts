@@ -30,6 +30,8 @@ export type Settings = {
   sounds: boolean;
   autoScan: boolean;
   gradingCost: number;
+  setOrder: Record<string, string[]>;
+  tourDone: boolean;
   design: number;
 };
 
@@ -63,6 +65,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sounds: true,
   autoScan: true,
   gradingCost: 30,
+  setOrder: {},
+  tourDone: false,
   design: DESIGN_VERSION,
 };
 

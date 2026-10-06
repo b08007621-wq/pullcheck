@@ -1,436 +1,514 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
-import { AutoScanButton } from '@/components/AutoScanButton';
-import { CameraPermissionPrompt } from '@/components/CameraPermissionPrompt';
-import { CaptureFlash } from '@/components/CaptureFlash';
+import { AppearanceButton } from '@/components/AppearanceButton';
+import { CollectionCoverflow } from '@/components/CollectionCoverflow';
+import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
+import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
+import { CollectionGridItem } from '@/components/CollectionGridItem';
+import { CollectionListItem } from '@/components/CollectionListItem';
+import { CollectionQuickStats } from '@/components/CollectionQuickStats';
+import { CollectionShortcuts } from '@/components/CollectionShortcuts';
+import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
+import { CollectionToolbar } from '@/components/CollectionToolbar';
+import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
-import { LoadingState } from '@/components/LoadingState';
-import { OcrHost } from '@/components/OcrHost';
-import { RIP_BAR_HEIGHT, RipBar } from '@/components/RipBar';
-import { RipButton } from '@/components/RipButton';
-import { RipSetupSheet } from '@/components/RipSetupSheet';
-import { ScanHeader, SCAN_HEADER_HEIGHT } from '@/components/ScanHeader';
-import { ScannerControls, SCANNER_CONTROLS_HEIGHT } from '@/components/ScannerControls';
-import { ScannerOverlay } from '@/components/ScannerOverlay';
-import { ScanPreview } from '@/components/ScanPreview';
-import { ScanGuess } from '@/components/ScanGuess';
-import { ScanResultSheet } from '@/components/ScanResultSheet';
+import { FreshPullPanel } from '@/components/FreshPullPanel';
+import { IconButton } from '@/components/IconButton';
+import { ItemActionsSheet } from '@/components/ItemActionsSheet';
+import { SectionDragList } from '@/components/SectionDragList';
+import { SectionHold } from '@/components/SectionHold';
+import { rowPosition } from '@/components/ListRow';
+import { MoneyEditor } from '@/components/MoneyEditor';
+import { RecentlyAddedStrip } from '@/components/RecentlyAddedStrip';
 import { Screen } from '@/components/Screen';
-import { type AutoScanPhase, useAutoScan } from '@/hooks/useAutoScan';
-import { useCardIdentify } from '@/hooks/useCardIdentify';
+import { SkeletonRows } from '@/components/SkeletonRows';
+import { useCelebrate } from '@/hooks/useCelebrate';
+import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useRip } from '@/hooks/useRip';
-import { useScanSession } from '@/hooks/useScanSession';
 import { useSettings } from '@/hooks/useSettings';
-import { type OcrState, READER_LOADING, type ReaderStatus } from '@/services/ocrBridge';
-import { logScan, setScanLogReader } from '@/services/scanLog';
-import type { Card } from '@/types/card';
-import type { IconName } from '@/types/icon';
-import type { Size } from '@/types/scan';
-import { spacing } from '@/theme';
-import { computeScanFrame } from '@/utils/scanFrame';
+import { useTheme } from '@/hooks/useTheme';
+import { useWishlist } from '@/hooks/useWishlist';
+import { setBrowseList } from '@/services/cardBrowse';
+import { radius, spacing, typography } from '@/theme';
+import type { CollectionItem, CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
+import { itemBinder } from '@/utils/binder';
+import { type CollectionQuery, queryCollection, setCounts } from '@/utils/collectionQuery';
+import { summarizeCollection } from '@/utils/collectionValue';
+import { itemViewerParams } from '@/utils/viewer';
 
-const ERROR_VISIBLE_MS = 3500;
-const SCAN_ZOOM = 0.1;
-
-export default function ScanScreen() {
-  const router = useRouter();
-  const focused = useIsFocused();
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const haptics = useHaptics();
-  const session = useScanSession();
-  const identify = useCardIdentify();
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
-  const [view, setView] = useState<Size | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [torchOn, setTorchOn] = useState(false);
-  const [flash, setFlash] = useState(0);
-  const [mountError, setMountError] = useState<string | null>(null);
-  const [cameraKey, setCameraKey] = useState(0);
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [holding, setHolding] = useState(false);
-  const [reader, setReader] = useState<OcrState>(READER_LOADING);
-  const { settings, updateSettings } = useSettings();
-  const autoOn = settings.autoScan;
-  const { rip, start: startRip, addPull } = useRip();
-  const ripping = rip !== null;
-  const { error, clearError, retake, phase, photo } = session;
-  const { stage, match, reading, reset: resetIdentify, identify: runIdentify } = identify;
-
-  useFocusEffect(
-    useCallback(
-      () => () => {
-        setCameraReady(false);
-        setTorchOn(false);
-      },
-      [],
-    ),
-  );
-
-  useEffect(() => {
-    if (!error) return;
-    const timer = setTimeout(clearError, ERROR_VISIBLE_MS);
-    return () => clearTimeout(timer);
-  }, [error, clearError]);
-
-  const finishScan = useCallback(() => {
-    resetIdentify();
-    retake();
-  }, [resetIdentify, retake]);
-
-  const openCard = useCallback(
-    (card: Card) => {
-      finishScan();
-      router.push({ pathname: '/card/[id]', params: { id: card.id } });
-    },
-    [finishScan, router],
-  );
-
-  const keepPull = useCallback(
-    (card: Card) => {
-      addPull(card, reading?.finish ?? 'unknown');
-      finishScan();
-    },
-    [addPull, reading, finishScan],
-  );
-
-  useEffect(() => {
-    if (!ripping || phase !== 'preview' || stage !== 'idle' || !photo?.base64) return;
-    runIdentify(photo.base64);
-  }, [ripping, phase, stage, photo, runIdentify]);
-
-  useEffect(() => {
-    if (stage === 'done' && match?.status === 'single') haptics.ready();
-  }, [stage, match, haptics]);
-
-  const bottomReserve = tabBarHeight + SCANNER_CONTROLS_HEIGHT + (ripping ? RIP_BAR_HEIGHT : 0);
-  const frame = useMemo(
-    () => (view ? computeScanFrame(view, insets.top + SCAN_HEADER_HEIGHT, bottomReserve) : null),
-    [view, insets.top, bottomReserve],
-  );
-
-  useEffect(() => {
-    setScanLogReader({ vision: reader.vision, text: reader.text });
-    if (reader.vision === 'failed') logScan('reader', null, { visionError: reader.visionError ?? null });
-  }, [reader.vision, reader.text, reader.visionError]);
-
-  const auto = useAutoScan({
-    camera: cameraRef,
-    frame,
-    view,
-    reader,
-    enabled:
-      autoOn && focused && cameraReady && !mountError && !holding && !setupOpen && session.phase === 'camera',
-  });
-
-  const onLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setView({ width, height });
-  };
-
-  const takePhoto = async () => {
-    const camera = cameraRef.current;
-    if (!camera || !frame || !view || session.phase !== 'camera' || holding) return;
-    haptics.shutter();
-    setFlash((value) => value + 1);
-    setHolding(true);
-    try {
-      await auto.whenIdle();
-      const found = auto.ready ? await auto.scanCamera() : false;
-      if (!found) await session.capture(camera, frame, view);
-    } finally {
-      setHolding(false);
-    }
-  };
-
-  const pickLibrary = async () => {
-    if (holding) return;
-    const picked = await session.pickPhoto();
-    if (!picked) return;
-    setHolding(true);
-    try {
-      await auto.whenIdle();
-      const found =
-        auto.ready && picked.base64 ? await auto.scanSource(`data:image/jpeg;base64,${picked.base64}`) : false;
-      if (!found) session.showPhoto(picked);
-    } finally {
-      setHolding(false);
-    }
-  };
-
-  const toggleAuto = () => {
-    haptics.selection();
-    updateSettings({ autoScan: !autoOn });
-  };
-
-  const toggleTorch = () => {
-    haptics.selection();
-    setTorchOn((value) => !value);
-  };
-
-  const retryCamera = () => {
-    setMountError(null);
-    setCameraKey((value) => value + 1);
-  };
-
-  const startIdentify = () => {
-    const base64 = session.photo?.base64;
-    if (!base64) return;
-    haptics.tap();
-    identify.identify(base64);
-  };
-
-  const searchName = (name: string) => {
-    finishScan();
-    router.navigate(name ? { pathname: '/search', params: { q: name } } : '/search');
-  };
-
-  const preview =
-    session.phase === 'preview' && session.photo && view ? (
-      <ScanPreview
-        photo={session.photo}
-        origin={session.photo.source === 'camera' ? frame : null}
-        view={view}
-        topInset={insets.top}
-        bottomInset={tabBarHeight}
-        identify={identify}
-        onRetake={finishScan}
-        onIdentify={startIdentify}
-        onOpenCard={(card) => {
-          if (ripping) {
-            haptics.collect();
-            keepPull(card);
-          } else {
-            haptics.tap();
-            openCard(card);
-          }
-        }}
-        onSearchName={searchName}
-        ripTitle={rip?.title ?? null}
-      />
-    ) : null;
-
-  const setup = setupOpen ? (
-    <RipSetupSheet
-      onStart={(source) => {
-        haptics.collect();
-        auto.forget();
-        startRip(source);
-      }}
-      onClose={() => setSetupOpen(false)}
-    />
-  ) : null;
-
-  if (!permission) {
-    return (
-      <Screen title="Scan">
-        <LoadingState message="Checking camera access…" bottomInset={tabBarHeight} />
-      </Screen>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.root} onLayout={onLayout}>
-        <CameraPermissionPrompt
-          canAskAgain={permission.canAskAgain}
-          onRequest={requestPermission}
-          onLibrary={session.pickFromLibrary}
-          bottomInset={tabBarHeight}
-        />
-        {preview}
-      </View>
-    );
-  }
-
-  const hint = resolveHint(error ?? mountError, holding ? 'processing' : session.phase, cameraReady, ripping, {
-    on: autoOn,
-    status: readerStatus(reader),
-    pictures: reader.vision !== 'failed',
-    phase: auto.phase,
-  });
-
-  return (
-    <View style={[styles.root, styles.camera]} onLayout={onLayout}>
-      {focused ? <StatusBar style="light" /> : null}
-      {focused && !mountError ? (
-        <CameraView
-          key={cameraKey}
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          autofocus="off"
-          zoom={SCAN_ZOOM}
-          enableTorch={torchOn}
-          animateShutter={false}
-          active={session.phase !== 'preview'}
-          onCameraReady={() => {
-            setCameraReady(true);
-            haptics.ready();
-          }}
-          onMountError={(event) => setMountError(event.message)}
-        />
-      ) : null}
-
-      {mountError ? (
-        <EmptyState
-          icon="warning-outline"
-          tone="danger"
-          title="Camera didn’t start"
-          message={mountError}
-          bottomInset={tabBarHeight}
-          action={{ label: 'Try again', icon: 'refresh', onPress: retryCamera }}
-        />
-      ) : null}
-
-      {frame && view && !mountError ? (
-        <ScannerOverlay
-          frame={frame}
-          view={view}
-          locked={session.phase === 'processing' || auto.guess !== null || (autoOn && auto.phase === 'reading')}
-        />
-      ) : null}
-
-      <CaptureFlash trigger={flash} />
-
-      <ScanHeader
-        topInset={insets.top}
-        hint={hint.message}
-        hintIcon={hint.icon}
-        hintTone={hint.tone}
-        action={
-          <>
-            <AutoScanButton on={autoOn} onPress={toggleAuto} />
-            {ripping ? null : (
-              <RipButton
-                onPress={() => {
-                  haptics.tap();
-                  setSetupOpen(true);
-                }}
-              />
-            )}
-          </>
-        }
-      />
-
-      {rip ? (
-        <RipBar
-          rip={rip}
-          bottom={tabBarHeight + SCANNER_CONTROLS_HEIGHT - spacing.sm}
-          onOpen={() => {
-            haptics.tap();
-            router.push('/rip');
-          }}
-        />
-      ) : null}
-
-      <ScannerControls
-        onShutter={takePhoto}
-        onLibrary={pickLibrary}
-        onTorch={toggleTorch}
-        torchOn={torchOn}
-        busy={session.phase === 'processing' || holding}
-        cameraReady={cameraReady && !mountError}
-        bottomInset={tabBarHeight}
-        hidden={auto.guess !== null}
-      />
-
-      <OcrHost onState={setReader} />
-      <ScanGuess
-        guess={auto.guess}
-        ripping={ripping}
-        bottom={tabBarHeight + spacing.md}
-        onOpen={auto.openGuess}
-        onAdded={(card, variant) => auto.confirmGuess(card.id, variant)}
-        onNotIt={auto.rejectGuess}
-        onAddPull={(card) => addPull(card, 'unknown')}
-      />
-      {auto.result ? (
-        <ScanResultSheet
-          key={auto.result.id}
-          result={auto.result}
-          ripping={ripping}
-          bottomInset={insets.bottom}
-          onClose={auto.clear}
-          onOpenCard={(card) => {
-            auto.clear();
-            router.push({ pathname: '/card/[id]', params: { id: card.id } });
-          }}
-          onAddPull={(card) => addPull(card, 'unknown')}
-          onAdded={(key, variant) =>
-            logScan('picked', auto.result?.frame ?? null, {
-              key,
-              variant,
-              shown: auto.result?.candidates.map((entry) => `${entry.language}:${entry.card.id}`),
-            })
-          }
-          onSearch={(name) => {
-            auto.clear();
-            router.navigate(name ? { pathname: '/search', params: { q: name } } : '/search');
-          }}
-        />
-      ) : null}
-      {preview}
-      {setup}
-    </View>
-  );
-}
-
-type AutoHint = {
-  on: boolean;
-  status: ReaderStatus;
-  pictures: boolean;
-  phase: AutoScanPhase;
+const INITIAL_QUERY: Omit<CollectionQuery, 'basis'> = {
+  text: '',
+  type: 'all',
+  binder: 'all',
+  quick: null,
+  set: null,
+  sort: 'value',
 };
 
-function readerStatus(reader: OcrState): ReaderStatus {
-  if (reader.vision === 'ready' || reader.text === 'ready') return 'ready';
-  return reader.vision === 'failed' && reader.text === 'failed' ? 'failed' : 'loading';
+export default function CollectionScreen() {
+  const theme = useTheme();
+  const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
+  const haptics = useHaptics();
+  const { items, meta, isLoaded, refreshing, refreshFailed, refreshPrices, setPaid } = useCollection();
+  const { refresh: refreshWishlist } = useWishlist();
+  const { fresh, clearFresh } = useCelebrate();
+  const { settings, updateSettings } = useSettings();
+  const { width } = useWindowDimensions();
+  const view = settings.collectionView;
+  const layout = settings.collectionLayout;
+  const [filters, setFilters] = useState(INITIAL_QUERY);
+  const [pulling, setPulling] = useState(false);
+  const [sheet, setSheet] = useState<'filters' | 'customize' | null>(null);
+  const [actionItem, setActionItem] = useState<CollectionItem | null>(null);
+  const [arranging, setArranging] = useState(false);
+  const [dragLock, setDragLock] = useState(false);
+  const [paidItem, setPaidItem] = useState<CollectionItem | null>(null);
+  const query = useMemo(() => ({ ...filters, basis: layout.changeBasis }), [filters, layout.changeBasis]);
+
+  const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
+  const setLayout = useCallback((next: CollectionLayout) => updateSettings({ collectionLayout: next }), [updateSettings]);
+  const changeQuery = useCallback(
+    (changes: Partial<CollectionQuery>) => setFilters((current) => ({ ...current, ...changes })),
+    [],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoaded) refreshPrices(false);
+      refreshWishlist(false);
+    }, [isLoaded, refreshPrices, refreshWishlist]),
+  );
+
+  const pullToRefresh = useCallback(async () => {
+    setPulling(true);
+    haptics.tap();
+    await refreshPrices(true);
+    setPulling(false);
+    haptics.selection();
+  }, [haptics, refreshPrices]);
+
+  const summary = useMemo(() => summarizeCollection(items), [items]);
+  const usesBinders = useMemo(() => items.some((item) => itemBinder(item) !== 'personal'), [items]);
+  const sets = useMemo(() => setCounts(items), [items]);
+  const visible = useMemo(() => queryCollection(items, query, usesBinders), [items, query, usesBinders]);
+  const freshIds = useMemo(() => new Set(fresh?.cards.map((card) => card.id) ?? []), [fresh]);
+  const isFresh = useCallback(
+    (item: CollectionItem) => item.kind === 'card' && freshIds.has(item.card.id),
+    [freshIds],
+  );
+
+  const openItem = useCallback(
+    (item: CollectionItem) => {
+      setActionItem(null);
+      if (item.kind === 'card') {
+        setBrowseList(
+          visible.flatMap((entry) => (entry.kind === 'card' ? [{ id: entry.card.id, entry: entry.key }] : [])),
+        );
+        router.push({ pathname: '/card/[id]', params: { id: item.card.id, entry: item.key } });
+      } else {
+        router.push({
+          pathname: '/sealed/[id]',
+          params: {
+            id: String(item.product.productId),
+            groupId: String(item.product.groupId),
+            market: item.product.market ?? 'en',
+          },
+        });
+      }
+    },
+    [router, visible],
+  );
+
+  const open3d = useCallback(
+    (item: CollectionItem) => {
+      const params = itemViewerParams(item);
+      if (params) router.push({ pathname: '/viewer', params });
+      else openItem(item);
+    },
+    [openItem, router],
+  );
+
+  const showActions = useCallback(
+    (item: CollectionItem) => {
+      haptics.selection();
+      setActionItem(item);
+    },
+    [haptics],
+  );
+
+  const columns = layout.gridColumns;
+  const tileWidth = Math.floor((width - spacing.lg * 2 - spacing.sm * (columns - 1)) / columns);
+
+  const renderGridItem = useCallback(
+    ({ item }: ListRenderItemInfo<CollectionItem>) => (
+      <CollectionGridItem
+        item={item}
+        width={tileWidth}
+        basis={layout.changeBasis}
+        details={layout.gridDetails}
+        fresh={isFresh(item)}
+        onPress={openItem}
+        onLongPress={showActions}
+      />
+    ),
+    [openItem, showActions, tileWidth, layout.changeBasis, layout.gridDetails, isFresh],
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<CollectionItem>) => (
+      <CollectionListItem
+        item={item}
+        position={rowPosition(index, visible.length)}
+        basis={layout.changeBasis}
+        fresh={isFresh(item)}
+        onPress={openItem}
+        onLongPress={showActions}
+      />
+    ),
+    [openItem, showActions, visible.length, layout.changeBasis, isFresh],
+  );
+
+  const sheets = (
+    <>
+      {sheet === 'filters' ? (
+        <CollectionFilterSheet query={query} sets={sets} onChange={changeQuery} onClose={() => setSheet(null)} />
+      ) : null}
+      {sheet === 'customize' ? (
+        <CollectionCustomizeSheet
+          layout={layout}
+          items={items}
+          onChange={setLayout}
+          onBackup={() => {
+            setSheet(null);
+            router.push('/backup');
+          }}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+      {actionItem ? (
+        <ItemActionsSheet
+          item={actionItem}
+          basis={layout.changeBasis}
+          onOpen={openItem}
+          onEditPaid={(item) => {
+            setActionItem(null);
+            setPaidItem(item);
+          }}
+          onGradeCheck={(item) => {
+            setActionItem(null);
+            if (item.kind !== 'card') return;
+            router.push({
+              pathname: '/centering',
+              params: item.variant ? { id: item.card.id, variant: item.variant } : { id: item.card.id },
+            });
+          }}
+          onClose={() => setActionItem(null)}
+        />
+      ) : null}
+      {paidItem ? (
+        <MoneyEditor
+          initial={paidItem.paid ?? null}
+          heading="What did you pay?"
+          message="Per copy. It’s used for your profit and the Paid change view."
+          onSave={(paid) => {
+            haptics.tap();
+            setPaid(paidItem.key, paid);
+          }}
+          onClose={() => setPaidItem(null)}
+        />
+      ) : null}
+    </>
+  );
+
+  const headerAction = (
+    <View style={styles.actions}>
+      <IconButton
+        icon="create-outline"
+        accessibilityLabel="Customize this page"
+        onPress={() => {
+          haptics.tap();
+          setSheet('customize');
+        }}
+      />
+      <AppearanceButton />
+    </View>
+  );
+
+  let content;
+  if (!isLoaded) {
+    content = <SkeletonRows count={5} />;
+  } else if (items.length === 0) {
+    content = (
+      <EmptyState
+        icon="albums-outline"
+        title="No cards yet"
+        message="Cards and sealed products you add will show up here with their total value."
+        bottomInset={tabBarHeight}
+        action={{ label: 'Find a card', icon: 'search', onPress: () => router.navigate('/search') }}
+      >
+        <View style={styles.emptyShortcuts}>
+          <CollectionShortcuts />
+          <Pressable onPress={() => router.push('/backup')} accessibilityRole="button" hitSlop={8} style={styles.restore}>
+            <Text style={[styles.clear, { color: theme.colors.accent }]}>Restore a backup or import from another app</Text>
+          </Pressable>
+        </View>
+      </EmptyState>
+    );
+  } else {
+    const hidden = new Set(layout.hidden);
+    const chart = <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />;
+    const sections: Record<CollectionSection, ReactNode> = {
+      pulled: fresh ? (
+        <FreshPullPanel
+          pull={fresh}
+          onOpenCard={(id) => router.push({ pathname: '/card/[id]', params: { id } })}
+          onDismiss={() => {
+            haptics.selection();
+            clearFresh();
+          }}
+        />
+      ) : null,
+      summary: (
+        <CollectionSummaryCard
+          summary={summary}
+          history={meta.valueHistory}
+          lastRefreshAt={meta.lastRefreshAt}
+          pricesAsOf={meta.pricesAsOf ?? null}
+          refreshing={refreshing}
+          refreshFailed={refreshFailed}
+          chart={hidden.has('chart') ? undefined : chart}
+        />
+      ),
+      chart: hidden.has('summary') ? chart : null,
+      recent: <RecentlyAddedStrip items={items} onOpen={openItem} onLongPress={showActions} />,
+      stats: (
+        <CollectionQuickStats
+          items={items}
+          onFilter={(quick) => {
+            haptics.selection();
+            changeQuery({ quick });
+          }}
+          onOpen={openItem}
+        />
+      ),
+      shortcuts: <CollectionShortcuts variant="row" />,
+    };
+
+    const emptyText = (
+      <View style={styles.emptyFilter}>
+        <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>Nothing matches.</Text>
+        <Pressable onPress={() => setFilters(INITIAL_QUERY)} accessibilityRole="button" hitSlop={8}>
+          <Text style={[styles.clear, { color: theme.colors.accent }]}>Clear search and filters</Text>
+        </Pressable>
+      </View>
+    );
+
+    const header = (
+      <View style={styles.header}>
+        {arranging ? (
+          <View style={styles.arrange}>
+            <View style={styles.arrangeBar}>
+              <View style={styles.arrangeText}>
+                <Text style={[styles.arrangeTitle, { color: theme.colors.text }]}>Arrange your page</Text>
+                <Text style={[styles.arrangeHint, { color: theme.colors.textMuted }]}>
+                  Hold a section and drag it. Tap the eye to hide it.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  haptics.tap();
+                  setArranging(false);
+                  setDragLock(false);
+                }}
+                accessibilityRole="button"
+                style={[styles.arrangeDone, { backgroundColor: theme.colors.accent }]}
+              >
+                <Text style={[styles.arrangeDoneText, { color: theme.colors.onAccent }]}>Done</Text>
+              </Pressable>
+            </View>
+            <SectionDragList
+              order={layout.order}
+              hidden={layout.hidden}
+              liftDelay={120}
+              onChange={(next) => setLayout({ ...layout, ...next })}
+              onDragging={setDragLock}
+            />
+          </View>
+        ) : (
+          layout.order
+            .filter((section) => !hidden.has(section) && sections[section])
+            .map((section) => (
+              <SectionHold
+                key={section}
+                paused={actionItem !== null || sheet !== null}
+                onHold={() => {
+                  haptics.collect();
+                  setArranging(true);
+                }}
+              >
+                {sections[section]}
+              </SectionHold>
+            ))
+        )}
+        <CollectionToolbar
+          query={query}
+          view={view}
+          usesBinders={usesBinders}
+          shown={visible.length}
+          onChange={changeQuery}
+          onView={setView}
+          onFilters={() => setSheet('filters')}
+        />
+      </View>
+    );
+
+    const refresh = (
+      <RefreshControl
+        refreshing={pulling}
+        onRefresh={pullToRefresh}
+        tintColor={theme.colors.accent}
+        colors={[theme.colors.accent]}
+      />
+    );
+
+    if (view === 'cover') {
+      content = (
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+          scrollIndicatorInsets={{ bottom: tabBarHeight }}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refresh}
+          scrollEnabled={!dragLock}
+        >
+          {header}
+          <View style={styles.coverStage}>
+            {visible.length > 0 ? (
+              <CollectionCoverflow
+                items={visible}
+                bottomInset={0}
+                basis={layout.changeBasis}
+                isFresh={isFresh}
+                onOpen3d={open3d}
+                onLongPress={showActions}
+              />
+            ) : (
+              emptyText
+            )}
+          </View>
+        </ScrollView>
+      );
+    } else {
+      content = (
+        <FlatList
+          key={view === 'grid' ? `grid-${columns}` : 'list'}
+          data={visible}
+          keyExtractor={keyExtractor}
+          renderItem={view === 'grid' ? renderGridItem : renderItem}
+          numColumns={view === 'grid' ? columns : 1}
+          columnWrapperStyle={view === 'grid' ? styles.gridRow : undefined}
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+          scrollIndicatorInsets={{ bottom: tabBarHeight }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          refreshControl={refresh}
+          scrollEnabled={!dragLock}
+          ListHeaderComponent={header}
+          ListEmptyComponent={emptyText}
+        />
+      );
+    }
+  }
+
+  return (
+    <Screen title="Collection" action={headerAction}>
+      {content}
+      {sheets}
+    </Screen>
+  );
 }
 
-function resolveHint(
-  error: string | null,
-  phase: string,
-  cameraReady: boolean,
-  ripping: boolean,
-  auto: AutoHint,
-): { message: string; icon: IconName; tone: 'neutral' | 'danger' } {
-  if (error) return { message: error, icon: 'alert-circle', tone: 'danger' };
-  if (phase === 'processing') return { message: 'Hold still…', icon: 'hourglass-outline', tone: 'neutral' };
-  if (!cameraReady) return { message: 'Starting camera…', icon: 'camera-outline', tone: 'neutral' };
-  if (auto.on && auto.status === 'loading') {
-    return { message: 'Getting auto scan ready…', icon: 'sync-outline', tone: 'neutral' };
-  }
-  if (auto.on && auto.status === 'failed') {
-    return { message: 'Auto scan is offline. Tap the shutter instead', icon: 'cloud-offline-outline', tone: 'neutral' };
-  }
-  if (auto.on && auto.phase === 'reading') {
-    return { message: 'Reading the card…', icon: 'search', tone: 'neutral' };
-  }
-  if (auto.on && auto.phase === 'handled') {
-    return { message: 'Swap in the next card', icon: 'checkmark-circle-outline', tone: 'neutral' };
-  }
-  if (auto.on && !auto.pictures && auto.status === 'ready') {
-    return { message: 'Picture scan is offline · reading card numbers', icon: 'cloud-offline-outline', tone: 'neutral' };
-  }
-  if (ripping) return { message: 'Scan each card you pulled', icon: 'gift-outline', tone: 'neutral' };
-  if (auto.on) return { message: 'Hold a card in the frame', icon: 'scan-outline', tone: 'neutral' };
-  return { message: 'Fit the card inside the frame', icon: 'scan-outline', tone: 'neutral' };
+function keyExtractor(item: CollectionItem): string {
+  return item.key;
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
+  content: {
+    paddingHorizontal: spacing.lg,
   },
-  camera: {
-    backgroundColor: '#000000',
+  header: {
+    gap: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  arrange: {
+    gap: spacing.md,
+  },
+  arrangeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  arrangeText: {
+    flex: 1,
+    gap: 2,
+  },
+  arrangeTitle: {
+    ...typography.label,
+  },
+  arrangeHint: {
+    ...typography.caption,
+  },
+  arrangeDone: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  arrangeDoneText: {
+    ...typography.label,
+    fontSize: 15,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  coverStage: {
+    marginHorizontal: -spacing.lg,
+  },
+  gridRow: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  emptyShortcuts: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
+    gap: spacing.lg,
+  },
+  restore: {
+    alignSelf: 'center',
+  },
+  emptyFilter: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+  },
+  clear: {
+    ...typography.label,
+    fontSize: 15,
   },
 });

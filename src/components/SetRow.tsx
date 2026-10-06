@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/useTheme';
 import { extraGroupId, useGroupArt } from '@/hooks/useGroupArt';
@@ -19,9 +19,12 @@ type Props = {
   progress: SetListProgress | null;
   position: RowPosition;
   onPress: (set: SetInfo) => void;
+  onLongPress?: (event: GestureResponderEvent) => void;
+  delayLongPress?: number;
+  tile?: boolean;
 };
 
-function SetRowView({ set, progress, position, onPress }: Props) {
+function SetRowView({ set, progress, position, onPress, onLongPress, delayLongPress, tile = false }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const released = parseDate(set.releaseDate);
@@ -30,9 +33,11 @@ function SetRowView({ set, progress, position, onPress }: Props) {
   const complete = progress !== null && progress.owned >= progress.total;
 
   return (
-    <ListRow position={position} inset={112}>
+    <ListRow position={tile ? 'only' : position} inset={112} style={tile && styles.tile}>
       <Pressable
         onPress={() => onPress(set)}
+        onLongPress={onLongPress}
+        delayLongPress={delayLongPress}
         accessibilityRole="button"
         accessibilityLabel={
           progress ? `${set.name}, ${progress.owned} of ${progress.total} cards, ${percent} percent` : set.name
@@ -78,6 +83,10 @@ export const SetRow = memo(SetRowView);
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
+    tile: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

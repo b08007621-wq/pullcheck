@@ -194,7 +194,7 @@ Accuracy: synthetic cards with known borders measure within 0.1% (mean 0.04%). O
 
 | File | Role |
 | --- | --- |
-| `src/app/(tabs)/index.tsx` | Scan screen: Auto pill, hints, `OcrHost`, `ScanResultSheet` |
+| `src/app/(tabs)/scan.tsx` | Scan screen: Auto pill, hints, `OcrHost`, `ScanResultSheet` |
 | `src/hooks/useAutoScan.ts` | Frame loop, picture-first recognition, preview timing, shutter/Photos recognition |
 | `src/services/cardVisionSource.ts` | Card finder + fingerprint + search (shared by the phone and the index builder) |
 | `src/services/visionMatch.ts` | Confidence rules, same-art printings, number tie-break |

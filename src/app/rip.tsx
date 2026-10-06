@@ -83,7 +83,7 @@ export default function RipScreen() {
   const bestId = summary.totalUsd > 0 ? (pulls[0]?.id ?? null) : null;
   const source = rip.sourceKey ? (items.find((item) => item.key === rip.sourceKey) ?? null) : null;
 
-  const leave = (path: '/' | '/collection') => {
+  const leave = (path: '/' | '/scan') => {
     endOnLeave.current = true;
     setClosing(true);
     router.dismissTo(path);
@@ -112,7 +112,7 @@ export default function RipScreen() {
       }),
     });
     celebrate({ count: rip.pulls.length, fly: false, delay: 450 });
-    leave('/collection');
+    leave('/');
   };
 
   const discard = () => {
@@ -123,7 +123,7 @@ export default function RipScreen() {
         style: 'destructive',
         onPress: () => {
           haptics.remove();
-          leave('/');
+          leave('/scan');
         },
       },
     ]);

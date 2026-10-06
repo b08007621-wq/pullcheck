@@ -262,6 +262,18 @@ export default function AppearanceScreen() {
             if (enabled) createHaptics(false, true).collect();
           }}
         />
+
+        <Text style={styles.section}>Help</Text>
+        <ActionButton
+          label="Replay the welcome tour"
+          icon="play-circle-outline"
+          variant="secondary"
+          onPress={() => {
+            haptics.tap();
+            router.back();
+            updateSettings({ tourDone: false });
+          }}
+        />
       </ScrollView>
     </View>
   );
