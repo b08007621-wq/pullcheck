@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   snapshots: 'pullcheck.snapshots.v1',
   recentSearches: 'pullcheck.recent.v1',
   cacheIndex: 'pullcheck.cache.index.v1',
+  groupArt: 'pullcheck.group-art.v1',
 } as const;
 
 export async function readJson<T>(key: string): Promise<T | null> {

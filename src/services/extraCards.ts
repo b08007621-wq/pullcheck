@@ -44,6 +44,7 @@ const SERIES_BY_PREFIX: [RegExp, string][] = [
 ];
 
 let index: ExtraEntry[] | null = null;
+let partial: ExtraEntry[] = [];
 let building: Promise<ExtraEntry[]> | null = null;
 const listeners = new Set<() => void>();
 
@@ -80,8 +81,9 @@ export function loadExtraIndex(): Promise<ExtraEntry[]> {
 
 export function searchExtraCards(query: string): Card[] {
   const tokens = normalizeCardName(query).toLowerCase().split(/\s+/).filter(Boolean);
-  if (!index || tokens.length === 0) return [];
-  return index
+  const entries = index ?? partial;
+  if (entries.length === 0 || tokens.length === 0) return [];
+  return entries
     .filter((entry) => {
       const words = normalizeText(entry.card.name).split(' ');
       return tokens.every((token) => words.some((word) => word.startsWith(normalizeText(token))));
@@ -138,9 +140,9 @@ export async function refreshExtraCards(ids: string[]): Promise<Card[]> {
 }
 
 export function extraSets(): SetInfo[] {
-  if (!index) return [];
+  const entries = index ?? partial;
   const bySet = new Map<string, SetInfo>();
-  for (const { card } of index) {
+  for (const { card } of entries) {
     if (bySet.has(card.set.id)) continue;
     bySet.set(card.set.id, {
       id: card.set.id,
@@ -193,6 +195,8 @@ async function buildIndex(): Promise<ExtraEntry[]> {
       const { value } = await loadGroupProducts(group);
       const overlap = OVERLAPPING_SETS[group.groupId];
       entries.push(...toEntries(group, value, overlap ? (overlapTotals.get(overlap) ?? 0) : 0));
+      partial = [...entries];
+      for (const listener of listeners) listener();
     } catch {}
     if (Date.now() - started > NETWORK_THRESHOLD_MS) await wait(FETCH_GAP_MS);
   }

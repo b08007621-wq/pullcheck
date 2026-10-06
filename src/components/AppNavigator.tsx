@@ -31,6 +31,7 @@ export function AppNavigator() {
         <Stack.Screen name="trade" />
         <Stack.Screen name="barcode" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="set/[id]" />
+        <Stack.Screen name="jpset/[id]" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>

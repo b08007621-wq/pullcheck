@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { extraGroupId, useGroupArt } from '@/hooks/useGroupArt';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SetInfo } from '@/types/set';
@@ -16,6 +17,7 @@ type Props = {
 export function SetLogoTile({ set, onPress }: Props) {
   const styles = useThemedStyles(createStyles);
   const released = parseDate(set.releaseDate);
+  const art = useGroupArt(set.logo ? null : extraGroupId(set.id), 'en');
 
   return (
     <PressableScale
@@ -25,7 +27,9 @@ export function SetLogoTile({ set, onPress }: Props) {
       style={styles.tile}
     >
       <View style={styles.logoBox}>
-        {set.logo ? <Image source={set.logo} style={styles.logo} contentFit="contain" recyclingKey={set.id} /> : null}
+        {set.logo || art ? (
+          <Image source={set.logo || art} style={styles.logo} contentFit="contain" recyclingKey={set.id} />
+        ) : null}
       </View>
       <Text style={styles.name} numberOfLines={1}>
         {set.name}

@@ -3,6 +3,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/useTheme';
+import { extraGroupId, useGroupArt } from '@/hooks/useGroupArt';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SetInfo } from '@/types/set';
@@ -24,6 +25,7 @@ function SetRowView({ set, progress, position, onPress }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const released = parseDate(set.releaseDate);
+  const art = useGroupArt(set.logo ? null : extraGroupId(set.id), 'en');
   const percent = progress ? Math.round(progress.percent * 100) : 0;
   const complete = progress !== null && progress.owned >= progress.total;
 
@@ -38,8 +40,8 @@ function SetRowView({ set, progress, position, onPress }: Props) {
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
         <View style={styles.logoBox}>
-          {set.logo ? (
-            <Image source={set.logo} style={styles.logo} contentFit="contain" recyclingKey={set.id} />
+          {set.logo || art ? (
+            <Image source={set.logo || art} style={styles.logo} contentFit="contain" recyclingKey={set.id} />
           ) : (
             <Text style={styles.logoText} numberOfLines={2}>
               {set.ptcgoCode ?? 'PROMO'}
