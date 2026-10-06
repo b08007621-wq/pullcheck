@@ -48,7 +48,7 @@ export async function loadDiscover(signal?: AbortSignal): Promise<Discover> {
 
   const pricedAll: DiscoverPick[] = [];
   const pricedSets = new Set<string>();
-  for (let start = 0; start < candidates.length && pricedSets.size < NEWEST_SETS; start += NEWEST_SETS) {
+  for (let start = 0; start < candidates.length; start += NEWEST_SETS) {
     const batch = candidates.slice(start, start + NEWEST_SETS);
     const settled = await Promise.allSettled(batch.map((set) => getSetCards(set.id, signal)));
     const loaded = settled.flatMap((result) => (result.status === 'fulfilled' ? result.value.value : []));
