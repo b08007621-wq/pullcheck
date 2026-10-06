@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { extraGroupId, useGroupArt } from '@/hooks/useGroupArt';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, spacing, typography } from '@/theme';
 import type { SetInfo } from '@/types/set';
@@ -15,12 +16,13 @@ type Props = {
 export function SetHero({ set }: Props) {
   const styles = useThemedStyles(createStyles);
   const released = parseDate(set.releaseDate);
+  const art = useGroupArt(set.logo ? null : extraGroupId(set.id), 'en');
   const secrets = set.total - set.printedTotal;
 
   return (
     <View style={styles.hero}>
-      {set.logo ? (
-        <Image source={set.logo} style={styles.logo} contentFit="contain" accessibilityLabel={`${set.name} logo`} />
+      {set.logo || art ? (
+        <Image source={set.logo || art} style={styles.logo} contentFit="contain" accessibilityLabel={`${set.name} logo`} />
       ) : null}
       <Text style={styles.name} accessibilityRole="header">
         {set.name}

@@ -1,7 +1,9 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useGroupArt } from '@/hooks/useGroupArt';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useJapaneseSets } from '@/hooks/useJapaneseSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
@@ -39,7 +41,7 @@ export function JapaneseSetList({ onMarket }: Props) {
   const openSet = useCallback(
     (group: TcgcsvGroup) => {
       haptics.tap();
-      router.navigate({ pathname: '/search', params: { q: displaySetName(group), market: 'jp' } });
+      router.push({ pathname: '/jpset/[id]', params: { id: String(group.groupId) } });
     },
     [haptics, router],
   );
@@ -65,28 +67,9 @@ export function JapaneseSetList({ onMarket }: Props) {
           contentContainerStyle={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          renderItem={({ item, index }) => {
-            const released = parseDate(item.publishedOn);
-            return (
-              <ListRow position={rowPosition(index, visible.length)} inset={16}>
-                <Pressable
-                  onPress={() => openSet(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.name}
-                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-                >
-                  <View style={styles.info}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {displaySetName(item)}
-                    </Text>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {[item.abbreviation, released ? formatDate(released) : null].filter(Boolean).join(' · ')}
-                    </Text>
-                  </View>
-                </Pressable>
-              </ListRow>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <JapaneseSetRow group={item} position={rowPosition(index, visible.length)} onPress={openSet} />
+          )}
           ListHeaderComponent={
             <View style={styles.header}>
               <View style={styles.titleRow}>
@@ -103,6 +86,46 @@ export function JapaneseSetList({ onMarket }: Props) {
         />
       )}
     />
+  );
+}
+
+function JapaneseSetRow({
+  group,
+  position,
+  onPress,
+}: {
+  group: TcgcsvGroup;
+  position: ReturnType<typeof rowPosition>;
+  onPress: (group: TcgcsvGroup) => void;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const art = useGroupArt(group.groupId, 'jp');
+  const released = parseDate(group.publishedOn);
+  return (
+    <ListRow position={position} inset={88}>
+      <Pressable
+        onPress={() => onPress(group)}
+        accessibilityRole="button"
+        accessibilityLabel={group.name}
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      >
+        <View style={styles.thumb}>
+          {art ? <Image source={art} style={styles.thumbImage} contentFit="contain" recyclingKey={String(group.groupId)} /> : (
+            <Text style={styles.code} numberOfLines={1}>
+              {group.abbreviation ?? 'JP'}
+            </Text>
+          )}
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {displaySetName(group)}
+          </Text>
+          <Text style={styles.meta} numberOfLines={1}>
+            {[group.abbreviation, released ? formatDate(released) : null].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+      </Pressable>
+    </ListRow>
   );
 }
 
@@ -129,13 +152,32 @@ function createStyles(theme: AppTheme) {
       color: theme.colors.textMuted,
     },
     row: {
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    thumb: {
+      width: 60,
+      height: 60,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    thumbImage: {
+      width: '100%',
+      height: '100%',
+    },
+    code: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: theme.colors.textMuted,
     },
     pressed: {
       backgroundColor: theme.colors.surfaceRaised,
     },
     info: {
+      flex: 1,
       gap: 2,
     },
     name: {
