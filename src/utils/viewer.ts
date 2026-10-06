@@ -2,6 +2,7 @@ import type { CardBack } from '@/three/cardBack';
 import { cardFinish, singleFinish } from '@/three/cardFinish';
 import type { ModelKind } from '@/three/models';
 import type { Card } from '@/types/card';
+import type { CollectionItem } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 
 import { singleBack } from './cardBack';
@@ -57,4 +58,11 @@ export function productViewerParams(product: SealedProduct): ViewerParams | null
     subtitle: product.setName,
     product: String(product.productId),
   };
+}
+
+export function itemViewerParams(item: CollectionItem): ViewerParams | null {
+  if (item.kind === 'card') {
+    return cardViewerParams(item.card, item.variant);
+  }
+  return productViewerParams(item.product);
 }
