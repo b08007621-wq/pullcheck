@@ -1,6 +1,7 @@
 import type { Card, CardPage, TcgPlayerPrice } from '@/types/card';
 import type { GameSet } from '@/types/gameSet';
 import { gameIdPrefix, priceNumber, slashDate } from '@/utils/game';
+import { bundledSetLogo } from '@/utils/setLogos';
 
 import { type CachePolicy, cachedFetch } from './cache';
 import { ApiError, getJson, toQueryString } from './http';
@@ -62,7 +63,7 @@ export async function getLorcastSets(signal?: AbortSignal): Promise<GameSet[]> {
       releaseDate: slashDate(set.released_at ?? set.prereleased_at),
       total: 0,
       type: /^\d+$/.test(set.code) ? 'Main set' : 'Special',
-      icon: null,
+      icon: bundledSetLogo('lorcana', set.code),
       iconIsSymbol: false,
     }))
     .filter((set, index, list) => list.findIndex((other) => other.id === set.id) === index)

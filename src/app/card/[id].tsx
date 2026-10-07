@@ -51,6 +51,7 @@ import {
 import { itemPrice } from '@/utils/collectionValue';
 import { gameInfo, gameOf } from '@/utils/game';
 import { getMarketPrice } from '@/utils/price';
+import { bundledSetLogo } from '@/utils/setLogos';
 import { isBaseCard } from '@/utils/setProgress';
 import { cardViewerParams } from '@/utils/viewer';
 
@@ -173,7 +174,7 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
           <DetailTitle
             title={card.name}
             subtitle={`${card.set.name} · #${formatCollectorNumber(card)}`}
-            logo={card.set.images.logo}
+            logo={bundledSetLogo(game, card.set.ptcgoCode) ?? card.set.images.logo}
             logoLabel={card.set.name}
             logoCaption={`#${formatCollectorNumber(card)} · ${card.set.series}`}
             logoAction={pokemon && setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set'}

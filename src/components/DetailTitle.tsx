@@ -9,7 +9,7 @@ import { spacing, typography } from '@/theme';
 type Props = {
   title: string;
   subtitle: string;
-  logo?: string | null;
+  logo?: string | number | null;
   logoLabel?: string;
   logoCaption?: string;
   chips?: ReactNode;
@@ -19,7 +19,7 @@ type Props = {
 
 export function DetailTitle({ title, subtitle, logo, logoLabel, logoCaption, chips, onLogoPress, logoAction }: Props) {
   const theme = useTheme();
-  const [failedLogo, setFailedLogo] = useState<string | null>(null);
+  const [failedLogo, setFailedLogo] = useState<string | number | null>(null);
   const showLogo = Boolean(logo) && failedLogo !== logo;
   const action =
     onLogoPress && logoAction ? (

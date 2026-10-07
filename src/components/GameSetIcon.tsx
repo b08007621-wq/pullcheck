@@ -16,10 +16,11 @@ type Props = {
 
 export function GameSetIcon({ set, width, height }: Props) {
   const theme = useTheme();
-  const [failed, setFailed] = useState<string | null>(null);
-  const symbol = useSetSymbol(set.iconIsSymbol ? set.icon : null);
+  const [failed, setFailed] = useState<string | number | null>(null);
+  const symbolUrl = set.iconIsSymbol && typeof set.icon === 'string' ? set.icon : null;
+  const symbol = useSetSymbol(symbolUrl);
   const showImage = !set.iconIsSymbol && set.icon !== null && failed !== set.icon;
-  const symbolPending = set.iconIsSymbol && set.icon !== null && !symbol.xml && !symbol.failed;
+  const symbolPending = symbolUrl !== null && !symbol.xml && !symbol.failed;
 
   return (
     <View style={[styles.box, { width, height }]}>

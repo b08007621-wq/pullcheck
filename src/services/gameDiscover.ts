@@ -2,6 +2,7 @@ import type { Card } from '@/types/card';
 import type { GameSet } from '@/types/gameSet';
 import type { OtherGame } from '@/utils/game';
 import { getMarketPrice } from '@/utils/price';
+import { bundledSetLogo } from '@/utils/setLogos';
 
 import { type CachePolicy, cachedFetch } from './cache';
 import type { DiscoverPick } from './discover';
@@ -58,5 +59,9 @@ export async function loadGameDiscover(game: OtherGame, signal?: AbortSignal): P
     };
   });
   rememberCards([...value.chase, ...value.sleepers].map((pick): Card => pick.card));
-  return value;
+  return { ...value, newSets: value.newSets.map(withBundledIcon) };
+}
+
+function withBundledIcon(set: GameSet): GameSet {
+  return { ...set, icon: bundledSetLogo(set.game, set.code) ?? (typeof set.icon === 'string' ? set.icon : null) };
 }

@@ -1,6 +1,7 @@
 import type { Card, CardPage } from '@/types/card';
 import type { GameSet } from '@/types/gameSet';
 import { gameIdPrefix, priceNumber, slashDate } from '@/utils/game';
+import { bundledSetLogo } from '@/utils/setLogos';
 
 import { type CachePolicy, cachedFetch } from './cache';
 import { ApiError, getJson, toQueryString } from './http';
@@ -177,7 +178,7 @@ export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
       releaseDate,
       total: set.num_of_cards ?? 0,
       type: null,
-      icon: set.set_image ?? null,
+      icon: bundledSetLogo('yugioh', set.set_code) ?? set.set_image ?? null,
       iconIsSymbol: false,
     });
   }

@@ -8,6 +8,6 @@ export type GameSet = {
   releaseDate: string;
   total: number;
   type: string | null;
-  icon: string | null;
+  icon: string | number | null;
   iconIsSymbol: boolean;
 };
