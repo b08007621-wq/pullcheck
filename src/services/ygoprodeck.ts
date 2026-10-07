@@ -6,7 +6,6 @@ import { type CachePolicy, cachedFetch } from './cache';
 import { ApiError, getJson, toQueryString } from './http';
 
 const BASE_URL = 'https://db.ygoprodeck.com/api/v7';
-const SET_IMAGE_URL = 'https://images.ygoprodeck.com/images/sets';
 const PREFIX = gameIdPrefix('yugioh');
 const SET_PREFIX = `${PREFIX}set-`;
 const PAGE_SIZE = 20;
@@ -163,6 +162,7 @@ export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
     const existing = byCode.get(set.set_code);
     if (existing) {
       existing.total += set.num_of_cards ?? 0;
+      existing.icon = existing.icon ?? set.set_image ?? null;
       if (releaseDate > existing.releaseDate) {
         existing.releaseDate = releaseDate;
         existing.name = set.set_name;
@@ -177,7 +177,7 @@ export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
       releaseDate,
       total: set.num_of_cards ?? 0,
       type: null,
-      icon: set.set_image ?? `${SET_IMAGE_URL}/${encodeURIComponent(set.set_code)}.jpg`,
+      icon: set.set_image ?? null,
       iconIsSymbol: false,
     });
   }
@@ -277,7 +277,7 @@ function toCards(card: YgoCard, lang: YgoLanguage, dates: Map<string, string>): 
 function toCard(card: YgoCard, printing: YgoPrinting | null, lang: YgoLanguage, dates: Map<string, string>): Card {
   const image = card.card_images?.[0];
   const prices = card.card_prices?.[0];
-  const rarityCode = printing?.set_rarity_code?.replace(/[()]/g, '') || null;
+  const rarityCode = printing ? printing.set_rarity_code?.replace(/[()]/g, '') || rarityInitials(printing.set_rarity) : null;
   const usd = (printing ? priceNumber(printing.set_price) : null) ?? (printing ? null : priceNumber(prices?.tcgplayer_price));
   const eur = priceNumber(prices?.cardmarket_price);
   const released = (printing ? dates.get(printing.set_name) : undefined) ?? card.misc_info?.[0]?.tcg_date ?? card.misc_info?.[0]?.ocg_date;
@@ -308,6 +308,11 @@ function toCard(card: YgoCard, printing: YgoPrinting | null, lang: YgoLanguage, 
     subtypes: [card.race, card.attribute].filter((value): value is string => Boolean(value)),
     rules: [...(card.desc ? card.desc.split('\n').filter(Boolean) : []), ...stats(card)],
   };
+}
+
+function rarityInitials(rarity: string | undefined): string | null {
+  const initials = (rarity ?? '').match(/[A-Za-z0-9]+/g)?.map((word) => word.charAt(0).toUpperCase()).join('');
+  return initials || null;
 }
 
 function stats(card: YgoCard): string[] {

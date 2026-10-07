@@ -98,7 +98,7 @@ export async function searchLorcast(text: string, page: number, signal?: AbortSi
     SEARCH_CACHE,
     async () => {
       try {
-        const response = await getJson<unknown>(`${BASE_URL}/cards/search?${toQueryString({ q: text })}`, { signal });
+        const response = await getJson<unknown>(`${BASE_URL}/cards/search?${toQueryString({ q: text, unique: 'prints' })}`, { signal });
         return listOf<LorcastCard>(response).map(toCard).sort((first, second) => second.set.releaseDate.localeCompare(first.set.releaseDate));
       } catch (error) {
         if (error instanceof ApiError && (error.kind === 'notFound' || error.status === 400)) return [];

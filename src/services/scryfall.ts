@@ -35,6 +35,7 @@ const PAPER_SET_TYPES = new Set([
   'archenemy',
   'masterpiece',
   'arsenal',
+  'eternal',
   'promo',
 ]);
 
@@ -280,7 +281,7 @@ function toCard(card: ScryfallCard): Card {
         return [...(text ? text.split('\n') : []), ...faceStats(face)];
       }),
     ],
-    flavorText: front.flavor_text ?? card.flavor_text,
+    flavorText: (front.flavor_text ?? card.flavor_text)?.replace(/\*/g, ''),
     artist: card.artist,
   };
 }

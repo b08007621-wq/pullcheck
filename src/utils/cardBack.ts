@@ -1,7 +1,9 @@
 import type { CardBack } from '@/three/cardBack';
+import type { Card } from '@/types/card';
 import type { SealedProduct } from '@/types/sealed';
 
 import { parseDate } from './date';
+import { gameOf } from './game';
 
 const LAST_CLASSIC_RELEASE = new Date(2001, 4, 1);
 
@@ -15,4 +17,10 @@ export function singleBack(product: SealedProduct): CardBack {
   const released = parseDate(product.groupReleasedOn);
   if (released) return released < LAST_CLASSIC_RELEASE ? 'jpClassic' : 'jp';
   return CLASSIC_GROUP_IDS.has(product.groupId) ? 'jpClassic' : 'jp';
+}
+
+export function gameBack(card: Card): CardBack {
+  const game = gameOf(card);
+  if (game === 'yugioh') return card.lang === 'ja' ? 'ygoOcg' : 'ygo';
+  return game === 'pokemon' ? 'international' : 'plain';
 }

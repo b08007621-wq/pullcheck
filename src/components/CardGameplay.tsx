@@ -42,7 +42,9 @@ export function CardGameplay({ card }: Props) {
       ))}
       {card.flavorText ? (
         <View style={[styles.flavor, { borderLeftColor: theme.colors.accent }]}>
-          <Text style={[styles.flavorText, { color: theme.colors.text }]}>“{card.flavorText}”</Text>
+          <Text style={[styles.flavorText, { color: theme.colors.text }]}>
+            {/^["“]/.test(card.flavorText) ? card.flavorText : `“${card.flavorText}”`}
+          </Text>
         </View>
       ) : null}
     </SectionPanel>
