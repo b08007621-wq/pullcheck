@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useBinders } from "@/hooks/useBinders";
 import { useCollection } from "@/hooks/useCollection";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
@@ -22,7 +23,7 @@ type Shortcut = {
   title: string;
   short: string;
   detail: string;
-  path: "/sets" | "/upcoming" | "/trade" | "/wishlist";
+  path: "/sets" | "/binders" | "/upcoming" | "/trade" | "/wishlist";
   highlight?: boolean;
 };
 
@@ -32,6 +33,7 @@ export function CollectionShortcuts({ variant = "list" }: Props) {
   const styles = useThemedStyles(createStyles);
   const { items } = useCollection();
   const wishlist = useWishlist();
+  const { binders } = useBinders();
   const started = useMemo(
     () =>
       new Set(
@@ -56,6 +58,13 @@ export function CollectionShortcuts({ variant = "list" }: Props) {
       short: "Sets",
       detail: started > 0 ? `${started} started` : "Every set",
       path: "/sets",
+    },
+    {
+      icon: "book-outline",
+      title: "Binders",
+      short: "Binders",
+      detail: binders.length > 0 ? `${binders.length} ${binders.length === 1 ? "binder" : "binders"}` : "Pages & pockets",
+      path: "/binders",
     },
     {
       icon: "calendar-outline",

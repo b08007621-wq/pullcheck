@@ -1,4 +1,5 @@
 import { AppNavigator } from '@/components/AppNavigator';
+import { BinderProvider } from '@/state/BinderProvider';
 import { CelebrateProvider } from '@/state/CelebrateProvider';
 import { CollectionProvider } from '@/state/CollectionProvider';
 import { RipProvider } from '@/state/RipProvider';
@@ -11,9 +12,11 @@ export default function RootLayout() {
       <CollectionProvider>
         <WishlistProvider>
           <RipProvider>
-            <CelebrateProvider>
-              <AppNavigator />
-            </CelebrateProvider>
+            <BinderProvider>
+              <CelebrateProvider>
+                <AppNavigator />
+              </CelebrateProvider>
+            </BinderProvider>
           </RipProvider>
         </WishlistProvider>
       </CollectionProvider>

@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   cacheIndex: 'pullcheck.cache.index.v1',
   groupArt: 'pullcheck.group-art.v2',
   market: 'pullcheck.market.v1',
+  binders: 'pullcheck.binders.v1',
 } as const;
 
 export async function readJson<T>(key: string): Promise<T | null> {
