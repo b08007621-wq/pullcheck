@@ -270,7 +270,7 @@ export default function BinderScreen() {
       .sort((first, second) => Number(first[0]) - Number(second[0]))
       .flatMap(([, key]) => {
         const entry = byKey.get(key);
-        return entry ? [{ id: entry.card.id, entry: entry.key }] : [];
+        return entry ? [{ id: entry.card.id, entry: entry.key, card: entry.card }] : [];
       });
     setBrowseList(ordered);
     router.push({ pathname: '/card/[id]', params: { id: item.card.id, entry: item.key } });

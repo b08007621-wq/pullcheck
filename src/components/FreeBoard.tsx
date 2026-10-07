@@ -150,7 +150,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
         lift: new Animated.Value(0),
         pinchX: new Animated.Value(1),
         pinchY: new Animated.Value(1),
-        fade: new Animated.Value(1),
+        fade: new Animated.Value(0),
         placed: false,
       };
       motions.set(key, entry);
@@ -166,7 +166,9 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
         entry.pos.setValue({ x: rect.x, y: rect.y });
         if (rect.h > 0 && width > 0) {
           entry.placed = true;
-          Animated.timing(entry.fade, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+          Animated.timing(entry.fade, { toValue: 1, duration: 220, useNativeDriver: true }).start(({ finished }) => {
+            if (finished) entry.fade.setValue(1);
+          });
         }
         continue;
       }
@@ -543,10 +545,15 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
                 style={[
                   styles.item,
                   {
+                    left: rect.x,
+                    top: rect.y,
                     width: rect.w,
                     zIndex: lifted ? 10 : 1,
                     opacity: entry.fade,
-                    transform: [{ translateX: entry.pos.x }, { translateY: entry.pos.y }],
+                    transform: [
+                      { translateX: Animated.subtract(entry.pos.x, rect.x) },
+                      { translateY: Animated.subtract(entry.pos.y, rect.y) },
+                    ],
                   },
                 ]}
               >
@@ -744,8 +751,6 @@ function createStyles(theme: AppTheme) {
     },
     item: {
       position: 'absolute',
-      left: 0,
-      top: 0,
     },
     lifted: {
       borderRadius: radius.lg,

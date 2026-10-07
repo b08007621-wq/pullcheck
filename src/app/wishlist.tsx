@@ -38,7 +38,7 @@ export default function WishlistScreen() {
   const openCard = useCallback(
     (wish: WishItem) => {
       haptics.tap();
-      setBrowseList(sorted.map((stop) => ({ id: stop.id })));
+      setBrowseList(sorted.map((stop) => ({ id: stop.id, card: stop.card })));
       router.push({ pathname: '/card/[id]', params: { id: wish.id } });
     },
     [haptics, router, sorted],
