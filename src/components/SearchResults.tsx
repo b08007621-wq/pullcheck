@@ -39,7 +39,7 @@ export function SearchResults({ search, bottomInset, onSuggestion, recent, onCle
   const openCard = useCallback(
     (card: Card) => {
       onOpenResult();
-      setBrowseList(search.cards.map((stop) => ({ id: stop.id })));
+      setBrowseList(search.cards.map((stop) => ({ id: stop.id, card: stop })));
       router.push({ pathname: '/card/[id]', params: { id: card.id } });
     },
     [router, onOpenResult, search.cards],

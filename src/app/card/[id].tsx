@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -35,6 +36,7 @@ import { type BrowsePlace, browsePlace } from '@/services/cardBrowse';
 import { gradedPriceFor } from '@/services/graded';
 import { queueSeen } from '@/services/seen';
 import { estimatedPoints } from '@/services/marketHistory';
+import { getKnownCard } from '@/services/pokemonTcg';
 import { spacing } from '@/theme';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
 import {
@@ -56,6 +58,16 @@ export default function CardDetailScreen() {
   const haptics = useHaptics();
   const { id, entry, from } = useLocalSearchParams<{ id: string; entry?: string; from?: string }>();
   const place = browsePlace(id ?? '', entry);
+  const next = place?.next ?? null;
+  const previous = place?.previous ?? null;
+
+  useEffect(() => {
+    const urls = [next, previous].flatMap((stop) => {
+      const image = stop ? getKnownCard(stop.id)?.images.large : undefined;
+      return image ? [image] : [];
+    });
+    if (urls.length > 0) Image.prefetch(urls);
+  }, [next, previous]);
 
   const go = (direction: SwipeDirection) => {
     const stop = direction === 'next' ? place?.next : place?.previous;

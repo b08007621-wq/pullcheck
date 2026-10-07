@@ -66,7 +66,7 @@ export default function SetScreen() {
   const openCard = useCallback(
     (entry: SetEntry) => {
       haptics.tap();
-      setBrowseList(visible.map((stop) => ({ id: stop.card.id })));
+      setBrowseList(visible.map((stop) => ({ id: stop.card.id, card: stop.card })));
       router.push({ pathname: '/card/[id]', params: { id: entry.card.id } });
     },
     [haptics, router, visible],
