@@ -26,16 +26,17 @@ import { useSetLogo } from '@/hooks/useSetLogo';
 import { baseCardName } from '@/services/crossLanguage';
 import { japaneseLogoFor } from '@/services/japaneseLogos';
 import { spacing } from '@/theme';
-import type { Market } from '@/types/sealed';
 import { formatShortDate, parseDate } from '@/utils/date';
+import { marketGame, parseMarket } from '@/utils/market';
 import { getSealedMarketPrice } from '@/utils/sealed';
 import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
+import { bundledSetLogo } from '@/utils/setLogos';
 import { productViewerParams } from '@/utils/viewer';
 
 export default function SealedDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; groupId: string; market?: string }>();
-  const market: Market = params.market === 'jp' ? 'jp' : 'en';
+  const market = parseMarket(params.market);
   const { product, owned, isFresh, error, retry } = useSealedDetail(Number(params.id), Number(params.groupId), market);
   const { addSealed, setQuantity, remove, setPaid } = useCollection();
   const { celebrate } = useCelebrate();
@@ -83,7 +84,11 @@ export default function SealedDetailScreen() {
           <DetailTitle
             title={single ? baseCardName(product.name) : product.name}
             subtitle={single ? `${product.setName} · #${product.cardNumber}` : product.setName}
-            logo={japanese ? japaneseLogoFor(product.setCode, product.setName) : logo}
+            logo={
+              japanese
+                ? japaneseLogoFor(product.setCode, product.setName)
+                : (bundledSetLogo(marketGame(product.market), product.setCode ?? undefined) ?? logo)
+            }
             logoAction={japanese ? 'See the whole set' : undefined}
             onLogoPress={
               japanese

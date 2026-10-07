@@ -38,7 +38,7 @@ export function currentMsrp(type: SealedType): number | null {
 }
 
 export function getMsrp(product: SealedProduct): Msrp | null {
-  if (product.market === 'jp' || product.cardNumber) return null;
+  if ((product.market ?? 'en') !== 'en' || product.cardNumber) return null;
   const era = eraFor(parseDate(product.releasedOn));
   const prices = MSRP_TABLE[classifySealed(product.name)];
   if (!era || !prices) return null;

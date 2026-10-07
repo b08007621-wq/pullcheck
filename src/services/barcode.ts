@@ -1,23 +1,22 @@
-import type { SealedProduct } from '@/types/sealed';
+import type { Market, SealedProduct } from '@/types/sealed';
 
-import { loadGroupCatalog, loadGroups, newestFirst, settleInBatches, type TcgcsvGroup } from './tcgcsv';
+import { isMiscGroup, loadGroupCatalog, loadGroups, newestFirst, settleInBatches, type TcgcsvGroup } from './tcgcsv';
 
 const MAX_GROUPS = 45;
-const MISC_GROUP_NAME = /^miscellaneous cards & products$/i;
 const BATCH = 6;
 
 export function normalizeBarcode(value: string): string {
   return value.replace(/\D/g, '').replace(/^0+/, '');
 }
 
-export async function findProductByBarcode(code: string, signal?: AbortSignal): Promise<SealedProduct | null> {
+export async function findProductByBarcode(code: string, market: Market = 'en', signal?: AbortSignal): Promise<SealedProduct | null> {
   const target = normalizeBarcode(code);
   if (target.length < 8) return null;
 
-  const groups = await loadGroups('en');
-  const misc = groups.filter((group) => MISC_GROUP_NAME.test(group.name));
+  const groups = await loadGroups(market);
+  const misc = groups.filter(isMiscGroup);
   const recent = groups
-    .filter((group) => !group.isSupplemental && !MISC_GROUP_NAME.test(group.name))
+    .filter((group) => !group.isSupplemental && !isMiscGroup(group))
     .sort(newestFirst)
     .slice(0, MAX_GROUPS);
   const ordered: TcgcsvGroup[] = [...misc, ...recent];

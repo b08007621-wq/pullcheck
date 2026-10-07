@@ -5,6 +5,7 @@ import { ApiError, toApiError, withAbort } from './http';
 import { matchesAllTokens, setNameScore, toSearchTokens } from './sealedQuery';
 import {
   isMainSet,
+  isMiscGroup,
   loadGroupCatalog,
   loadGroups,
   newestFirst,
@@ -16,7 +17,6 @@ export type ProductKind = 'sealed' | 'singles';
 
 const RECENT_SET_COUNT = 6;
 const MAX_MATCHED_SETS = 6;
-const MISC_GROUP_NAME = /^miscellaneous cards & products$/i;
 
 export async function searchProducts(
   query: string,
@@ -70,7 +70,7 @@ export async function getSealedProduct(
 function pickGroups(groups: TcgcsvGroup[], tokens: string[], kind: ProductKind): TcgcsvGroup[] {
   const scored = groups.map((group) => ({ group, score: setNameScore(group.name, tokens) }));
   const best = Math.max(0, ...scored.map((entry) => entry.score));
-  const misc = kind === 'sealed' ? groups.filter((group) => MISC_GROUP_NAME.test(group.name)) : [];
+  const misc = kind === 'sealed' ? groups.filter(isMiscGroup) : [];
 
   const sets =
     best > 0

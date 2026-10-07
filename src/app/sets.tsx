@@ -19,7 +19,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
-import type { Market } from '@/types/sealed';
+import type { PokemonMarket } from '@/types/sealed';
 import type { SetInfo } from '@/types/set';
 import { listProgress, type SetListProgress } from '@/utils/setProgress';
 
@@ -37,7 +37,7 @@ export default function SetsScreen() {
   const { sets, error, retry } = useSets();
   const { settings, updateSettings } = useSettings();
   const [query, setQuery] = useState('');
-  const [market, setMarket] = useState<Market>('en');
+  const [market, setMarket] = useState<PokemonMarket>('en');
   const savedOrder = settings.setOrder;
 
   const progress = useMemo(() => (sets ? listProgress(items, sets) : new Map<string, SetListProgress>()), [items, sets]);

@@ -9,6 +9,8 @@ export type GameInfo = {
   placeholder: string;
   suggestions: string[];
   source: string;
+  sealedExample: string;
+  sealedSuggestions: string[];
 };
 
 export const GAMES: GameInfo[] = [
@@ -19,6 +21,8 @@ export const GAMES: GameInfo[] = [
     placeholder: 'Card name, e.g. Charizard',
     suggestions: ['Charizard', 'Pikachu', 'Umbreon', 'Mew', 'Gengar'],
     source: 'Pokémon TCG API',
+    sealedExample: 'Surging Sparks ETB',
+    sealedSuggestions: ['Elite Trainer Box', 'Booster Bundle', 'Lumiose City Mini Tin', 'ex Box', 'Prismatic Evolutions', '151'],
   },
   {
     game: 'mtg',
@@ -27,6 +31,8 @@ export const GAMES: GameInfo[] = [
     placeholder: 'Card name, e.g. Black Lotus',
     suggestions: ['Lightning Bolt', 'Sol Ring', 'Black Lotus', 'The One Ring', 'Sheoldred'],
     source: 'Scryfall',
+    sealedExample: 'Foundations Play Booster Box',
+    sealedSuggestions: ['Play Booster Box', 'Collector Booster', 'Bundle', 'Commander Deck', 'Foundations', 'Final Fantasy'],
   },
   {
     game: 'yugioh',
@@ -35,6 +41,8 @@ export const GAMES: GameInfo[] = [
     placeholder: 'Card name, e.g. Dark Magician',
     suggestions: ['Dark Magician', 'Blue-Eyes White Dragon', 'Ash Blossom', 'Exodia', 'Red-Eyes'],
     source: 'YGOPRODeck',
+    sealedExample: 'Rarity Collection 5 Booster Box',
+    sealedSuggestions: ['Booster Box', 'Structure Deck', 'Tin', 'Rarity Collection', 'Quarter Century', 'Booster Pack'],
   },
   {
     game: 'lorcana',
@@ -43,6 +51,8 @@ export const GAMES: GameInfo[] = [
     placeholder: 'Card name, e.g. Elsa',
     suggestions: ['Elsa', 'Mickey Mouse', 'Stitch', 'Maleficent', 'Ursula'],
     source: 'Lorcast',
+    sealedExample: 'Hyperia City Booster Box',
+    sealedSuggestions: ['Booster Box', 'Illumineer’s Trove', 'Starter Deck', 'Gift Set', 'Booster Pack', 'Hyperia City'],
   },
 ];
 

@@ -14,6 +14,7 @@ import { entryVersion, versionLabel } from './cardVersion';
 import { itemChange } from './collectionChange';
 import { itemPrice, itemTitle, itemValueUsd } from './collectionValue';
 import { gameOf } from './game';
+import { marketGame } from './market';
 
 export type CollectionQuery = {
   text: string;
@@ -62,7 +63,7 @@ export function setCounts(items: CollectionItem[]): { name: string; count: numbe
 }
 
 export function itemGame(item: CollectionItem): Game {
-  return item.kind === 'card' ? gameOf(item.card) : 'pokemon';
+  return item.kind === 'card' ? gameOf(item.card) : marketGame(item.product.market);
 }
 
 export type GameTotal = {

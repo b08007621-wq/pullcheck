@@ -14,6 +14,7 @@ const ALIASES: Record<string, string[]> = {
   tins: ['tin'],
   blisters: ['blister'],
   collections: ['collection'],
+  decks: ['deck'],
 };
 
 const PRODUCT_WORDS = new Set([
@@ -42,6 +43,15 @@ const PRODUCT_WORDS = new Set([
   'of',
   'the',
   'and',
+  'deck',
+  'structure',
+  'starter',
+  'play',
+  'collector',
+  'draft',
+  'gift',
+  'trove',
+  "illumineer's",
 ]);
 
 export function normalizeText(text: string): string {

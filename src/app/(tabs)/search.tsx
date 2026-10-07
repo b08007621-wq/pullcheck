@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
 import { GameLanguageButton } from '@/components/GameLanguageButton';
@@ -17,12 +17,12 @@ import { useCardSearch } from '@/hooks/useCardSearch';
 import { useRecentSearches } from '@/hooks/useRecentSearches';
 import { useSealedSearch } from '@/hooks/useSealedSearch';
 import { useSettings } from '@/hooks/useSettings';
-import { useTheme } from '@/hooks/useTheme';
-import { spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
 import type { Game } from '@/types/card';
-import type { Market } from '@/types/sealed';
+import type { PokemonMarket } from '@/types/sealed';
 import { gameLanguages } from '@/services/otherGames';
 import { gameInfo } from '@/utils/game';
+import { gameMarket } from '@/utils/market';
 
 type SearchMode = 'cards' | 'sealed';
 
@@ -37,17 +37,16 @@ export default function SearchScreen() {
   const { q, market: marketParam } = useLocalSearchParams<{ q?: string; market?: string }>();
   const paramKey = q ? `${q}|${marketParam ?? 'en'}` : undefined;
   const [mode, setMode] = useState<SearchMode>('cards');
-  const [market, setMarket] = useState<Market>('en');
+  const [market, setMarket] = useState<PokemonMarket>('en');
   const [cardText, setCardText] = useState(q ?? '');
   const [sealedText, setSealedText] = useState('');
   const [appliedQuery, setAppliedQuery] = useState(paramKey);
-  const cardRecent = useRecentSearches('cards');
-  const sealedRecent = useRecentSearches('sealed');
   const { settings, updateSettings } = useSettings();
-  const theme = useTheme();
   const game = settings.searchGame;
   const pokemon = game === 'pokemon';
+  const cardRecent = useRecentSearches('cards');
   const gameRecent = useRecentSearches(pokemon ? 'cards' : game);
+  const sealedRecent = useRecentSearches(pokemon ? 'sealed' : `${game}-sealed`);
   const languages = gameLanguages(game);
   const gameLanguage = pokemon ? 'en' : (settings.gameLanguages[game] ?? 'en');
 
@@ -68,11 +67,12 @@ export default function SearchScreen() {
     }
   }
 
-  const isCards = mode === 'cards' || !pokemon;
+  const isCards = mode === 'cards';
   const japanese = pokemon && market === 'jp';
+  const sealedMarket = pokemon ? market : gameMarket(game);
   const cardSearch = useCardSearch(isCards && !japanese ? cardText : '', game, gameLanguage);
   const jpCardSearch = useSealedSearch(cardText, 'jp', 'singles', isCards && japanese);
-  const sealedSearch = useSealedSearch(sealedText, market, 'sealed', !isCards);
+  const sealedSearch = useSealedSearch(sealedText, sealedMarket, 'sealed', !isCards);
   const pickGame = (next: Game) => {
     if (next !== game) updateSettings({ searchGame: next });
   };
@@ -89,21 +89,20 @@ export default function SearchScreen() {
     <Screen title="Search" action={<AppearanceButton />}>
       <View style={styles.controls}>
         <GamePicker value={game} onChange={pickGame} />
-        {pokemon ? (
-          <View style={styles.modeRow}>
-            <View style={styles.modes}>
-              <SegmentedControl options={MODES} value={mode} onChange={setMode} />
-            </View>
-            {isCards ? null : (
-              <IconButton icon="barcode-outline" accessibilityLabel="Scan a barcode" onPress={() => router.push('/barcode')} />
-            )}
-            <LanguageToggle value={market} onChange={setMarket} />
+        <View style={styles.modeRow}>
+          <View style={styles.modes}>
+            <SegmentedControl options={MODES} value={mode} onChange={setMode} />
           </View>
-        ) : languages.length > 1 ? (
-          <View style={styles.modeRow}>
-            <Text style={[styles.gameNote, { color: theme.colors.textMuted }]} numberOfLines={2}>
-              {gameInfo(game).label} · {game === 'yugioh' ? 'card text in your language' : 'printed in your language'}
-            </Text>
+          {isCards ? null : (
+            <IconButton
+              icon="barcode-outline"
+              accessibilityLabel="Scan a barcode"
+              onPress={() => router.push({ pathname: '/barcode', params: { market: sealedMarket } })}
+            />
+          )}
+          {pokemon ? (
+            <LanguageToggle value={market} onChange={setMarket} />
+          ) : isCards && languages.length > 1 ? (
             <GameLanguageButton
               languages={languages}
               value={gameLanguage}
@@ -114,8 +113,8 @@ export default function SearchScreen() {
               }
               onChange={(lang) => updateSettings({ gameLanguages: { ...settings.gameLanguages, [game]: lang } })}
             />
-          </View>
-        ) : null}
+          ) : null}
+        </View>
         <SearchBar
           value={isCards ? cardText : sealedText}
           onChangeText={isCards ? setCardText : setSealedText}
@@ -128,7 +127,7 @@ export default function SearchScreen() {
                 : gameInfo(game).placeholder
               : japanese
                 ? 'Japanese product, e.g. 151 Booster Box'
-                : 'Product, e.g. Surging Sparks ETB'
+                : `Product, e.g. ${gameInfo(game).sealedExample}`
           }
         />
       </View>
@@ -168,10 +167,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   modes: {
-    flex: 1,
-  },
-  gameNote: {
-    ...typography.caption,
     flex: 1,
   },
 });

@@ -1,4 +1,5 @@
 import type { SealedProduct } from '@/types/sealed';
+import { isPokemonMarket } from '@/utils/market';
 
 import { type CachePolicy, cachedFetch } from './cache';
 import { getJson } from './http';
@@ -37,7 +38,7 @@ export function loadAssetManifest(): Promise<AssetManifest> {
 }
 
 export function productArtUrl(product: SealedProduct, manifest: AssetManifest): string | null {
-  if (product.cardNumber) return null;
+  if (product.cardNumber || !isPokemonMarket(product.market)) return null;
   const set = findSet(product, manifest);
   if (!set) return null;
   const file = pickFile(product.name, set.files.filter((entry) => USABLE.test(entry)));

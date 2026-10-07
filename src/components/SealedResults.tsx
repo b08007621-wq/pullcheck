@@ -8,6 +8,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { sealedKey } from '@/state/collectionContext';
 import { spacing, typography } from '@/theme';
 import type { SealedProduct } from '@/types/sealed';
+import { gameInfo } from '@/utils/game';
+import { marketGame } from '@/utils/market';
 
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
@@ -26,7 +28,6 @@ type Props = {
 };
 
 const SUGGESTIONS = {
-  sealed: ['Elite Trainer Box', 'Booster Bundle', 'Lumiose City Mini Tin', 'ex Box', 'Prismatic Evolutions', '151'],
   jpSealed: ['Booster Box', '151', 'Terastal Festival', 'Shiny Treasure', 'VSTAR Universe'],
   jpSingles: ['Pikachu', 'Charizard', 'Umbreon', 'Mew', 'Eevee'],
 };
@@ -37,6 +38,7 @@ export function SealedResults({ search, bottomInset, onSuggestion, recent, onCle
   const { items } = useCollection();
   const singles = search.kind === 'singles';
   const japanese = search.market === 'jp';
+  const info = gameInfo(marketGame(search.market));
 
   const owned = useMemo(() => {
     const quantities = new Map<string, number>();
@@ -80,7 +82,7 @@ export function SealedResults({ search, bottomInset, onSuggestion, recent, onCle
         <SuggestionChips
           title="Try"
           icon="sparkles-outline"
-          suggestions={singles ? SUGGESTIONS.jpSingles : japanese ? SUGGESTIONS.jpSealed : SUGGESTIONS.sealed}
+          suggestions={singles ? SUGGESTIONS.jpSingles : japanese ? SUGGESTIONS.jpSealed : info.sealedSuggestions}
           onSelect={onSuggestion}
           align="start"
         />
@@ -111,7 +113,7 @@ export function SealedResults({ search, bottomInset, onSuggestion, recent, onCle
         message={
           singles
             ? `Nothing matches “${search.query}” in recent Japanese sets. Add the set name, like “Pikachu 151”.`
-            : `Nothing matches “${search.query}”. Try a set name like “Surging Sparks ETB”.`
+            : `Nothing matches “${search.query}”. Try a set name like “${info.sealedExample}”.`
         }
         bottomInset={bottomInset}
       />

@@ -5,7 +5,9 @@ import type { Game } from '@/types/card';
 
 const MAX_RECENT = 8;
 
-export function useRecentSearches(kind: 'cards' | 'sealed' | Exclude<Game, 'pokemon'>) {
+type OtherGame = Exclude<Game, 'pokemon'>;
+
+export function useRecentSearches(kind: 'cards' | 'sealed' | OtherGame | `${OtherGame}-sealed`) {
   const storageKey = `${STORAGE_KEYS.recentSearches}.${kind}`;
   const [recent, setRecent] = useState<string[]>([]);
 

@@ -1,4 +1,6 @@
-export type Market = 'en' | 'jp';
+export type PokemonMarket = 'en' | 'jp';
+
+export type Market = PokemonMarket | 'mtg' | 'yugioh' | 'lorcana';
 
 export type SealedPrice = {
   low: number | null;

@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +10,7 @@ import { IconButton } from '@/components/IconButton';
 import { useHaptics } from '@/hooks/useHaptics';
 import { findProductByBarcode } from '@/services/barcode';
 import { spacing, typography } from '@/theme';
+import { parseMarket } from '@/utils/market';
 
 type Phase = 'scanning' | 'looking' | 'missing' | 'failed';
 
@@ -18,6 +19,8 @@ const FRAME_HEIGHT = 150;
 
 export default function BarcodeScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ market?: string }>();
+  const market = parseMarket(params.market);
   const insets = useSafeAreaInsets();
   const haptics = useHaptics();
   const [permission, requestPermission] = useCameraPermissions();
@@ -35,7 +38,7 @@ export default function BarcodeScreen() {
       setPhase('looking');
       haptics.shutter();
       try {
-        const product = await findProductByBarcode(value);
+        const product = await findProductByBarcode(value, market);
         if (!product) {
           setPhase('missing');
           return;
@@ -43,13 +46,13 @@ export default function BarcodeScreen() {
         haptics.collect();
         router.replace({
           pathname: '/sealed/[id]',
-          params: { id: String(product.productId), groupId: String(product.groupId), market: product.market ?? 'en' },
+          params: { id: String(product.productId), groupId: String(product.groupId), market: product.market ?? market },
         });
       } catch {
         setPhase('failed');
       }
     },
-    [haptics, router],
+    [haptics, router, market],
   );
 
   const onScanned = useCallback(

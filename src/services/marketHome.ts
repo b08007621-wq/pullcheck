@@ -1,10 +1,11 @@
 import type { Market, SealedProduct } from '@/types/sealed';
 import { getMsrp } from '@/utils/msrp';
+import { isPokemonMarket } from '@/utils/market';
 import { getSealedMarketPrice } from '@/utils/sealed';
 
 import { loadGroupHistory, weeklyChange } from './priceHistory';
 import type { ProductKind } from './sealedProducts';
-import { loadGroupCatalog, loadGroups, settleInBatches, type TcgcsvGroup } from './tcgcsv';
+import { isMainSet, loadGroupCatalog, loadGroups, newestFirst, settleInBatches, type TcgcsvGroup } from './tcgcsv';
 
 export type HomeSection = {
   title: string;
@@ -27,10 +28,11 @@ const MIN_RISE = 0.03;
 
 export async function loadMarketHome(market: Market, kind: ProductKind): Promise<MarketHome> {
   const now = Date.now();
+  const pokemon = isPokemonMarket(market);
   const sets = (await loadGroups(market))
-    .filter((group) => !group.isSupplemental && SET_NAME.test(group.name) && !SKIP.test(group.name))
+    .filter((group) => (pokemon ? !group.isSupplemental && SET_NAME.test(group.name) && !SKIP.test(group.name) : isMainSet(group)))
     .filter((group) => group.publishedOn && Date.parse(group.publishedOn) <= now)
-    .sort((first, second) => (second.publishedOn ?? '').localeCompare(first.publishedOn ?? ''));
+    .sort(pokemon ? (first, second) => (second.publishedOn ?? '').localeCompare(first.publishedOn ?? '') : newestFirst);
   const newest = sets.slice(0, NEWEST_SETS);
   const settled = await settleInBatches(newest, (group) => loadGroupCatalog(group));
   const catalogs = settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));

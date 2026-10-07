@@ -4,17 +4,17 @@ import { StyleSheet, Text } from 'react-native';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useTheme } from '@/hooks/useTheme';
 import { radius, spacing, typography } from '@/theme';
-import type { Market } from '@/types/sealed';
+import type { PokemonMarket } from '@/types/sealed';
 
 import { GlassSurface } from './GlassSurface';
 import { PressableScale } from './PressableScale';
 
 type Props = {
-  value: Market;
-  onChange: (market: Market) => void;
+  value: PokemonMarket;
+  onChange: (market: PokemonMarket) => void;
 };
 
-const LABELS: Record<Market, { short: string; full: string }> = {
+const LABELS: Record<PokemonMarket, { short: string; full: string }> = {
   en: { short: 'EN', full: 'English cards and products' },
   jp: { short: 'JP', full: 'Japanese cards and products' },
 };
@@ -22,7 +22,7 @@ const LABELS: Record<Market, { short: string; full: string }> = {
 export function LanguageToggle({ value, onChange }: Props) {
   const theme = useTheme();
   const haptics = useHaptics();
-  const next: Market = value === 'en' ? 'jp' : 'en';
+  const next: PokemonMarket = value === 'en' ? 'jp' : 'en';
 
   return (
     <PressableScale

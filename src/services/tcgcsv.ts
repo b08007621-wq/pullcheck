@@ -1,21 +1,29 @@
 import type { TcgPlayerPrice } from '@/types/card';
 import type { Market, SealedPrice, SealedProduct } from '@/types/sealed';
+import { isPokemonMarket } from '@/utils/market';
 
 import { type CachePolicy, type Cached, cachedFetch } from './cache';
 import { ApiError, getJson } from './http';
 
-const CATEGORY_IDS: Record<Market, number> = { en: 3, jp: 85 };
+const CATEGORY_IDS: Record<Market, number> = { en: 3, jp: 85, mtg: 1, yugioh: 2, lorcana: 71 };
 const REQUEST_OPTIONS = {
   headers: { 'User-Agent': 'PullCheck/1.0 (iOS; Expo)' },
   maxAttempts: 6,
 };
 const HOUR = 60 * 60 * 1000;
-const GROUPS_CACHE: CachePolicy = { bucket: 'tcgcsv-groups', ttlMs: 24 * HOUR, maxEntries: 2 };
+const GROUPS_CACHE: CachePolicy = { bucket: 'tcgcsv-groups', ttlMs: 24 * HOUR, maxEntries: 5 };
 const CATALOG_CACHE: CachePolicy = { bucket: 'tcgcsv-catalog', ttlMs: 6 * HOUR, maxEntries: 16 };
 const PRODUCTS_CACHE: CachePolicy = { bucket: 'tcgcsv-products', ttlMs: 24 * HOUR, maxEntries: 30 };
 const SET_FETCH_CONCURRENCY = 3;
 export const MAIN_SET_NAME = /^[A-Z]{1,6}[\d.]*[a-z]?:\s/;
 const NON_SET_NAME = /promo|energ|trainer kit/i;
+const OTHER_NON_SET_NAME = /promo|art series|secret lair|token|playtest|oversized|prize|jumbo/i;
+const MISC_GROUP_NAMES: Partial<Record<Market, RegExp>> = {
+  en: /^miscellaneous cards & products$/i,
+  jp: /^miscellaneous cards & products$/i,
+  mtg: /^box sets$/i,
+  yugioh: /^collector's boxes$/i,
+};
 const KEPT_FIELDS = new Set(['Number', 'Rarity', 'Card Type', 'HP', 'Stage', 'Weakness', 'Resistance', 'RetreatCost']);
 
 export type TcgcsvGroup = {
@@ -130,7 +138,7 @@ async function fetchCatalog(group: TcgcsvGroup): Promise<GroupCatalog> {
     const number = extendedValue(product, 'Number');
     if (number) {
       if (market === 'en') catalog.cards.push(toCardListing(product, number, productPrices));
-      else catalog.singles.push(toSingle(product, group, number, productPrices));
+      else if (market === 'jp') catalog.singles.push(toSingle(product, group, number, productPrices));
     } else if (!/^code card/i.test(product.name)) {
       catalog.sealed.push(toSealedProduct(product, group, productPrices[0] ?? null));
     }
@@ -178,10 +186,17 @@ export async function settleInBatches<T, R>(
 }
 
 export function isMainSet(group: TcgcsvGroup): boolean {
-  return !group.isSupplemental && MAIN_SET_NAME.test(group.name) && !NON_SET_NAME.test(group.name);
+  if (group.isSupplemental) return false;
+  if (!isPokemonMarket(group.market)) return !OTHER_NON_SET_NAME.test(group.name) && !isMiscGroup(group);
+  return MAIN_SET_NAME.test(group.name) && !NON_SET_NAME.test(group.name);
+}
+
+export function isMiscGroup(group: TcgcsvGroup): boolean {
+  return MISC_GROUP_NAMES[group.market ?? 'en']?.test(group.name) ?? false;
 }
 
 export function displaySetName(group: TcgcsvGroup): string {
+  if (!isPokemonMarket(group.market)) return group.name;
   return group.name.replace(MAIN_SET_NAME, '').trim() || group.name;
 }
 

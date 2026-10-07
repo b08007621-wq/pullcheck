@@ -22,6 +22,7 @@ export type SealedType =
   | 'specialCollection'
   | 'posterCollection'
   | 'boosterPack'
+  | 'deck'
   | 'collection'
   | 'other';
 
@@ -48,7 +49,8 @@ const RULES: [RegExp, SealedType][] = [
   [/special collection/, 'specialCollection'],
   [/poster collection/, 'posterCollection'],
   [/booster pack/, 'boosterPack'],
-  [/collection|\bbox\b|bundle/, 'collection'],
+  [/\bdecks?\b|precon/, 'deck'],
+  [/collection|\bbox\b|bundle|trove|gift set/, 'collection'],
 ];
 
 export const SEALED_TYPE_LABEL: Record<SealedType, string> = {
@@ -73,6 +75,7 @@ export const SEALED_TYPE_LABEL: Record<SealedType, string> = {
   specialCollection: 'Special Collection',
   posterCollection: 'Poster Collection',
   boosterPack: 'Booster Pack',
+  deck: 'Deck',
   collection: 'Collection',
   other: 'Sealed',
 };
@@ -90,6 +93,7 @@ const SORT_ORDER: SealedType[] = [
   'buildBattle',
   'exBox',
   'collection',
+  'deck',
   'tin',
   'miniTin',
   'threePack',

@@ -11,7 +11,7 @@ import { normalizeText } from '@/services/sealedQuery';
 import { displaySetName, type TcgcsvGroup } from '@/services/tcgcsv';
 import { japaneseLogo } from '@/services/japaneseLogos';
 import { type AppTheme, spacing, typography } from '@/theme';
-import type { Market } from '@/types/sealed';
+import type { PokemonMarket } from '@/types/sealed';
 import { formatDate, parseDate } from '@/utils/date';
 
 import { DetailLayout } from './DetailLayout';
@@ -23,7 +23,7 @@ import { LoadingState } from './LoadingState';
 import { SearchBar } from './SearchBar';
 
 type Props = {
-  onMarket: (market: Market) => void;
+  onMarket: (market: PokemonMarket) => void;
 };
 
 export function JapaneseSetList({ onMarket }: Props) {
