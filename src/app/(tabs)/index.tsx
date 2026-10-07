@@ -145,7 +145,7 @@ export default function CollectionScreen() {
       queueSeen([item.key]);
       if (item.kind === 'card') {
         setBrowseList(
-          visible.flatMap((entry) => (entry.kind === 'card' ? [{ id: entry.card.id, entry: entry.key }] : [])),
+          visible.flatMap((entry) => (entry.kind === 'card' ? [{ id: entry.card.id, entry: entry.key, card: entry.card }] : [])),
         );
         router.push({ pathname: '/card/[id]', params: { id: item.card.id, entry: item.key } });
       } else {

@@ -1,3 +1,7 @@
+import type { Card } from '@/types/card';
+
+import { getKnownCard, rememberCards } from './pokemonTcg';
+
 export type BrowseStop = {
   id: string;
   entry?: string;
@@ -14,8 +18,10 @@ const MAX_STOPS = 3000;
 
 let stops: BrowseStop[] = [];
 
-export function setBrowseList(next: BrowseStop[]): void {
-  stops = next.slice(0, MAX_STOPS);
+export function setBrowseList(next: (BrowseStop & { card?: Card })[]): void {
+  const kept = next.slice(0, MAX_STOPS);
+  stops = kept.map(({ id, entry }) => ({ id, entry }));
+  rememberCards(kept.flatMap(({ id, card }) => (card && !getKnownCard(id) ? [card] : [])));
 }
 
 export function browsePlace(id: string, entry?: string | null): BrowsePlace | null {
