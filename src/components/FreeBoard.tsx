@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type Dispatch, memo, type ReactNode, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -76,6 +76,7 @@ type Gesture = {
   touchX: number;
   touchY: number;
   pageY: number;
+  liftPageY: number;
   originX: number;
   originY: number;
   x: number;
@@ -96,6 +97,16 @@ type Motion = {
   pinchY: Animated.Value;
   fade: Animated.Value;
   placed: boolean;
+  tx: number;
+  ty: number;
+  shift: Shift | null;
+};
+
+type Shift = {
+  x: number;
+  y: number;
+  translateX: ReturnType<typeof Animated.subtract>;
+  translateY: ReturnType<typeof Animated.subtract>;
 };
 
 type Touch = { pageX: number; pageY: number; identifier?: number | string };
@@ -112,6 +123,7 @@ const CROP_MIN = 0.3;
 const STRETCH_RANGE: [number, number] = [0.6, 3];
 const AXIS_SHARE = 0.35;
 const EDGE_ZONE = 90;
+const SCROLL_ARM = 24;
 const MAX_SCROLL_STEP = 16;
 const DEFAULT_EDGES = { top: 120, bottom: 150 };
 
@@ -152,6 +164,9 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
         pinchY: new Animated.Value(1),
         fade: new Animated.Value(0),
         placed: false,
+        tx: Number.NaN,
+        ty: Number.NaN,
+        shift: null,
       };
       motions.set(key, entry);
     }
@@ -164,6 +179,8 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
       const entry = motionFor(rect.key);
       if (!entry.placed) {
         entry.pos.setValue({ x: rect.x, y: rect.y });
+        entry.tx = rect.x;
+        entry.ty = rect.y;
         if (rect.h > 0 && width > 0) {
           entry.placed = true;
           Animated.timing(entry.fade, { toValue: 1, duration: 220, useNativeDriver: true }).start(({ finished }) => {
@@ -172,6 +189,9 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
         }
         continue;
       }
+      if (entry.tx === rect.x && entry.ty === rect.y) continue;
+      entry.tx = rect.x;
+      entry.ty = rect.y;
       Animated.spring(entry.pos, {
         toValue: { x: rect.x, y: rect.y },
         damping: 20,
@@ -229,11 +249,12 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
     scrollTimer.current = null;
   };
 
-  const scrollStep = (pageY: number): number => {
+  const scrollStep = (current: Gesture): number => {
+    const { pageY, liftPageY } = current;
     const top = edges.top;
     const bottom = screenHeight - edges.bottom;
-    if (pageY < top + EDGE_ZONE) return -Math.min(MAX_SCROLL_STEP, 2 + ((top + EDGE_ZONE - pageY) / EDGE_ZONE) * MAX_SCROLL_STEP);
-    if (pageY > bottom - EDGE_ZONE) return Math.min(MAX_SCROLL_STEP, 2 + ((pageY - bottom + EDGE_ZONE) / EDGE_ZONE) * MAX_SCROLL_STEP);
+    if (pageY < top + EDGE_ZONE && pageY < liftPageY - SCROLL_ARM) return -Math.min(MAX_SCROLL_STEP, 2 + ((top + EDGE_ZONE - pageY) / EDGE_ZONE) * MAX_SCROLL_STEP);
+    if (pageY > bottom - EDGE_ZONE && pageY > liftPageY + SCROLL_ARM) return Math.min(MAX_SCROLL_STEP, 2 + ((pageY - bottom + EDGE_ZONE) / EDGE_ZONE) * MAX_SCROLL_STEP);
     return 0;
   };
 
@@ -245,7 +266,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
         stopScrolling();
         return;
       }
-      const step = scrollStep(current.pageY);
+      const step = scrollStep(current);
       if (step === 0) {
         stopScrolling();
         return;
@@ -262,12 +283,15 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
   const lift = (current: Gesture) => {
     current.timer = null;
     current.lifted = true;
+    current.liftPageY = current.pageY;
     haptics.collect();
     if (!editing) onEditingChange(true);
     onScrollLock?.(true);
     const entry = motionFor(current.key);
     entry.pos.stopAnimation();
     entry.pos.setValue({ x: current.x, y: current.y });
+    entry.tx = Number.NaN;
+    entry.ty = Number.NaN;
     Animated.spring(entry.lift, { toValue: 1, damping: 14, stiffness: 260, useNativeDriver: true }).start();
     setFrozen(rects);
     sendDrag(current, true);
@@ -370,6 +394,8 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
     const entry = motionFor(current.key);
     haptics.tap();
     if (target) {
+      entry.tx = target.x;
+      entry.ty = target.y;
       Animated.spring(entry.pos, {
         toValue: { x: target.x, y: target.y },
         damping: 18,
@@ -417,6 +443,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
       touchX: first.pageX,
       touchY: first.pageY,
       pageY: first.pageY,
+      liftPageY: first.pageY,
       originX: rect.x,
       originY: rect.y,
       x: rect.x,
@@ -469,7 +496,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
     current.y = Math.max(0, current.originY + first.pageY - current.touchY);
     motionFor(current.key).pos.setValue({ x: current.x, y: current.y });
     sendDrag(current);
-    if (scrollStep(first.pageY) !== 0) startScrolling();
+    if (scrollStep(current) !== 0) startScrolling();
   };
 
   const touchEnd = (event: GestureResponderEvent) => {
@@ -532,7 +559,6 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
             const tilt = index % 2 === 0 ? ['-0.5deg', '0.5deg'] : ['0.5deg', '-0.5deg'];
             const isStretch = Boolean(widget.stretch);
             const cropped = !isStretch && rect.hs < 1;
-            const content = typeof widget.node === 'function' ? widget.node({ heightScale: rect.hs }) : widget.node;
             return (
               <Animated.View
                 key={widget.key}
@@ -550,10 +576,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
                     width: rect.w,
                     zIndex: lifted ? 10 : 1,
                     opacity: entry.fade,
-                    transform: [
-                      { translateX: Animated.subtract(entry.pos.x, rect.x) },
-                      { translateY: Animated.subtract(entry.pos.y, rect.y) },
-                    ],
+                    transform: shiftFor(entry, rect),
                   },
                 ]}
               >
@@ -574,14 +597,7 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
                   ]}
                 >
                   <View style={cropped ? [styles.crop, { height: rect.h }] : undefined}>
-                    <View
-                      onLayout={(event) => {
-                        const next = Math.round(event.nativeEvent.layout.height);
-                        setNatural((current) => (current[widget.key] === next ? current : { ...current, [widget.key]: next }));
-                      }}
-                    >
-                      {content}
-                    </View>
+                    <WidgetBody id={widget.key} node={widget.node} heightScale={rect.hs} onNatural={setNatural} />
                     {cropped ? (
                       <LinearGradient
                         pointerEvents="none"
@@ -625,6 +641,40 @@ export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, ed
     </View>
   );
 }
+
+function shiftFor(entry: Motion, rect: Rect) {
+  let shift = entry.shift;
+  if (!shift || shift.x !== rect.x || shift.y !== rect.y) {
+    shift = {
+      x: rect.x,
+      y: rect.y,
+      translateX: Animated.subtract(entry.pos.x, rect.x),
+      translateY: Animated.subtract(entry.pos.y, rect.y),
+    };
+    entry.shift = shift;
+  }
+  return [{ translateX: shift.translateX }, { translateY: shift.translateY }];
+}
+
+type BodyProps = {
+  id: string;
+  node: BoardWidget['node'];
+  heightScale: number;
+  onNatural: Dispatch<SetStateAction<Record<string, number>>>;
+};
+
+const WidgetBody = memo(function WidgetBody({ id, node, heightScale, onNatural }: BodyProps) {
+  return (
+    <View
+      onLayout={(event) => {
+        const next = Math.round(event.nativeEvent.layout.height);
+        onNatural((current) => (current[id] === next ? current : { ...current, [id]: next }));
+      }}
+    >
+      {typeof node === 'function' ? node({ heightScale }) : node}
+    </View>
+  );
+});
 
 function resolve(
   keys: string[],
