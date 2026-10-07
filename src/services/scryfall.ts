@@ -199,6 +199,7 @@ export async function getScryfallSets(signal?: AbortSignal): Promise<GameSet[]> 
       icon: set.icon_svg_uri ?? null,
       iconIsSymbol: true,
     }))
+    .filter((set, index, list) => list.findIndex((other) => other.id === set.id) === index)
     .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate));
 }
 

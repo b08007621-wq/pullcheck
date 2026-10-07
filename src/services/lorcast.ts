@@ -65,6 +65,7 @@ export async function getLorcastSets(signal?: AbortSignal): Promise<GameSet[]> {
       icon: null,
       iconIsSymbol: false,
     }))
+    .filter((set, index, list) => list.findIndex((other) => other.id === set.id) === index)
     .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate));
 }
 

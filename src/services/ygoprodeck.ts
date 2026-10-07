@@ -156,35 +156,48 @@ export async function getYgoCards(ids: string[]): Promise<{ cards: Card[]; faile
 
 export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
   const sets = await loadSetInfo(signal);
-  return sets
-    .filter((set) => (set.num_of_cards ?? 0) > 0)
-    .map((set) => ({
+  const byCode = new Map<string, GameSet>();
+  for (const set of sets) {
+    if ((set.num_of_cards ?? 0) <= 0) continue;
+    const releaseDate = slashDate(set.tcg_date);
+    const existing = byCode.get(set.set_code);
+    if (existing) {
+      existing.total += set.num_of_cards ?? 0;
+      if (releaseDate > existing.releaseDate) {
+        existing.releaseDate = releaseDate;
+        existing.name = set.set_name;
+      }
+      continue;
+    }
+    byCode.set(set.set_code, {
       id: ygoSetId(set.set_code),
-      game: 'yugioh' as const,
+      game: 'yugioh',
       code: set.set_code,
       name: set.set_name,
-      releaseDate: slashDate(set.tcg_date),
+      releaseDate,
       total: set.num_of_cards ?? 0,
       type: null,
       icon: set.set_image ?? `${SET_IMAGE_URL}/${encodeURIComponent(set.set_code)}.jpg`,
       iconIsSymbol: false,
-    }))
-    .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate));
+    });
+  }
+  return [...byCode.values()].sort((first, second) => second.releaseDate.localeCompare(first.releaseDate));
 }
 
 export async function getYgoSetCards(setId: string, signal?: AbortSignal): Promise<Card[]> {
   const code = setId.slice(SET_PREFIX.length);
   const { value } = await cachedFetch(code, SET_CARDS_CACHE, async () => {
-    const sets = await loadSetInfo(signal);
-    const set = sets.find((entry) => entry.set_code === code);
-    if (!set) throw new ApiError('notFound');
-    const [response, dates] = await Promise.all([
-      fetchCards(`${BASE_URL}/cardinfo.php?${toQueryString({ cardset: set.set_name, misc: 'yes' })}`, signal),
+    const names = [...new Set((await loadSetInfo(signal)).filter((entry) => entry.set_code === code).map((entry) => entry.set_name))];
+    if (names.length === 0) throw new ApiError('notFound');
+    const [responses, dates] = await Promise.all([
+      Promise.all(names.map((name) => fetchCards(`${BASE_URL}/cardinfo.php?${toQueryString({ cardset: name, misc: 'yes' })}`, signal))),
       setDates(),
     ]);
-    return response.data
+    const seen = new Set<string>();
+    return responses
+      .flatMap((response) => response.data)
       .flatMap((card) => toCards(card, 'en', dates))
-      .filter((card) => card.set.name === set.set_name)
+      .filter((card) => names.includes(card.set.name) && !seen.has(card.id) && Boolean(seen.add(card.id)))
       .sort((first, second) => first.number.localeCompare(second.number, undefined, { numeric: true }));
   });
   return value;

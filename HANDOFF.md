@@ -47,6 +47,32 @@
 - TCGCSV price archive is offline; history only builds forward from 2026-10-06.
 - Japanese set logos come from github.com/1niceroli/ptcg-assets (no license file — ask the owner before shipping).
 
+## Next tasks for terminal Claude Code (on the PC, which has full internet)
+The cloud sessions can only download from GitHub and npm, so they couldn't fetch images or test Scryfall, YGOPRODeck or Lorcast. Do these on the PC, in order. Work on branch `claude/happy-galileo-fbfr7y`, run `npx.cmd expo lint` and `npx.cmd tsc --noEmit`, then commit and `git push pc claude/happy-galileo-fbfr7y` so the cloud session can pick it up.
+
+### 1. Put these images in the repo
+Check each source's license before committing it, and write the source and license in `assets/ATTRIBUTION.md`. Leave out anything you can't confirm is OK to ship, and say so in this file.
+- **Yu-Gi-Oh! card back** → `assets/card-back-ygo.jpg`, about 745×1086 JPEG, quality 88. The source is github.com/kooriookami/yugioh-card (MIT), folder `src/assets/yugioh-card/yugioh-back/image/` on branch `master`. Start from `card-normal.png` (1394×2031). Overlay `konami.png` at (94,95), `register.png` at (370,114) and `logo-tcg.png` at (859,1763), then resize. Use Python + Pillow from a scratch folder, not the repo.
+- **Japanese Yu-Gi-Oh! (OCG) back**, optional → `assets/card-back-ygo-ocg.jpg`. Same steps, but use `logo-ocg.png` at (878,1722).
+- **Lorcana card back** → `assets/card-back-lorcana.jpg`, about 745×1040. Look for a high-res official back, for example the Disney Lorcana wiki "card back" file or Ravensburger press assets.
+- **Game logos**, transparent PNGs about 256 px tall → `assets/games/pokemon.png`, `assets/games/mtg.png`, `assets/games/yugioh.png`, `assets/games/lorcana.png`. Wikimedia Commons has all four wordmarks. Trim the transparent edges.
+- **Lorcana set logos**, optional → `assets/lorcana-sets/<code>.png`, where `<code>` is the Lorcast set code (`1`, `2`, … and the special set codes). Only get these if a source is clear.
+
+### 2. Use them in the code
+- **Card backs:** `src/three/cardBack.ts` → add `ygo`, `ygoOcg` and `lorcana` to `CardBack` and `CARD_BACKS`, and to `parseCardBack`. `src/utils/viewer.ts` `cardViewerParams` → pick the back with `gameOf(card)`: `mtg` keeps `plain` plus its `backImage`, `yugioh` → `ygo`, `lorcana` → `lorcana`.
+- **Game logos:** `src/components/GameEmblem.tsx` is drawn SVG now. Swap in an `Image` (expo-image) of `assets/games/<game>.png` in `GamePicker`, with a fixed height of about 20 and auto width. Keep `GameEmblem` as the fallback and for the small icons in `CollectionGamesPanel`.
+- **Lorcana set logos:** add a `require` map in a new `src/utils/lorcanaSetLogos.ts`. Use it in `getLorcastSets` (`icon`), and make `GameSetIcon` accept a bundled image (a number) as well as a URL.
+
+### 3. Check the APIs live, since nothing has run against them yet
+Run these and compare the JSON with the types in the services. Fix anything that differs.
+- `curl "https://api.scryfall.com/cards/search?q=lightning+bolt+game:paper&unique=prints&order=released&dir=desc"` → `services/scryfall.ts`. Also check `/sets`, `e:<code>` set search, `POST /cards/collection` and `lang:ja` search.
+- `curl "https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=dark%20magician&num=20&offset=0&sort=new&misc=yes"` → `services/ygoprodeck.ts`. Also check `cardsets.php`, `cardinfo.php?cardset=<name>`, `id=a,b,c`, `language=fr`, and whether `https://images.ygoprodeck.com/images/sets/<code>.jpg` exists for a few sets.
+- `curl "https://api.lorcast.com/v0/cards/search?q=elsa"`, `https://api.lorcast.com/v0/sets`, `https://api.lorcast.com/v0/sets/1/cards` and `https://api.lorcast.com/v0/cards/1/1` → `services/lorcast.ts`. The set-cards and card-by-set/number endpoints are a guess. If they're wrong, fix `getLorcastSetCards` and `getLorcastCard`, and keep ids as `lor-<set code>-<number>`.
+- Check that Magic set symbols (Scryfall SVG) show tinted in `GameSetIcon` on the iPhone. If `tintColor` doesn't apply to SVG there, put the icon on a light rounded background instead.
+
+### 4. In the app (Expo Go)
+Go through each game in turn: open the search home, all sets, a set page, a card, the 3D viewer and add to collection. Also check the Collection's "Your games" and "Most valuable" widgets and the Game filter. Fix any red error screens or duplicate-key warnings.
+
 ## Built this session
 Rising fallback + history, sealed cutouts, floating swipeable tab bar, binders, rows/grid/3D collection views (remembered), upcoming sets, trade checker, barcode scanner, Japanese set pages + logos + foils, cross-language versions, graded copies, value chart with movers, market charts, search homes for JP/sealed, saved themes, background textures, Pull (pack opening) with possible pulls, scanner continuous autofocus.
 
