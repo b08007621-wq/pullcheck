@@ -7,8 +7,9 @@ import { useCollection } from '@/hooks/useCollection';
 import { useTheme } from '@/hooks/useTheme';
 import { setBrowseList } from '@/services/cardBrowse';
 import { spacing, typography } from '@/theme';
-import type { Card } from '@/types/card';
+import type { Card, Game } from '@/types/card';
 import { ownedCardCounts } from '@/utils/collectionValue';
+import { gameInfo } from '@/utils/game';
 
 import { CardListItem } from './CardListItem';
 import { DiscoverHome } from './DiscoverHome';
@@ -17,9 +18,11 @@ import { ErrorState } from './ErrorState';
 import { rowPosition } from './ListRow';
 import { LoadMoreFooter } from './LoadMoreFooter';
 import { SkeletonRows } from './SkeletonRows';
+import { SuggestionChips } from './SuggestionChips';
 
 type Props = {
   search: CardSearch;
+  game?: Game;
   bottomInset: number;
   onSuggestion: (text: string) => void;
   recent: string[];
@@ -27,9 +30,7 @@ type Props = {
   onOpenResult: () => void;
 };
 
-const SUGGESTIONS = ['Charizard', 'Pikachu', 'Umbreon', 'Mew', 'Gengar'];
-
-export function SearchResults({ search, bottomInset, onSuggestion, recent, onClearRecent, onOpenResult }: Props) {
+export function SearchResults({ search, game = 'pokemon', bottomInset, onSuggestion, recent, onClearRecent, onOpenResult }: Props) {
   const theme = useTheme();
   const router = useRouter();
   const { items } = useCollection();
@@ -58,12 +59,28 @@ export function SearchResults({ search, bottomInset, onSuggestion, recent, onCle
     [owned, openCard, count],
   );
 
+  const info = gameInfo(game);
+
+  if (search.status === 'idle' && game !== 'pokemon') {
+    return (
+      <EmptyState
+        icon="search"
+        title={`Search ${info.label}`}
+        message={`Prices and card details come from ${info.source}. Add any card to your collection.`}
+        bottomInset={bottomInset}
+      >
+        <SuggestionChips title="Recent" icon="time-outline" suggestions={recent} onSelect={onSuggestion} onClear={onClearRecent} />
+        <SuggestionChips title="Try" suggestions={info.suggestions} onSelect={onSuggestion} />
+      </EmptyState>
+    );
+  }
+
   if (search.status === 'idle') {
     return (
       <DiscoverHome
         bottomInset={bottomInset}
         recent={recent}
-        suggestions={SUGGESTIONS}
+        suggestions={info.suggestions}
         onSuggestion={onSuggestion}
         onClearRecent={onClearRecent}
       />

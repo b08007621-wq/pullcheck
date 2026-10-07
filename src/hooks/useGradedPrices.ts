@@ -5,6 +5,7 @@ import { extraProduct, isExtraCardId } from '@/services/extraCards';
 import { fetchGradedPrices, type GradedResult } from '@/services/graded';
 import { dexProductId, findDexCardFor } from '@/services/tcgdex';
 import type { Card } from '@/types/card';
+import { isOtherGame } from '@/utils/game';
 
 import { useResource } from './useResource';
 
@@ -12,7 +13,7 @@ export function useGradedPrices(card: Card | null): GradedResult | null {
   const id = card?.id ?? null;
   const load = useCallback(
     async (signal: AbortSignal): Promise<GradedResult> => {
-      if (!card) return { prices: [], limitedUntil: null };
+      if (!card || isOtherGame(card)) return { prices: [], limitedUntil: null };
       const dex = isExtraCardId(card.id) ? null : await findDexCardFor(card, signal);
       const productId =
         (dex ? dexProductId(dex) : null) ??

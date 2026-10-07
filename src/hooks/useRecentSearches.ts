@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { readJson, STORAGE_KEYS, writeJson } from '@/services/storage';
+import type { Game } from '@/types/card';
 
 const MAX_RECENT = 8;
 
-export function useRecentSearches(kind: 'cards' | 'sealed') {
+export function useRecentSearches(kind: 'cards' | 'sealed' | Exclude<Game, 'pokemon'>) {
   const storageKey = `${STORAGE_KEYS.recentSearches}.${kind}`;
   const [recent, setRecent] = useState<string[]>([]);
 

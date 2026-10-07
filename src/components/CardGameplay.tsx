@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { spacing, typography } from '@/theme';
 import type { Card, TypeModifier } from '@/types/card';
+import { isOtherGame } from '@/utils/game';
 
 import { AbilityItem } from './AbilityItem';
 import { AttackItem } from './AttackItem';
@@ -22,7 +23,7 @@ export function CardGameplay({ card }: Props) {
   if (!hasMoves && !hasStats && !hasRules && !card.flavorText) return null;
 
   return (
-    <SectionPanel title="Moves & rules" icon="flash">
+    <SectionPanel title={isOtherGame(card) ? 'Card text' : 'Moves & rules'} icon="flash">
       {card.abilities?.map((ability) => <AbilityItem key={ability.name} ability={ability} />)}
       {card.attacks?.map((attack) => <AttackItem key={attack.name} attack={attack} />)}
       {hasStats ? (

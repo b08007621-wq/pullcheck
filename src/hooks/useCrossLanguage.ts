@@ -2,13 +2,14 @@ import { useCallback } from 'react';
 
 import { findEnglishVersions, findJapaneseVersions } from '@/services/crossLanguage';
 import type { Card } from '@/types/card';
+import { isOtherGame } from '@/utils/game';
 import type { SealedProduct } from '@/types/sealed';
 
 import { useResource } from './useResource';
 
 export function useJapaneseVersions(card: Card | null) {
   const load = useCallback(
-    (signal: AbortSignal) => (card ? findJapaneseVersions(card, signal) : Promise.resolve([])),
+    (signal: AbortSignal) => (card && !isOtherGame(card) ? findJapaneseVersions(card, signal) : Promise.resolve([])),
     [card],
   );
   return useResource(card ? `jp-of:${card.id}` : 'jp-of:none', load).data;

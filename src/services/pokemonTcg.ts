@@ -1,9 +1,11 @@
 import type { Card, CardPage } from '@/types/card';
+import { isOtherGameId } from '@/utils/game';
 
 import { type CachePolicy, type Cached, cachedFetch } from './cache';
 import { buildNameQuery, normalizeCardName } from './cardQuery';
 import { getExtraCard, getExtraSetCards, isExtraCardId, isExtraSetId } from './extraCards';
 import { ApiError, getJson, toQueryString, withAbort } from './http';
+import { getGameCard } from './otherGames';
 import { getDexCardAsCard, getDexSetCards, isDexCardId, isDexSetId } from './tcgdex';
 
 const BASE_URL = 'https://api.pokemontcg.io/v2';
@@ -86,6 +88,11 @@ export async function queryCards(
 }
 
 export async function getCard(id: string, signal?: AbortSignal, options: FetchOptions = {}): Promise<Card> {
+  if (isOtherGameId(id)) {
+    const card = await getGameCard(id, signal, options);
+    knownCards.set(card.id, card);
+    return card;
+  }
   if (isExtraCardId(id)) {
     const card = await withAbort(getExtraCard(id, options), signal);
     knownCards.set(card.id, card);

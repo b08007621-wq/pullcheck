@@ -1,4 +1,5 @@
 import type { Card } from '@/types/card';
+import { isOtherGame } from '@/utils/game';
 
 import { isExtraCardId } from './extraCards';
 import { rememberCards } from './pokemonTcg';
@@ -17,7 +18,10 @@ const DEX_PRICE_LIMIT = 30;
 const DEX_BATCH = 6;
 
 export async function enrichCardPrices(cards: Card[]): Promise<Card[]> {
-  return enrichFromTcgdex(await enrichFromTcgcsv(cards));
+  if (!cards.some(isOtherGame)) return enrichFromTcgdex(await enrichFromTcgcsv(cards));
+  const enriched = await enrichFromTcgdex(await enrichFromTcgcsv(cards.filter((card) => !isOtherGame(card))));
+  const byId = new Map(enriched.map((card) => [card.id, card]));
+  return cards.map((card) => byId.get(card.id) ?? card);
 }
 
 async function enrichFromTcgdex(cards: Card[]): Promise<Card[]> {

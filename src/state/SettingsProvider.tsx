@@ -15,6 +15,7 @@ import { withAlpha } from '@/theme/color';
 
 import type { ChangeBasis, CollectionLayout, CollectionSection } from '@/types/collection';
 import { GRADING_COST_RANGE } from '@/utils/centering';
+import { isGame } from '@/utils/game';
 
 import { savedTheme } from './savedTheme';
 import {
@@ -124,6 +125,7 @@ function sanitize(stored: Partial<Settings>): Settings {
     setOrder: sanitizeSetOrder(stored.setOrder),
     boards: sanitizeBoards(stored.boards),
     tourDone: stored.tourDone === true,
+    searchGame: isGame(stored.searchGame) ? stored.searchGame : DEFAULT_SETTINGS.searchGame,
   };
 }
 

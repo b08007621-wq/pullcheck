@@ -1,3 +1,5 @@
+export type Game = 'pokemon' | 'mtg' | 'yugioh' | 'lorcana';
+
 export type TcgPlayerPrice = {
   low?: number | null;
   mid?: number | null;
@@ -69,6 +71,7 @@ export type TypeModifier = {
 
 export type Card = {
   id: string;
+  game?: Game;
   name: string;
   number: string;
   rarity?: string;

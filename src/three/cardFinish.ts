@@ -1,5 +1,6 @@
 import type { Card } from '@/types/card';
 import type { SealedProduct } from '@/types/sealed';
+import { isOtherGame } from '@/utils/game';
 
 export type FoilKind =
   | 'plain'
@@ -100,6 +101,7 @@ export function cardFinish(card: Card, variant?: string | null): CardFinish {
   const era = eraOf(card.set.series);
   const border = borderOf(card.set.name);
   const pattern = patternOf(card.set.series, card.set.name);
+  if (isOtherGame(card)) return { foil: variant && /foil/i.test(variant) ? 'full' : 'plain', border, era, pattern };
   if (variant && REVERSE_VARIANT.test(variant)) return { foil: 'reverse', border, era, pattern };
   if (variant && !HOLO_VARIANT.test(variant) && !ALL_FOIL_SET.test(card.set.name)) {
     return { foil: 'plain', border, era, pattern };

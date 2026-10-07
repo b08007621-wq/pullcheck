@@ -4,8 +4,9 @@ import { normalizeCardName } from '@/services/cardQuery';
 import { enrichCardPrices, needsPrices } from '@/services/cardPrices';
 import { loadExtraIndex, searchExtraCards, subscribeExtraIndex, withExtraPrices } from '@/services/extraCards';
 import { type ApiError, isAbortError, toApiError } from '@/services/http';
+import { searchGameCards } from '@/services/otherGames';
 import { searchCardsByName } from '@/services/pokemonTcg';
-import type { Card } from '@/types/card';
+import type { Card, Game } from '@/types/card';
 
 import { useDebouncedValue } from './useDebouncedValue';
 
@@ -36,10 +37,12 @@ type PageTarget = {
 
 export type CardSearch = ReturnType<typeof useCardSearch>;
 
-export function useCardSearch(input: string) {
-  const name = normalizeCardName(input);
+export function useCardSearch(input: string, game: Game = 'pokemon') {
+  const pokemon = game === 'pokemon';
+  const name = pokemon ? normalizeCardName(input) : normalizeOtherName(input);
   const debouncedName = useDebouncedValue(name, DEBOUNCE_MS);
-  const query = name ? debouncedName : '';
+  const text = name ? debouncedName : '';
+  const query = text ? `${game}|${text}` : '';
 
   const [results, setResults] = useState<Results | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -51,13 +54,13 @@ export function useCardSearch(input: string) {
   const current = query && results?.query === query ? results : null;
   const currentFailure = query && failure?.query === query ? failure : null;
   const page = resolvePage(query, current, target);
-  const extraMatches = useMemo(() => (query && extraTick >= 0 ? searchExtraCards(query) : []), [query, extraTick]);
+  const extraMatches = useMemo(() => (pokemon && text && extraTick >= 0 ? searchExtraCards(text) : []), [pokemon, text, extraTick]);
 
   useEffect(() => subscribeExtraIndex(() => setExtraTick((value) => value + 1)), []);
 
   useEffect(() => {
-    if (query) loadExtraIndex().catch(() => {});
-  }, [query]);
+    if (pokemon && text) loadExtraIndex().catch(() => {});
+  }, [pokemon, text]);
 
   useEffect(() => {
     const unpriced = extraMatches.filter((card) => !pricedExtras.has(card.id)).slice(0, MAX_EXTRA_PRICED);
@@ -82,7 +85,9 @@ export function useCardSearch(input: string) {
     if (!query) return;
     const controller = new AbortController();
 
-    searchCardsByName(query, page, controller.signal)
+    const request =
+      game === 'pokemon' ? searchCardsByName(text, page, controller.signal) : searchGameCards(game, text, page, controller.signal);
+    request
       .then((result) => {
         if (controller.signal.aborted) return;
         setFailure(null);
@@ -97,7 +102,7 @@ export function useCardSearch(input: string) {
               ? appendUnique(previous.cards, result.cards)
               : result.cards,
         }));
-        if (!result.cards.some(needsPrices)) return;
+        if (game !== 'pokemon' || !result.cards.some(needsPrices)) return;
         enrichCardPrices(result.cards).then((enriched) => {
           setResults((previous) =>
             previous?.query === query ? { ...previous, cards: replaceById(previous.cards, enriched) } : previous,
@@ -110,7 +115,7 @@ export function useCardSearch(input: string) {
       });
 
     return () => controller.abort();
-  }, [query, page, attempt]);
+  }, [query, text, game, page, attempt]);
 
   const isLoadingMore = current !== null && page > current.page && currentFailure === null;
   const loadMoreFailed =
@@ -130,7 +135,7 @@ export function useCardSearch(input: string) {
 
   return {
     status: resolveStatus(name, current, currentFailure),
-    query,
+    query: text,
     cards: current ? mergeByRelease(current.cards, extras) : [],
     totalCount: (current?.totalCount ?? 0) + (current ? extras.length : 0),
     hasMore: current?.hasMore ?? false,
@@ -142,6 +147,11 @@ export function useCardSearch(input: string) {
     loadMore,
     retry,
   };
+}
+
+function normalizeOtherName(input: string): string {
+  const trimmed = input.trim().replace(/\s+/g, ' ');
+  return trimmed.length >= 2 ? trimmed : '';
 }
 
 function resolveStatus(

@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 
 import { type Backdrop, DEFAULT_BACKDROP } from '@/theme/backdrop';
+import type { Game } from '@/types/card';
 import type { CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
 
 import {
@@ -47,6 +48,7 @@ export type Settings = {
   setOrder: Record<string, string[]>;
   boards: Record<string, BoardLayout>;
   tourDone: boolean;
+  searchGame: Game;
   design: number;
 };
 
@@ -83,6 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
   setOrder: {},
   boards: {},
   tourDone: false,
+  searchGame: 'pokemon',
   design: DESIGN_VERSION,
 };
 

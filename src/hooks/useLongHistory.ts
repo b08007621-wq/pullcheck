@@ -6,6 +6,7 @@ import { loadProductHistory } from '@/services/priceHistory';
 import type { Card } from '@/types/card';
 import type { PricePoint } from '@/types/collection';
 import type { Market } from '@/types/sealed';
+import { isOtherGame } from '@/utils/game';
 
 import { useResource } from './useResource';
 
@@ -31,6 +32,7 @@ export function useLongHistory(source: HistorySource | null): PricePoint[] {
     if (source.kind === 'product') {
       return loadProductHistory(source.market, source.groupId, source.productId);
     }
+    if (isOtherGame(source.card)) return [];
     const located = isExtraCardId(source.card.id)
       ? await extraProduct(source.card.id)
       : await locateTcgProduct(source.card);

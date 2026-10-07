@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
+import { GamePicker } from '@/components/GamePicker';
 import { IconButton } from '@/components/IconButton';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { Screen } from '@/components/Screen';
@@ -14,8 +15,11 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { useCardSearch } from '@/hooks/useCardSearch';
 import { useRecentSearches } from '@/hooks/useRecentSearches';
 import { useSealedSearch } from '@/hooks/useSealedSearch';
+import { useSettings } from '@/hooks/useSettings';
 import { spacing } from '@/theme';
+import type { Game } from '@/types/card';
 import type { Market } from '@/types/sealed';
+import { gameInfo } from '@/utils/game';
 
 type SearchMode = 'cards' | 'sealed';
 
@@ -36,6 +40,18 @@ export default function SearchScreen() {
   const [appliedQuery, setAppliedQuery] = useState(paramKey);
   const cardRecent = useRecentSearches('cards');
   const sealedRecent = useRecentSearches('sealed');
+  const { settings, updateSettings } = useSettings();
+  const game = settings.searchGame;
+  const pokemon = game === 'pokemon';
+  const gameRecent = useRecentSearches(pokemon ? 'cards' : game);
+
+  const gameRef = useRef({ game, updateSettings });
+  useEffect(() => {
+    gameRef.current = { game, updateSettings };
+  });
+  useEffect(() => {
+    if (paramKey && gameRef.current.game !== 'pokemon') gameRef.current.updateSettings({ searchGame: 'pokemon' });
+  }, [paramKey]);
 
   if (paramKey !== appliedQuery) {
     setAppliedQuery(paramKey);
@@ -46,32 +62,38 @@ export default function SearchScreen() {
     }
   }
 
-  const isCards = mode === 'cards';
-  const japanese = market === 'jp';
-  const cardSearch = useCardSearch(isCards && !japanese ? cardText : '');
+  const isCards = mode === 'cards' || !pokemon;
+  const japanese = pokemon && market === 'jp';
+  const cardSearch = useCardSearch(isCards && !japanese ? cardText : '', game);
   const jpCardSearch = useSealedSearch(cardText, 'jp', 'singles', isCards && japanese);
   const sealedSearch = useSealedSearch(sealedText, market, 'sealed', !isCards);
+  const pickGame = (next: Game) => {
+    if (next !== game) updateSettings({ searchGame: next });
+  };
 
   const busy = isCards
     ? japanese
       ? jpCardSearch.isTyping || jpCardSearch.status === 'loading'
       : cardSearch.isTyping || cardSearch.status === 'loading'
     : sealedSearch.isTyping || sealedSearch.status === 'loading';
-  const rememberCards = () => cardRecent.remember(cardText);
+  const rememberCards = () => (pokemon ? cardRecent : gameRecent).remember(cardText);
   const rememberSealed = () => sealedRecent.remember(sealedText);
 
   return (
     <Screen title="Search" action={<AppearanceButton />}>
       <View style={styles.controls}>
-        <View style={styles.modeRow}>
-          <View style={styles.modes}>
-            <SegmentedControl options={MODES} value={mode} onChange={setMode} />
+        <GamePicker value={game} onChange={pickGame} />
+        {pokemon ? (
+          <View style={styles.modeRow}>
+            <View style={styles.modes}>
+              <SegmentedControl options={MODES} value={mode} onChange={setMode} />
+            </View>
+            {isCards ? null : (
+              <IconButton icon="barcode-outline" accessibilityLabel="Scan a barcode" onPress={() => router.push('/barcode')} />
+            )}
+            <LanguageToggle value={market} onChange={setMarket} />
           </View>
-          {isCards ? null : (
-            <IconButton icon="barcode-outline" accessibilityLabel="Scan a barcode" onPress={() => router.push('/barcode')} />
-          )}
-          <LanguageToggle value={market} onChange={setMarket} />
-        </View>
+        ) : null}
         <SearchBar
           value={isCards ? cardText : sealedText}
           onChangeText={isCards ? setCardText : setSealedText}
@@ -81,7 +103,7 @@ export default function SearchScreen() {
             isCards
               ? japanese
                 ? 'Japanese card, e.g. Pikachu 151'
-                : 'Card name, e.g. Charizard'
+                : gameInfo(game).placeholder
               : japanese
                 ? 'Japanese product, e.g. 151 Booster Box'
                 : 'Product, e.g. Surging Sparks ETB'
@@ -91,10 +113,11 @@ export default function SearchScreen() {
       {isCards && !japanese ? (
         <SearchResults
           search={cardSearch}
+          game={game}
           bottomInset={tabBarHeight}
           onSuggestion={setCardText}
-          recent={cardRecent.recent}
-          onClearRecent={cardRecent.clear}
+          recent={pokemon ? cardRecent.recent : gameRecent.recent}
+          onClearRecent={pokemon ? cardRecent.clear : gameRecent.clear}
           onOpenResult={rememberCards}
         />
       ) : (

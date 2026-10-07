@@ -49,6 +49,7 @@ import {
   versionLabel,
 } from '@/utils/cardVersion';
 import { itemPrice } from '@/utils/collectionValue';
+import { gameInfo, gameOf } from '@/utils/game';
 import { getMarketPrice } from '@/utils/price';
 import { isBaseCard } from '@/utils/setProgress';
 import { cardViewerParams } from '@/utils/viewer';
@@ -142,6 +143,8 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
       item.kind === 'card' && item.card.set.id === card.set.id && isBaseCard(item.card, setTotal) ? [item.card.id] : [],
     ),
   ).size;
+  const game = gameOf(card);
+  const pokemon = game === 'pokemon';
   const open3d = () => router.push({ pathname: '/viewer', params: cardViewerParams(card, version.variant) });
   const versionPrice = cardVersionPrice(card, version);
   const anyPrice = getMarketPrice(card);
@@ -173,10 +176,11 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
             logo={card.set.images.logo}
             logoLabel={card.set.name}
             logoCaption={`#${formatCollectorNumber(card)} · ${card.set.series}`}
-            logoAction={setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set'}
-            onLogoPress={() => router.push({ pathname: '/set/[id]', params: { id: card.set.id } })}
+            logoAction={pokemon ? (setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set') : undefined}
+            onLogoPress={pokemon ? () => router.push({ pathname: '/set/[id]', params: { id: card.set.id } }) : undefined}
             chips={
               <>
+                {pokemon ? null : <Chip label={gameInfo(game).short} />}
                 {card.rarity ? <Chip label={card.rarity} tone="accent" /> : null}
                 {card.printing ? <Chip label={card.printing} tone="gain" /> : null}
                 {isSecretRare(card) ? <Chip label="Secret rare" tone="gain" /> : null}
@@ -242,12 +246,12 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
     {
       key: 'graded',
       label: 'Graded prices',
-      node: <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} />,
+      node: !pokemon ? null : <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} />,
     },
     {
       key: 'grade',
       label: 'Should I grade it?',
-      node: (
+      node: !pokemon ? null : (
         <GradeCheckButton
           onPress={() =>
             router.push({
@@ -263,9 +267,9 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
       label: 'Prices by version',
       node: <CardPricePanel card={card} version={version} onVersionChange={setPicked} />,
     },
-    { key: 'versions', label: 'Japanese versions', node: <OtherVersions language="jp" versions={japaneseVersions} /> },
+    { key: 'versions', label: 'Japanese versions', node: !pokemon ? null : <OtherVersions language="jp" versions={japaneseVersions} /> },
     { key: 'facts', label: 'Card details', node: <CardFacts card={card} /> },
-    { key: 'gameplay', label: 'Attacks & abilities', node: <CardGameplay card={card} /> },
+    { key: 'gameplay', label: pokemon ? 'Attacks & abilities' : 'Card text', node: <CardGameplay card={card} /> },
   ];
 
   return (

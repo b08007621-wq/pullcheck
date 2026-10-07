@@ -5,6 +5,7 @@ import type { Card } from '@/types/card';
 import type { CollectionItem } from '@/types/collection';
 import type { SealedProduct } from '@/types/sealed';
 
+import { isOtherGame } from './game';
 import { singleBack } from './cardBack';
 import { largeProductImage } from './sealed';
 import { productModelKind } from './sealedType';
@@ -33,7 +34,7 @@ export function cardViewerParams(card: Card, variant?: string | null): ViewerPar
     border: finish.border,
     era: finish.era,
     pattern: finish.pattern,
-    back: 'international',
+    back: isOtherGame(card) ? 'plain' : 'international',
   };
 }
 

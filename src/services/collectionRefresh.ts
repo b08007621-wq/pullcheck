@@ -1,9 +1,11 @@
 import type { Card } from '@/types/card';
+import { isOtherGameId } from '@/utils/game';
 import type { CollectionItem } from '@/types/collection';
 import type { Market, SealedProduct } from '@/types/sealed';
 
 import { enrichCardPrices } from './cardPrices';
 import { isExtraCardId, refreshExtraCards } from './extraCards';
+import { refreshGameCards } from './otherGames';
 import { queryCards } from './pokemonTcg';
 import { getDexCardAsCard, isDexCardId } from './tcgdex';
 import { fetchPricesUpdatedAt } from './priceClock';
@@ -52,7 +54,14 @@ export async function fetchCardsByIds(allIds: string[]): Promise<{ cards: Card[]
   let failed = 0;
   const extraIds = allIds.filter(isExtraCardId);
   const dexIds = allIds.filter(isDexCardId);
-  const ids = allIds.filter((id) => !isExtraCardId(id) && !isDexCardId(id));
+  const gameIds = allIds.filter(isOtherGameId);
+  const ids = allIds.filter((id) => !isExtraCardId(id) && !isDexCardId(id) && !isOtherGameId(id));
+
+  if (gameIds.length > 0) {
+    const games = await refreshGameCards(gameIds);
+    cards.push(...games.cards);
+    failed += games.failed;
+  }
 
   const dexSettled = await Promise.allSettled(dexIds.map((id) => getDexCardAsCard(id, undefined, { force: true })));
   for (const result of dexSettled) {
