@@ -6,7 +6,7 @@ import { useBoard } from '@/hooks/useBoard';
 
 import { BoardControls } from './BoardEditBar';
 import { DetailLayout } from './DetailLayout';
-import { type BoardWidget, FreeBoard } from './FreeBoard';
+import { ArrangeBoard, type BoardWidget } from './ArrangeBoard';
 
 type Props = {
   id: string;
@@ -30,7 +30,7 @@ export function DetailBoard({ id, widgets, footer, topRight }: Props) {
       scroller={scroller}
       footer={board.editing ? <BoardControls board={board} widgets={widgets} /> : footer}
     >
-      <FreeBoard
+      <ArrangeBoard
         widgets={widgets}
         board={board}
         autoScroll={scroller.scrollBy}

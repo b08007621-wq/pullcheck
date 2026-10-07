@@ -2,13 +2,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
 const BUBBLES = [
-  { x: 78, y: 6, size: 92 },
-  { x: 8, y: 18, size: 46 },
-  { x: 62, y: 30, size: 28 },
-  { x: 86, y: 46, size: 54 },
-  { x: 14, y: 58, size: 70 },
-  { x: 44, y: 74, size: 34 },
-  { x: 74, y: 84, size: 22 },
+  { x: 80, y: 4, size: 88 },
+  { x: 6, y: 14, size: 40 },
+  { x: 64, y: 22, size: 24 },
+  { x: 90, y: 30, size: 34 },
 ];
 
 export function AeroSky() {
@@ -86,13 +83,13 @@ const styles = StyleSheet.create({
   },
   bubble: {
     position: 'absolute',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   shine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
     transform: [{ rotate: '-28deg' }],
   },
 });

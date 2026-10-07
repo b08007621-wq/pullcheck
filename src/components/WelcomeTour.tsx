@@ -70,7 +70,7 @@ const SLIDES: Slide[] = [
       { icon: 'pricetag-outline', text: 'Raw and graded prices on every card' },
       { icon: 'swap-horizontal-outline', text: 'Swipe a card left or right for the next one' },
       { icon: 'cube-outline', text: 'Tilt cards in 3D to see the real foil' },
-      { icon: 'resize-outline', text: 'Hold the market chart to move or resize it' },
+      { icon: 'move-outline', text: 'Hold any part of a card page to rearrange it' },
     ],
   },
   {
@@ -80,7 +80,7 @@ const SLIDES: Slide[] = [
     body: 'See your total value, what’s rising and falling, and every card in a list, grid or 3D shelf.',
     tips: [
       { icon: 'hand-left-outline', text: 'Hold a card for quick actions' },
-      { icon: 'move-outline', text: 'Hold any section, drag it anywhere, pinch to resize' },
+      { icon: 'move-outline', text: 'Hold a section until it wiggles, then drag it to a new spot' },
       { icon: 'create-outline', text: 'Customize sections, columns and backups' },
     ],
   },

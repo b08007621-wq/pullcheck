@@ -14,7 +14,7 @@ import { DetailBoard } from '@/components/DetailBoard';
 import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
-import type { BoardWidget } from '@/components/FreeBoard';
+import type { BoardWidget } from '@/components/ArrangeBoard';
 import { LoadingState } from '@/components/LoadingState';
 import { GradeCheckButton } from '@/components/GradeCheckButton';
 import { GradedPanel } from '@/components/GradedPanel';

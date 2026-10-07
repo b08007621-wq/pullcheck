@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BoardControls } from '@/components/BoardEditBar';
 import { DetailLayout } from '@/components/DetailLayout';
 import { ErrorState } from '@/components/ErrorState';
-import { type BoardWidget, FreeBoard } from '@/components/FreeBoard';
+import { ArrangeBoard, type BoardWidget } from '@/components/ArrangeBoard';
 import { LoadingState } from '@/components/LoadingState';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { SetCardTile } from '@/components/SetCardTile';
@@ -159,7 +159,7 @@ export default function SetScreen() {
           windowSize={7}
           ListHeaderComponent={
             <View style={styles.boardWrap}>
-              <FreeBoard
+              <ArrangeBoard
                 widgets={widgets}
                 board={board}
                 autoScroll={scroller.scrollBy}

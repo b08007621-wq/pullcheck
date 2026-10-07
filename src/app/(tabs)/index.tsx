@@ -28,7 +28,7 @@ import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
 import { CollectionToolbar } from '@/components/CollectionToolbar';
 import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
-import { type BoardWidget, FreeBoard } from '@/components/FreeBoard';
+import { ArrangeBoard, type BoardWidget } from '@/components/ArrangeBoard';
 import { FreshPullPanel } from '@/components/FreshPullPanel';
 import { IconButton } from '@/components/IconButton';
 import { ItemActionsSheet } from '@/components/ItemActionsSheet';
@@ -392,7 +392,7 @@ export default function CollectionScreen() {
 
     const header = (
       <View style={styles.header}>
-        <FreeBoard
+        <ArrangeBoard
           widgets={widgets}
           board={board}
           paused={actionItem !== null || sheet !== null}

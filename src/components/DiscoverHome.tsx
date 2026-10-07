@@ -16,7 +16,7 @@ import { formatShortDate, parseDate } from '@/utils/date';
 import { BoardControls } from './BoardEditBar';
 import { DiscoverCardTile, TILE_WIDTH } from './DiscoverCardTile';
 import { DiscoverSection } from './DiscoverSection';
-import { type BoardWidget, FreeBoard } from './FreeBoard';
+import { ArrangeBoard, type BoardWidget } from './ArrangeBoard';
 import { SetLogoTile } from './SetLogoTile';
 import { ShortcutTile } from './ShortcutTile';
 import { SuggestionChips } from './SuggestionChips';
@@ -183,7 +183,7 @@ export function DiscoverHome({ bottomInset, recent, suggestions, onSuggestion, o
         scrollEventThrottle={16}
       >
         {discover ? (
-          <FreeBoard
+          <ArrangeBoard
             widgets={widgets}
             board={board}
             autoScroll={scroller.scrollBy}

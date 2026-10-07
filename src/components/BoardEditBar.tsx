@@ -42,7 +42,7 @@ export function BoardEditBar({ hidden, onShow, onTidy, onReset, onDone, onUndo, 
         <View style={styles.top}>
           <View style={styles.text}>
             <Text style={styles.title}>Editing this page</Text>
-            <Text style={styles.hint}>Drag to move · Pinch sideways or up and down to resize</Text>
+            <Text style={styles.hint}>Hold and drag to move · Tap Full or Half to resize</Text>
           </View>
           <Pressable
             onPress={() => {
@@ -69,8 +69,8 @@ export function BoardEditBar({ hidden, onShow, onTidy, onReset, onDone, onUndo, 
             />
           ) : null}
           <BarButton
-            icon="grid-outline"
-            label="Tidy up"
+            icon="reorder-four-outline"
+            label="All full width"
             onPress={() => {
               haptics.selection();
               onTidy();
