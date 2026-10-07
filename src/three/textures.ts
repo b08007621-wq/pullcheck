@@ -1,5 +1,6 @@
 import { Asset } from 'expo-asset';
-import { cacheDirectory, downloadAsync, getInfoAsync } from 'expo-file-system/legacy';
+import { cacheDirectory, deleteAsync, downloadAsync, getInfoAsync, moveAsync } from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Platform } from 'react-native';
 import {
   DataTexture,
@@ -12,7 +13,8 @@ import {
 
 export type TextureSource = number | string;
 
-const IMAGE_EXTENSION = /\.(png|jpe?g|webp)(\?|#|$)/i;
+const GL_READY_EXTENSION = /\.(png|jpe?g)(\?|#|$)/i;
+const SOURCE_EXTENSION = /\.(avif|webp|heic|gif|png|jpe?g)(\?|#|$)/i;
 
 const EDGE_ROWS = [
   [226, 222, 214],
@@ -65,17 +67,26 @@ async function resolveUri(source: TextureSource): Promise<string> {
     const asset = await Asset.fromModule(source).downloadAsync();
     return asset.localUri ?? asset.uri;
   }
-  if (Platform.OS === 'web' || !/^https?:/i.test(source) || IMAGE_EXTENSION.test(source)) return source;
-  return downloadWithExtension(source);
+  if (Platform.OS === 'web' || !/^https?:/i.test(source) || GL_READY_EXTENSION.test(source)) return source;
+  return downloadAsPng(source);
 }
 
-async function downloadWithExtension(url: string): Promise<string> {
-  const target = `${cacheDirectory}pullcheck-texture-${hashOf(url)}.png`;
-  const existing = await getInfoAsync(target);
-  if (existing.exists) return target;
-  const result = await downloadAsync(url, target);
-  if (result.status !== 200) throw new Error(`Texture download failed (${result.status})`);
-  return result.uri;
+async function downloadAsPng(url: string): Promise<string> {
+  const key = hashOf(url);
+  const target = `${cacheDirectory}pullcheck-texture-v2-${key}.png`;
+  if ((await getInfoAsync(target)).exists) return target;
+  const extension = SOURCE_EXTENSION.exec(url)?.[1]?.toLowerCase() ?? 'img';
+  const raw = `${cacheDirectory}pullcheck-texture-raw-${key}.${extension}`;
+  try {
+    const result = await downloadAsync(url, raw);
+    if (result.status !== 200) throw new Error(`Texture download failed (${result.status})`);
+    const image = await ImageManipulator.manipulate(result.uri).renderAsync();
+    const saved = await image.saveAsync({ format: SaveFormat.PNG });
+    await moveAsync({ from: saved.uri, to: target });
+    return target;
+  } finally {
+    await deleteAsync(raw, { idempotent: true }).catch(() => {});
+  }
 }
 
 function hashOf(value: string): string {
