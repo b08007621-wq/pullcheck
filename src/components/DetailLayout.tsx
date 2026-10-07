@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { AutoScroller } from '@/hooks/useAutoScroll';
 import { useTheme } from '@/hooks/useTheme';
 import { spacing } from '@/theme';
 
@@ -23,11 +24,20 @@ type Props = {
   topRight?: ReactNode;
   renderList?: (insets: ListInsets) => ReactNode;
   scrollEnabled?: boolean;
+  scroller?: AutoScroller;
 };
 
 const TOP_BAR_HEIGHT = 56;
 
-export function DetailLayout({ children, footer, centered = false, topRight, renderList, scrollEnabled = true }: Props) {
+export function DetailLayout({
+  children,
+  footer,
+  centered = false,
+  topRight,
+  renderList,
+  scrollEnabled = true,
+  scroller,
+}: Props) {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,6 +66,11 @@ export function DetailLayout({ children, footer, centered = false, topRight, ren
           ]}
           scrollIndicatorInsets={{ bottom: footerHeight }}
           scrollEnabled={scrollEnabled}
+          ref={scroller?.attach}
+          onScroll={scroller?.onScroll}
+          onLayout={scroller?.onLayout}
+          onContentSizeChange={scroller?.onContentSizeChange}
+          scrollEventThrottle={scroller ? 16 : undefined}
         >
           {children}
         </ScrollView>
@@ -111,6 +126,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
+    zIndex: 50,
+    elevation: 50,
     left: 0,
     right: 0,
     bottom: 0,

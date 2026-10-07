@@ -17,9 +17,10 @@ type Props = {
   extra?: PricePoint[];
   estimated?: PricePoint[];
   source?: HistorySource | null;
+  chartHeight?: number;
 };
 
-export function MarketChart({ id, usd, extra = [], estimated = [], source = null }: Props) {
+export function MarketChart({ id, usd, extra = [], estimated = [], source = null, chartHeight = 120 }: Props) {
   const theme = useTheme();
   const recorded = useMarketHistory(id, usd);
   const long = useLongHistory(source);
@@ -39,7 +40,7 @@ export function MarketChart({ id, usd, extra = [], estimated = [], source = null
 
   return (
     <SectionPanel title="Market">
-      <PriceHistoryChart points={points} currency="USD" height={120} emptyMessage="Builds up daily. Check back tomorrow." />
+      <PriceHistoryChart points={points} currency="USD" height={chartHeight} emptyMessage="Builds up daily. Check back tomorrow." />
       {useEstimates && estimated.length > 0 ? (
         <Text style={[styles.note, { color: theme.colors.textFaint }]}>Older points estimated from Cardmarket averages</Text>
       ) : null}

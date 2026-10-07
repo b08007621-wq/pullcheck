@@ -1,10 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { Chip } from '@/components/Chip';
 import { CollectButton } from '@/components/CollectButton';
+import { DetailBoard } from '@/components/DetailBoard';
 import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
+import type { BoardWidget } from '@/components/FreeBoard';
 import { LoadingState } from '@/components/LoadingState';
 import { MarketChart } from '@/components/MarketChart';
 import { OtherVersions } from '@/components/OtherVersions';
@@ -22,6 +25,7 @@ import { useSealedDetail } from '@/hooks/useSealedDetail';
 import { useSetLogo } from '@/hooks/useSetLogo';
 import { baseCardName } from '@/services/crossLanguage';
 import { japaneseLogoFor } from '@/services/japaneseLogos';
+import { spacing } from '@/theme';
 import type { Market } from '@/types/sealed';
 import { formatShortDate, parseDate } from '@/utils/date';
 import { getSealedMarketPrice } from '@/utils/sealed';
@@ -59,8 +63,95 @@ export default function SealedDetailScreen() {
   const japanese = (product.market ?? 'en') === 'jp';
   const marketPrice = getSealedMarketPrice(product);
 
+  const widgets: BoardWidget[] = [
+    {
+      key: 'hero',
+      label: 'Product picture',
+      resize: 'width',
+      node: (
+        <View style={styles.stack}>
+          <ProductHero product={product} onPress={open3d} />
+          {open3d ? <View3DButton onPress={open3d} /> : null}
+        </View>
+      ),
+    },
+    {
+      key: 'title',
+      label: 'Name and set',
+      node: (
+        <View style={styles.stack}>
+          <DetailTitle
+            title={single ? baseCardName(product.name) : product.name}
+            subtitle={single ? `${product.setName} · #${product.cardNumber}` : product.setName}
+            logo={japanese ? japaneseLogoFor(product.setCode, product.setName) : logo}
+            logoAction={japanese ? 'See the whole set' : undefined}
+            onLogoPress={
+              japanese
+                ? () => router.push({ pathname: '/jpset/[id]', params: { id: String(product.groupId) } })
+                : undefined
+            }
+            logoLabel={product.setName}
+            logoCaption={single ? `#${product.cardNumber}` : undefined}
+            chips={
+              <>
+                <Chip
+                  label={single ? (product.rarity ?? 'Single card') : SEALED_TYPE_LABEL[classifySealed(product.name)]}
+                  tone="accent"
+                />
+                {japanese ? <Chip label="Japanese" /> : null}
+                {released ? <Chip label={`Released ${formatShortDate(released)}`} /> : null}
+              </>
+            }
+          />
+          {!isFresh ? <RefreshNotice state={error ? 'failed' : 'refreshing'} onRetry={retry} /> : null}
+        </View>
+      ),
+    },
+    {
+      key: 'owned',
+      label: 'Your copies',
+      node: owned ? (
+        <OwnedPanel
+          item={owned}
+          currentPrice={getSealedMarketPrice(product)}
+          onQuantityChange={(quantity) => setQuantity(owned.key, quantity)}
+          onRemove={() => remove(owned.key)}
+          onPaidChange={(paid) => setPaid(owned.key, paid)}
+        />
+      ) : null,
+    },
+    {
+      key: 'market',
+      label: 'Market chart',
+      stretch: true,
+      node: ({ heightScale }) => (
+        <MarketChart
+          id={`sealed:${product.productId}`}
+          usd={marketPrice?.currency === 'USD' ? marketPrice.amount : null}
+          extra={owned?.history ?? []}
+          source={{ kind: 'product', market, groupId: product.groupId, productId: product.productId }}
+          chartHeight={Math.round(120 * heightScale)}
+        />
+      ),
+    },
+    { key: 'prices', label: 'Prices', node: <SealedPricePanel product={product} /> },
+    {
+      key: 'versions',
+      label: 'English versions',
+      node: single && japanese ? <OtherVersions language="en" versions={englishVersions} /> : null,
+    },
+    {
+      key: 'contents',
+      label: 'What’s inside',
+      node: single ? null : <SealedContents description={product.description} />,
+    },
+    { key: 'facts', label: 'Product details', node: <SealedFacts product={product} /> },
+  ];
+
   return (
-    <DetailLayout
+    <DetailBoard
+      id="sealed"
+      widgets={widgets}
       footer={
         <CollectButton
           owned={owned?.quantity ?? 0}
@@ -71,52 +162,12 @@ export default function SealedDetailScreen() {
           }}
         />
       }
-    >
-      <ProductHero product={product} onPress={open3d} />
-      {open3d ? <View3DButton onPress={open3d} /> : null}
-      <DetailTitle
-        title={single ? baseCardName(product.name) : product.name}
-        subtitle={single ? `${product.setName} · #${product.cardNumber}` : product.setName}
-        logo={japanese ? japaneseLogoFor(product.setCode, product.setName) : logo}
-        logoAction={japanese ? 'See the whole set' : undefined}
-        onLogoPress={
-          japanese
-            ? () => router.push({ pathname: '/jpset/[id]', params: { id: String(product.groupId) } })
-            : undefined
-        }
-        logoLabel={product.setName}
-        logoCaption={single ? `#${product.cardNumber}` : undefined}
-        chips={
-          <>
-            <Chip
-              label={single ? (product.rarity ?? 'Single card') : SEALED_TYPE_LABEL[classifySealed(product.name)]}
-              tone="accent"
-            />
-            {japanese ? <Chip label="Japanese" /> : null}
-            {released ? <Chip label={`Released ${formatShortDate(released)}`} /> : null}
-          </>
-        }
-      />
-      {!isFresh ? <RefreshNotice state={error ? 'failed' : 'refreshing'} onRetry={retry} /> : null}
-      {owned ? (
-        <OwnedPanel
-          item={owned}
-          currentPrice={getSealedMarketPrice(product)}
-          onQuantityChange={(quantity) => setQuantity(owned.key, quantity)}
-          onRemove={() => remove(owned.key)}
-          onPaidChange={(paid) => setPaid(owned.key, paid)}
-        />
-      ) : null}
-      <MarketChart
-        id={`sealed:${product.productId}`}
-        usd={marketPrice?.currency === 'USD' ? marketPrice.amount : null}
-        extra={owned?.history ?? []}
-        source={{ kind: 'product', market, groupId: product.groupId, productId: product.productId }}
-      />
-      <SealedPricePanel product={product} />
-      {single && japanese ? <OtherVersions language="en" versions={englishVersions} /> : null}
-      {single ? null : <SealedContents description={product.description} />}
-      <SealedFacts product={product} />
-    </DetailLayout>
+    />
   );
 }
+
+const styles = StyleSheet.create({
+  stack: {
+    gap: spacing.lg,
+  },
+});

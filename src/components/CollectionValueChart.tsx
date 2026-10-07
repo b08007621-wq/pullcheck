@@ -16,9 +16,10 @@ type Props = {
   items: CollectionItem[];
   history: ValuePoint[];
   onOpen: (item: CollectionItem) => void;
+  chartHeight?: number;
 };
 
-export function CollectionValueChart({ items, history, onOpen }: Props) {
+export function CollectionValueChart({ items, history, onOpen, chartHeight = 110 }: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
   const [range, setRange] = useState<ChartRange>('30d');
@@ -30,7 +31,7 @@ export function CollectionValueChart({ items, history, onOpen }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <PriceHistoryChart points={points} currency="USD" height={110} emptyMessage="Builds up daily." />
+      <PriceHistoryChart points={points} currency="USD" height={chartHeight} emptyMessage="Builds up daily." />
       <View style={styles.ranges}>
         {RANGES.map((option) => {
           const selected = option.value === range;

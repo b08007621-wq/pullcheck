@@ -1,14 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, type ListRenderItemInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BoardControls } from '@/components/BoardEditBar';
 import { DetailLayout } from '@/components/DetailLayout';
 import { ErrorState } from '@/components/ErrorState';
+import { type BoardWidget, FreeBoard } from '@/components/FreeBoard';
 import { LoadingState } from '@/components/LoadingState';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { SetCardTile } from '@/components/SetCardTile';
 import { SetHero } from '@/components/SetHero';
 import { SetProgressCard } from '@/components/SetProgressCard';
+import { useAutoScroll } from '@/hooks/useAutoScroll';
+import { useBoard } from '@/hooks/useBoard';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSetCards } from '@/hooks/useSetCards';
@@ -43,6 +48,9 @@ export default function SetScreen() {
   const { cards, stale, error, retry } = useSetCards(id);
   const [mode, setMode] = useState<SetMode>('set');
   const [filter, setFilter] = useState<SetFilter>('all');
+  const board = useBoard('set');
+  const scroller = useAutoScroll();
+  const insets = useSafeAreaInsets();
 
   const set = useMemo(
     () => sets?.find((entry) => entry.id === id) ?? (cards?.[0] ? setFromCard(cards[0]) : null),
@@ -98,38 +106,65 @@ export default function SetScreen() {
     { value: 'missing', label: `Missing ${missing}` },
   ];
 
+  const widgets: BoardWidget[] = [
+    { key: 'hero', label: 'Set banner', node: <SetHero set={set} /> },
+    {
+      key: 'progress',
+      label: 'Progress',
+      node: cards ? (
+        <SetProgressCard
+          set={set}
+          stats={stats}
+          value={value}
+          mode={mode}
+          onModeChange={(next) => {
+            setMode(next);
+            setFilter('all');
+          }}
+        />
+      ) : null,
+    },
+    {
+      key: 'filter',
+      label: 'Owned and missing filter',
+      hideable: false,
+      node: cards ? (
+        <View style={styles.header}>
+          <SegmentedControl options={filters} value={filter} onChange={setFilter} />
+          {stale ? <Text style={styles.note}>Showing saved prices. The card database isn’t answering right now.</Text> : null}
+        </View>
+      ) : null,
+    },
+  ];
+
   return (
     <DetailLayout
-      renderList={(insets) => (
+      footer={board.editing ? <BoardControls board={board} widgets={widgets} /> : undefined}
+      renderList={(listInsets) => (
         <FlatList
           data={visible}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           numColumns={COLUMNS}
           columnWrapperStyle={styles.columns}
-          contentContainerStyle={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+          contentContainerStyle={[styles.content, { paddingTop: listInsets.top, paddingBottom: listInsets.bottom }]}
+          scrollEnabled={!board.locked}
+          ref={scroller.attach}
+          onScroll={scroller.onScroll}
+          onLayout={scroller.onLayout}
+          onContentSizeChange={scroller.onContentSizeChange}
+          scrollEventThrottle={16}
           ItemSeparatorComponent={RowGap}
           initialNumToRender={15}
           windowSize={7}
           ListHeaderComponent={
-            <View style={styles.header}>
-              <SetHero set={set} />
-              {cards ? (
-                <>
-                  <SetProgressCard
-                    set={set}
-                    stats={stats}
-                    value={value}
-                    mode={mode}
-                    onModeChange={(next) => {
-                      setMode(next);
-                      setFilter('all');
-                    }}
-                  />
-                  <SegmentedControl options={filters} value={filter} onChange={setFilter} />
-                  {stale ? <Text style={styles.note}>Showing saved prices. The card database isn’t answering right now.</Text> : null}
-                </>
-              ) : null}
+            <View style={styles.boardWrap}>
+              <FreeBoard
+                widgets={widgets}
+                board={board}
+                autoScroll={scroller.scrollBy}
+                edges={{ top: insets.top + 60, bottom: 170 }}
+              />
             </View>
           }
           ListEmptyComponent={
@@ -188,6 +223,8 @@ function createStyles(theme: AppTheme) {
     },
     header: {
       gap: spacing.lg,
+    },
+    boardWrap: {
       marginBottom: spacing.lg,
     },
     note: {

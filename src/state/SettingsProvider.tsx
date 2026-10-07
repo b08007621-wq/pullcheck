@@ -146,6 +146,9 @@ function sanitizeBoards(stored: unknown): Record<string, BoardLayout> {
                   x: fraction(item.x, 0),
                   w: Math.max(0.4, fraction(item.w, 1)),
                   y: typeof item.y === 'number' && Number.isFinite(item.y) ? Math.max(0, item.y) : 0,
+                  ...(typeof item.hs === 'number' && Number.isFinite(item.hs)
+                    ? { hs: Math.min(3, Math.max(0.3, item.hs)) }
+                    : {}),
                 },
               ]),
           ),

@@ -13,8 +13,10 @@ import {
   View,
 } from 'react-native';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { AppearanceButton } from '@/components/AppearanceButton';
-import { BoardEditBar } from '@/components/BoardEditBar';
+import { BoardControls } from '@/components/BoardEditBar';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
 import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
 import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
@@ -26,7 +28,7 @@ import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
 import { CollectionToolbar } from '@/components/CollectionToolbar';
 import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
-import { FreeBoard } from '@/components/FreeBoard';
+import { type BoardWidget, FreeBoard } from '@/components/FreeBoard';
 import { FreshPullPanel } from '@/components/FreshPullPanel';
 import { IconButton } from '@/components/IconButton';
 import { ItemActionsSheet } from '@/components/ItemActionsSheet';
@@ -35,6 +37,7 @@ import { MoneyEditor } from '@/components/MoneyEditor';
 import { RecentlyAddedStrip } from '@/components/RecentlyAddedStrip';
 import { Screen } from '@/components/Screen';
 import { SkeletonRows } from '@/components/SkeletonRows';
+import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useBoard } from '@/hooks/useBoard';
 import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
@@ -83,6 +86,9 @@ export default function CollectionScreen() {
   const query = useMemo(() => ({ ...filters, basis: layout.changeBasis }), [filters, layout.changeBasis]);
   const boardFallback = useMemo(() => ({ items: {}, hidden: layout.hidden }), [layout.hidden]);
   const board = useBoard('collection', boardFallback);
+  const listScroll = useAutoScroll();
+  const coverScroll = useAutoScroll();
+  const insets = useSafeAreaInsets();
 
   const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
   const setLayout = useCallback((next: CollectionLayout) => updateSettings({ collectionLayout: next }), [updateSettings]);
@@ -279,6 +285,7 @@ export default function CollectionScreen() {
   );
 
   let content;
+  let widgets: BoardWidget[] = [];
   if (!isLoaded) {
     content = <SkeletonRows count={5} />;
   } else if (items.length === 0) {
@@ -300,7 +307,6 @@ export default function CollectionScreen() {
     );
   } else {
     const hidden = new Set(board.layout.hidden);
-    const chart = <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />;
     const sections: Record<CollectionSection, ReactNode> = {
       pulled: fresh ? (
         <FreshPullPanel
@@ -323,7 +329,7 @@ export default function CollectionScreen() {
           chart={hidden.has('chart') ? undefined : false}
         />
       ),
-      chart,
+      chart: null,
       recent: <RecentlyAddedStrip items={items} onOpen={openItem} onLongPress={showActions} />,
       stats: (
         <CollectionQuickStats
@@ -347,29 +353,51 @@ export default function CollectionScreen() {
       </View>
     );
 
+    widgets = [
+      ...layout.order.map(
+        (section): BoardWidget =>
+          section === 'chart'
+            ? {
+                key: section,
+                label: SECTION_LABEL[section].title,
+                stretch: true,
+                node: ({ heightScale }) => (
+                  <CollectionValueChart
+                    items={items}
+                    history={meta.valueHistory}
+                    onOpen={openItem}
+                    chartHeight={Math.round(110 * heightScale)}
+                  />
+                ),
+              }
+            : { key: section, label: SECTION_LABEL[section].title, node: sections[section] },
+      ),
+      {
+        key: 'toolbar',
+        label: 'Search, sort and views',
+        hideable: false,
+        node: (
+          <CollectionToolbar
+            query={query}
+            view={view}
+            usesBinders={usesBinders}
+            shown={visible.length}
+            onChange={changeQuery}
+            onView={setView}
+            onFilters={() => setSheet('filters')}
+          />
+        ),
+      },
+    ];
+
     const header = (
       <View style={styles.header}>
         <FreeBoard
-          widgets={layout.order.map((section) => ({
-            key: section,
-            label: SECTION_LABEL[section].title,
-            node: sections[section],
-          }))}
-          layout={board.layout}
-          editing={board.editing}
+          widgets={widgets}
+          board={board}
           paused={actionItem !== null || sheet !== null}
-          onEditingChange={board.setEditing}
-          onChange={board.save}
-          onScrollLock={board.setLocked}
-        />
-        <CollectionToolbar
-          query={query}
-          view={view}
-          usesBinders={usesBinders}
-          shown={visible.length}
-          onChange={changeQuery}
-          onView={setView}
-          onFilters={() => setSheet('filters')}
+          autoScroll={view === 'cover' ? coverScroll.scrollBy : listScroll.scrollBy}
+          edges={{ top: insets.top + 80, bottom: tabBarHeight + EDIT_BAR_SPACE }}
         />
       </View>
     );
@@ -391,6 +419,11 @@ export default function CollectionScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={refresh}
           scrollEnabled={!board.locked}
+          ref={(node) => coverScroll.attach(node)}
+          onScroll={coverScroll.onScroll}
+          onLayout={coverScroll.onLayout}
+          onContentSizeChange={coverScroll.onContentSizeChange}
+          scrollEventThrottle={16}
         >
           {header}
           <View style={styles.coverStage}>
@@ -424,6 +457,11 @@ export default function CollectionScreen() {
           keyboardDismissMode="on-drag"
           refreshControl={refresh}
           scrollEnabled={!board.locked}
+          ref={(node) => listScroll.attach(node)}
+          onScroll={listScroll.onScroll}
+          onLayout={listScroll.onLayout}
+          onContentSizeChange={listScroll.onContentSizeChange}
+          scrollEventThrottle={16}
           ListHeaderComponent={header}
           ListEmptyComponent={emptyText}
         />
@@ -436,15 +474,7 @@ export default function CollectionScreen() {
       {content}
       {board.editing ? (
         <View style={[styles.editBar, { bottom: tabBarHeight + spacing.sm }]}>
-          <BoardEditBar
-            hidden={layout.order
-              .filter((section) => board.layout.hidden.includes(section))
-              .map((section) => ({ key: section, label: SECTION_LABEL[section].title }))}
-            onShow={board.show}
-            onTidy={board.tidy}
-            onReset={board.reset}
-            onDone={board.done}
-          />
+          <BoardControls board={board} widgets={widgets} />
         </View>
       ) : null}
       {sheets}
@@ -466,6 +496,8 @@ const styles = StyleSheet.create({
   },
   editBar: {
     position: 'absolute',
+    zIndex: 50,
+    elevation: 50,
     left: spacing.lg,
     right: spacing.lg,
   },

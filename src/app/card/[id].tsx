@@ -1,18 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { CardFacts } from '@/components/CardFacts';
 import { CardGameplay } from '@/components/CardGameplay';
 import { CardHero } from '@/components/CardHero';
 import { CardPricePanel } from '@/components/CardPricePanel';
 import { CardSwipe, type SwipeDirection } from '@/components/CardSwipe';
-import { BoardEditBar } from '@/components/BoardEditBar';
 import { Chip } from '@/components/Chip';
 import { CollectButton } from '@/components/CollectButton';
+import { DetailBoard } from '@/components/DetailBoard';
 import { DetailLayout } from '@/components/DetailLayout';
 import { DetailTitle } from '@/components/DetailTitle';
 import { ErrorState } from '@/components/ErrorState';
-import { FreeBoard } from '@/components/FreeBoard';
+import type { BoardWidget } from '@/components/FreeBoard';
 import { LoadingState } from '@/components/LoadingState';
 import { GradeCheckButton } from '@/components/GradeCheckButton';
 import { GradedPanel } from '@/components/GradedPanel';
@@ -23,7 +24,6 @@ import { RefreshNotice } from '@/components/RefreshNotice';
 import { View3DButton } from '@/components/View3DButton';
 import { WishButton } from '@/components/WishButton';
 import { WishPanel } from '@/components/WishPanel';
-import { useBoard } from '@/hooks/useBoard';
 import { useCardDetail } from '@/hooks/useCardDetail';
 import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
@@ -35,6 +35,7 @@ import { type BrowsePlace, browsePlace } from '@/services/cardBrowse';
 import { gradedPriceFor } from '@/services/graded';
 import { queueSeen } from '@/services/seen';
 import { estimatedPoints } from '@/services/marketHistory';
+import { spacing } from '@/theme';
 import { formatCollectorNumber, isSecretRare } from '@/utils/card';
 import {
   cardVersionPrice,
@@ -92,7 +93,6 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
   const wishlist = useWishlist();
   const { celebrate } = useCelebrate();
   const [picked, setPicked] = useState<CardVersion | null>(null);
-  const board = useBoard('card');
 
   useEffect(() => {
     queueSeen(owned.map((item) => item.key));
@@ -136,9 +136,130 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
   const marketUsd =
     versionPrice?.currency === 'USD' ? versionPrice.amount : anyPrice?.currency === 'USD' ? anyPrice.amount : null;
 
+  const widgets: BoardWidget[] = [
+    {
+      key: 'hero',
+      label: 'Card picture',
+      resize: 'width',
+      node: (
+        <View style={styles.stack}>
+          <CardSwipe place={place} enterFrom={enterFrom} onGo={onGo}>
+            <CardHero card={card} onPress={open3d} />
+          </CardSwipe>
+          <View3DButton onPress={open3d} />
+        </View>
+      ),
+    },
+    {
+      key: 'title',
+      label: 'Name and set',
+      node: (
+        <View style={styles.stack}>
+          <DetailTitle
+            title={card.name}
+            subtitle={`${card.set.name} · #${formatCollectorNumber(card)}`}
+            logo={card.set.images.logo}
+            logoLabel={card.set.name}
+            logoCaption={`#${formatCollectorNumber(card)} · ${card.set.series}`}
+            logoAction={setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set'}
+            onLogoPress={() => router.push({ pathname: '/set/[id]', params: { id: card.set.id } })}
+            chips={
+              <>
+                {card.rarity ? <Chip label={card.rarity} tone="accent" /> : null}
+                {card.printing ? <Chip label={card.printing} tone="gain" /> : null}
+                {isSecretRare(card) ? <Chip label="Secret rare" tone="gain" /> : null}
+                {card.regulationMark ? <Chip label={`Reg. ${card.regulationMark}`} /> : null}
+                {card.hp ? <Chip label={`${card.hp} HP`} /> : null}
+              </>
+            }
+          />
+          {!isFresh ? <RefreshNotice state={error ? 'failed' : 'refreshing'} onRetry={retry} /> : null}
+        </View>
+      ),
+    },
+    {
+      key: 'owned',
+      label: 'Your copies',
+      node: shown ? (
+        <OwnedPanel
+          item={shown}
+          currentPrice={itemPrice({ ...shown, card })}
+          versionLabel={versionLabel(card, entryVersion(shown))}
+          versions={owned.map((item) => ({
+            key: item.key,
+            label: versionLabel(card, entryVersion(item), 'short') ?? entryVersion(item).condition,
+            quantity: item.quantity,
+          }))}
+          onSelectVersion={(key) => {
+            const next = owned.find((item) => item.key === key);
+            if (next) setPicked(entryVersion(next));
+          }}
+          onQuantityChange={(quantity) => setQuantity(shown.key, quantity)}
+          onRemove={() => remove(shown.key)}
+          onPaidChange={(paid) => setPaid(shown.key, paid)}
+        />
+      ) : null,
+    },
+    {
+      key: 'wish',
+      label: 'Wishlist target',
+      node: wish ? (
+        <WishPanel
+          wish={{ ...wish, card }}
+          pickedVariant={version.variant}
+          onTargetChange={(target) => wishlist.setTarget(card.id, target)}
+          onVariantChange={(variant) => wishlist.setVariant(card.id, variant)}
+        />
+      ) : null,
+    },
+    {
+      key: 'market',
+      label: 'Market chart',
+      stretch: true,
+      node: ({ heightScale }) => (
+        <MarketChart
+          id={`${card.id}|${version.variant ?? '-'}`}
+          usd={marketUsd}
+          extra={matching?.history ?? []}
+          estimated={version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []}
+          source={{ kind: 'card', card, variant: version.variant ?? null }}
+          chartHeight={Math.round(120 * heightScale)}
+        />
+      ),
+    },
+    {
+      key: 'graded',
+      label: 'Graded prices',
+      node: <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} />,
+    },
+    {
+      key: 'grade',
+      label: 'Should I grade it?',
+      node: (
+        <GradeCheckButton
+          onPress={() =>
+            router.push({
+              pathname: '/centering',
+              params: version.variant ? { id: card.id, variant: version.variant } : { id: card.id },
+            })
+          }
+        />
+      ),
+    },
+    {
+      key: 'prices',
+      label: 'Prices by version',
+      node: <CardPricePanel card={card} version={version} onVersionChange={setPicked} />,
+    },
+    { key: 'versions', label: 'Japanese versions', node: <OtherVersions language="jp" versions={japaneseVersions} /> },
+    { key: 'facts', label: 'Card details', node: <CardFacts card={card} /> },
+    { key: 'gameplay', label: 'Attacks & abilities', node: <CardGameplay card={card} /> },
+  ];
+
   return (
-    <DetailLayout
-      scrollEnabled={!board.locked}
+    <DetailBoard
+      id="card"
+      widgets={widgets}
       topRight={
         <WishButton
           wished={wish !== null}
@@ -146,15 +267,6 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
         />
       }
       footer={
-        board.editing ? (
-          <BoardEditBar
-            hidden={CARD_WIDGETS.filter((widget) => board.layout.hidden.includes(widget.key))}
-            onShow={board.show}
-            onTidy={board.tidy}
-            onReset={board.reset}
-            onDone={board.done}
-          />
-        ) : (
         <CollectButton
           owned={matching?.quantity ?? 0}
           detail={versionLabel(card, version)}
@@ -165,121 +277,13 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
             celebrate({ image: card.images.large || card.images.small, amount: price?.currency === 'USD' ? price.amount : null });
           }}
         />
-        )
       }
-    >
-      <CardSwipe place={place} enterFrom={enterFrom} onGo={onGo}>
-        <CardHero card={card} onPress={open3d} />
-      </CardSwipe>
-      <View3DButton onPress={open3d} />
-      <DetailTitle
-        title={card.name}
-        subtitle={`${card.set.name} · #${formatCollectorNumber(card)}`}
-        logo={card.set.images.logo}
-        logoLabel={card.set.name}
-        logoCaption={`#${formatCollectorNumber(card)} · ${card.set.series}`}
-        logoAction={setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set'}
-        onLogoPress={() => router.push({ pathname: '/set/[id]', params: { id: card.set.id } })}
-        chips={
-          <>
-            {card.rarity ? <Chip label={card.rarity} tone="accent" /> : null}
-            {card.printing ? <Chip label={card.printing} tone="gain" /> : null}
-            {isSecretRare(card) ? <Chip label="Secret rare" tone="gain" /> : null}
-            {card.regulationMark ? <Chip label={`Reg. ${card.regulationMark}`} /> : null}
-            {card.hp ? <Chip label={`${card.hp} HP`} /> : null}
-          </>
-        }
-      />
-      {!isFresh ? <RefreshNotice state={error ? 'failed' : 'refreshing'} onRetry={retry} /> : null}
-      <FreeBoard
-        widgets={[
-          {
-            key: 'owned',
-            node: shown ? (
-              <OwnedPanel
-                item={shown}
-                currentPrice={itemPrice({ ...shown, card })}
-                versionLabel={versionLabel(card, entryVersion(shown))}
-                versions={owned.map((item) => ({
-                  key: item.key,
-                  label: versionLabel(card, entryVersion(item), 'short') ?? entryVersion(item).condition,
-                  quantity: item.quantity,
-                }))}
-                onSelectVersion={(key) => {
-                  const next = owned.find((item) => item.key === key);
-                  if (next) setPicked(entryVersion(next));
-                }}
-                onQuantityChange={(quantity) => setQuantity(shown.key, quantity)}
-                onRemove={() => remove(shown.key)}
-                onPaidChange={(paid) => setPaid(shown.key, paid)}
-              />
-            ) : null,
-          },
-          {
-            key: 'wish',
-            node: wish ? (
-              <WishPanel
-                wish={{ ...wish, card }}
-                pickedVariant={version.variant}
-                onTargetChange={(target) => wishlist.setTarget(card.id, target)}
-                onVariantChange={(variant) => wishlist.setVariant(card.id, variant)}
-              />
-            ) : null,
-          },
-          {
-            key: 'market',
-            node: (
-              <MarketChart
-                id={`${card.id}|${version.variant ?? '-'}`}
-                usd={marketUsd}
-                extra={matching?.history ?? []}
-                estimated={
-                  version.variant === defaultVersion(card).variant && marketUsd !== null ? estimatedPoints(card, marketUsd) : []
-                }
-                source={{ kind: 'card', card, variant: version.variant ?? null }}
-              />
-            ),
-          },
-          { key: 'graded', node: <GradedPanel prices={graded?.prices ?? null} limitedUntil={graded?.limitedUntil ?? null} /> },
-          {
-            key: 'grade',
-            node: (
-              <GradeCheckButton
-                onPress={() =>
-                  router.push({
-                    pathname: '/centering',
-                    params: version.variant ? { id: card.id, variant: version.variant } : { id: card.id },
-                  })
-                }
-              />
-            ),
-          },
-          { key: 'prices', node: <CardPricePanel card={card} version={version} onVersionChange={setPicked} /> },
-          { key: 'versions', node: <OtherVersions language="jp" versions={japaneseVersions} /> },
-          { key: 'facts', node: <CardFacts card={card} /> },
-          { key: 'gameplay', node: <CardGameplay card={card} /> },
-        ].map((widget) => ({ ...widget, label: CARD_WIDGET_LABEL[widget.key] ?? widget.key }))}
-        layout={board.layout}
-        editing={board.editing}
-        onEditingChange={board.setEditing}
-        onChange={board.save}
-        onScrollLock={board.setLocked}
-      />
-    </DetailLayout>
+    />
   );
 }
 
-const CARD_WIDGETS = [
-  { key: 'owned', label: 'Your copies' },
-  { key: 'wish', label: 'Wishlist target' },
-  { key: 'market', label: 'Market chart' },
-  { key: 'graded', label: 'Graded prices' },
-  { key: 'grade', label: 'Should I grade it?' },
-  { key: 'prices', label: 'Prices by version' },
-  { key: 'versions', label: 'Japanese versions' },
-  { key: 'facts', label: 'Card details' },
-  { key: 'gameplay', label: 'Attacks & abilities' },
-];
-
-const CARD_WIDGET_LABEL: Record<string, string> = Object.fromEntries(CARD_WIDGETS.map((widget) => [widget.key, widget.label]));
-
+const styles = StyleSheet.create({
+  stack: {
+    gap: spacing.lg,
+  },
+});

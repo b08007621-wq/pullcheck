@@ -1,29 +1,45 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  type GestureResponderEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { useHaptics } from '@/hooks/useHaptics';
 import { useMotionEnabled } from '@/hooks/useMotionEnabled';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
+import type { Board } from '@/hooks/useBoard';
 import type { BoardLayout } from '@/state/settingsContext';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import { withAlpha } from '@/theme/color';
 
+export type BoardSize = {
+  heightScale: number;
+};
+
 export type BoardWidget = {
   key: string;
   label: string;
-  node: ReactNode;
+  node: ReactNode | ((size: BoardSize) => ReactNode);
+  stretch?: boolean;
+  resize?: 'both' | 'width' | 'none';
+  hideable?: boolean;
 };
 
 type Props = {
   widgets: BoardWidget[];
-  layout: BoardLayout;
-  editing: boolean;
+  board: Board;
   paused?: boolean;
   gap?: number;
-  onEditingChange: (editing: boolean) => void;
-  onChange: (layout: BoardLayout) => void;
-  onScrollLock?: (locked: boolean) => void;
+  edges?: { top: number; bottom: number };
+  autoScroll?: (dy: number) => number;
 };
 
 type Rect = {
@@ -32,6 +48,7 @@ type Rect = {
   y: number;
   w: number;
   h: number;
+  hs: number;
 };
 
 type Drag = {
@@ -39,6 +56,17 @@ type Drag = {
   x: number;
   y: number;
   w: number;
+  hs: number;
+};
+
+type Pinch = {
+  dx: number;
+  dy: number;
+  useX: boolean;
+  useY: boolean;
+  w: number;
+  h: number;
+  hs: number;
 };
 
 type Gesture = {
@@ -47,21 +75,25 @@ type Gesture = {
   lifted: boolean;
   touchX: number;
   touchY: number;
+  pageY: number;
   originX: number;
   originY: number;
   x: number;
   y: number;
   w: number;
+  hs: number;
   sentX: number;
   sentY: number;
-  pinch: { dist: number; w: number } | null;
-  preview: number;
+  pinch: Pinch | null;
+  previewW: number;
+  previewHs: number;
 };
 
 type Motion = {
   pos: Animated.ValueXY;
   lift: Animated.Value;
-  pinch: Animated.Value;
+  pinchX: Animated.Value;
+  pinchY: Animated.Value;
   fade: Animated.Value;
   placed: boolean;
 };
@@ -74,35 +106,40 @@ const SLOP = 8;
 const MIN_W = 0.4;
 const SNAPS = [0.5, 2 / 3, 1];
 const SNAP_RANGE = 0.04;
+const HEIGHT_SNAP = 0.08;
 const RESEND = 6;
+const CROP_MIN = 0.3;
+const STRETCH_RANGE: [number, number] = [0.6, 3];
+const AXIS_SHARE = 0.35;
+const EDGE_ZONE = 90;
+const MAX_SCROLL_STEP = 16;
+const DEFAULT_EDGES = { top: 120, bottom: 150 };
 
-export function FreeBoard({
-  widgets,
-  layout,
-  editing,
-  paused = false,
-  gap = spacing.lg,
-  onEditingChange,
-  onChange,
-  onScrollLock,
-}: Props) {
+export function FreeBoard({ widgets, board, paused = false, gap = spacing.lg, edges = DEFAULT_EDGES, autoScroll }: Props) {
+  const { layout, editing } = board;
+  const onEditingChange = board.setEditing;
+  const onChange = board.save;
+  const onScrollLock = board.setLocked;
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
   const motion = useMotionEnabled();
+  const { height: screenHeight } = useWindowDimensions();
   const [width, setWidth] = useState(0);
-  const [heights, setHeights] = useState<Record<string, number>>({});
+  const [natural, setNatural] = useState<Record<string, number>>({});
   const [drag, setDrag] = useState<Drag | null>(null);
   const [frozen, setFrozen] = useState<Record<string, Rect> | null>(null);
   const [sizeLabel, setSizeLabel] = useState<string | null>(null);
   const [motions] = useState(() => new Map<string, Motion>());
   const [wiggle] = useState(() => new Animated.Value(0));
   const gesture = useRef<Gesture | null>(null);
+  const scrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const shown = useMemo(() => widgets.filter((widget) => !layout.hidden.includes(widget.key)), [widgets, layout.hidden]);
   const keys = useMemo(() => shown.map((widget) => widget.key), [shown]);
+  const stretch = useMemo(() => new Set(shown.filter((widget) => widget.stretch).map((widget) => widget.key)), [shown]);
   const { rects, height } = useMemo(
-    () => resolve(keys, layout, heights, width, gap, drag, frozen),
-    [keys, layout, heights, width, gap, drag, frozen],
+    () => resolve(keys, layout, natural, stretch, width, gap, drag, frozen),
+    [keys, layout, natural, stretch, width, gap, drag, frozen],
   );
 
   const motionFor = (key: string): Motion => {
@@ -111,7 +148,8 @@ export function FreeBoard({
       entry = {
         pos: new Animated.ValueXY({ x: 0, y: 0 }),
         lift: new Animated.Value(0),
-        pinch: new Animated.Value(1),
+        pinchX: new Animated.Value(1),
+        pinchY: new Animated.Value(1),
         fade: new Animated.Value(1),
         placed: false,
       };
@@ -169,11 +207,55 @@ export function FreeBoard({
     () => () => {
       const current = gesture.current;
       if (current?.timer) clearTimeout(current.timer);
+      if (scrollTimer.current) clearInterval(scrollTimer.current);
     },
     [],
   );
 
   const unit = width + gap;
+  const widgetFor = (key: string) => shown.find((widget) => widget.key === key);
+
+  const sendDrag = (current: Gesture, force = false) => {
+    if (!force && Math.abs(current.x - current.sentX) < RESEND && Math.abs(current.y - current.sentY) < RESEND) return;
+    current.sentX = current.x;
+    current.sentY = current.y;
+    setDrag({ key: current.key, x: current.x, y: current.y, w: current.w, hs: current.hs });
+  };
+
+  const stopScrolling = () => {
+    if (scrollTimer.current) clearInterval(scrollTimer.current);
+    scrollTimer.current = null;
+  };
+
+  const scrollStep = (pageY: number): number => {
+    const top = edges.top;
+    const bottom = screenHeight - edges.bottom;
+    if (pageY < top + EDGE_ZONE) return -Math.min(MAX_SCROLL_STEP, 2 + ((top + EDGE_ZONE - pageY) / EDGE_ZONE) * MAX_SCROLL_STEP);
+    if (pageY > bottom - EDGE_ZONE) return Math.min(MAX_SCROLL_STEP, 2 + ((pageY - bottom + EDGE_ZONE) / EDGE_ZONE) * MAX_SCROLL_STEP);
+    return 0;
+  };
+
+  const startScrolling = () => {
+    if (!autoScroll || scrollTimer.current) return;
+    scrollTimer.current = setInterval(() => {
+      const current = gesture.current;
+      if (!current?.lifted || current.pinch) {
+        stopScrolling();
+        return;
+      }
+      const step = scrollStep(current.pageY);
+      if (step === 0) {
+        stopScrolling();
+        return;
+      }
+      const applied = autoScroll(step);
+      if (applied === 0) return;
+      current.originY += applied;
+      current.y = Math.max(0, current.y + applied);
+      motionFor(current.key).pos.setValue({ x: current.x, y: current.y });
+      sendDrag(current);
+    }, 16);
+  };
 
   const lift = (current: Gesture) => {
     current.timer = null;
@@ -186,25 +268,49 @@ export function FreeBoard({
     entry.pos.setValue({ x: current.x, y: current.y });
     Animated.spring(entry.lift, { toValue: 1, damping: 14, stiffness: 260, useNativeDriver: true }).start();
     setFrozen(rects);
-    setDrag({ key: current.key, x: current.x, y: current.y, w: current.w });
+    sendDrag(current, true);
   };
 
   const beginPinch = (current: Gesture, touches: Touch[]) => {
     const [first, second] = touches;
-    if (!first || !second) return;
-    current.pinch = { dist: Math.max(distance(first, second), 1), w: current.w };
-    current.preview = current.w;
+    const rect = rects[current.key];
+    if (!first || !second || !rect) return;
+    const dx = Math.abs(first.pageX - second.pageX);
+    const dy = Math.abs(first.pageY - second.pageY);
+    const span = Math.max(Math.hypot(dx, dy), 1);
+    const resize = widgetFor(current.key)?.resize ?? 'both';
+    let useX = resize !== 'none' && dx >= span * AXIS_SHARE && dx > 24;
+    const useY = resize === 'both' && dy >= span * AXIS_SHARE && dy > 24;
+    if (!useX && !useY && resize !== 'none') useX = true;
+    current.pinch = { dx: Math.max(dx, 1), dy: Math.max(dy, 1), useX, useY, w: current.w, h: rect.h, hs: current.hs };
+    current.previewW = current.w;
+    current.previewHs = current.hs;
   };
 
   const updatePinch = (current: Gesture, touches: Touch[]) => {
     const [first, second] = touches;
-    if (!current.pinch || !first || !second || unit <= 0) return;
-    const raw = (current.pinch.w * (distance(first, second) / current.pinch.dist) + gap) / unit;
-    const fraction = snapWidth(raw);
-    const next = fraction * unit - gap;
-    current.preview = next;
-    motionFor(current.key).pinch.setValue(next / current.w);
-    const label = widthLabel(fraction);
+    const pinch = current.pinch;
+    if (!pinch || !first || !second || unit <= 0) return;
+    const entry = motionFor(current.key);
+    const parts: string[] = [];
+    if (pinch.useX) {
+      const scale = Math.abs(first.pageX - second.pageX) / pinch.dx;
+      const fraction = snapWidth((pinch.w * scale + gap) / unit);
+      current.previewW = fraction * unit - gap;
+      parts.push(widthLabel(fraction));
+    }
+    if (pinch.useY) {
+      const scale = Math.abs(first.pageY - second.pageY) / pinch.dy;
+      const isStretch = stretch.has(current.key);
+      const [low, high] = isStretch ? STRETCH_RANGE : [CROP_MIN, 1];
+      let next = clamp(pinch.hs * scale, low, high);
+      if (Math.abs(next - 1) < HEIGHT_SNAP) next = 1;
+      current.previewHs = next;
+      parts.push(heightLabel(next));
+    }
+    entry.pinchX.setValue(current.previewW / Math.max(pinch.w, 1));
+    entry.pinchY.setValue(current.previewHs / Math.max(pinch.hs, 0.01));
+    const label = parts.join(' · ');
     if (label !== sizeLabel) {
       haptics.selection();
       setSizeLabel(label);
@@ -214,15 +320,17 @@ export function FreeBoard({
   const endPinch = (current: Gesture) => {
     if (!current.pinch) return;
     const center = current.x + current.w / 2;
-    const w = current.preview;
+    const w = current.previewW;
     current.pinch = null;
     current.w = w;
+    current.hs = current.previewHs;
     current.x = clamp(center - w / 2, 0, Math.max(0, width - w));
     const entry = motionFor(current.key);
-    entry.pinch.setValue(1);
+    entry.pinchX.setValue(1);
+    entry.pinchY.setValue(1);
     entry.pos.setValue({ x: current.x, y: current.y });
     setSizeLabel(null);
-    setDrag({ key: current.key, x: current.x, y: current.y, w });
+    sendDrag(current, true);
   };
 
   const rebase = (current: Gesture, touch: Touch | undefined) => {
@@ -241,6 +349,7 @@ export function FreeBoard({
 
   const drop = (current: Gesture) => {
     gesture.current = null;
+    stopScrolling();
     endPinch(current);
     const others = Object.values(rects).filter((rect) => rect.key !== current.key);
     const fractionW = unit > 0 ? (current.w + gap) / unit : 1;
@@ -248,10 +357,11 @@ export function FreeBoard({
     const final = resolve(
       keys,
       layout,
-      heights,
+      natural,
+      stretch,
       width,
       gap,
-      { key: current.key, x: fractionX * unit, y: current.y, w: current.w },
+      { key: current.key, x: fractionX * unit, y: current.y, w: current.w, hs: current.hs },
       frozen,
     );
     const target = final.rects[current.key];
@@ -273,6 +383,7 @@ export function FreeBoard({
           x: unit > 0 ? rect.x / unit : 0,
           w: unit > 0 ? (rect.w + gap) / unit : 1,
           y: rect.y,
+          ...(rect.hs !== 1 ? { hs: rect.hs } : {}),
         },
       ]),
     );
@@ -303,15 +414,18 @@ export function FreeBoard({
       lifted: false,
       touchX: first.pageX,
       touchY: first.pageY,
+      pageY: first.pageY,
       originX: rect.x,
       originY: rect.y,
       x: rect.x,
       y: rect.y,
       w: rect.w,
-      sentX: rect.x,
-      sentY: rect.y,
+      hs: rect.hs,
+      sentX: Number.NaN,
+      sentY: Number.NaN,
       pinch: null,
-      preview: rect.w,
+      previewW: rect.w,
+      previewHs: rect.hs,
     };
     gesture.current = next;
     if (editing && touches.length >= 2) {
@@ -339,6 +453,7 @@ export function FreeBoard({
       return;
     }
     if (touches.length >= 2) {
+      stopScrolling();
       if (!current.pinch) beginPinch(current, touches);
       updatePinch(current, touches);
       return;
@@ -347,14 +462,12 @@ export function FreeBoard({
       endPinch(current);
       rebase(current, first);
     }
+    current.pageY = first.pageY;
     current.x = clamp(current.originX + first.pageX - current.touchX, 0, Math.max(0, width - current.w));
     current.y = Math.max(0, current.originY + first.pageY - current.touchY);
     motionFor(current.key).pos.setValue({ x: current.x, y: current.y });
-    if (Math.abs(current.x - current.sentX) >= RESEND || Math.abs(current.y - current.sentY) >= RESEND) {
-      current.sentX = current.x;
-      current.sentY = current.y;
-      setDrag({ key: current.key, x: current.x, y: current.y, w: current.w });
-    }
+    sendDrag(current);
+    if (scrollStep(first.pageY) !== 0) startScrolling();
   };
 
   const touchEnd = (event: GestureResponderEvent) => {
@@ -399,7 +512,7 @@ export function FreeBoard({
 
   return (
     <View
-      style={[styles.board, { height: Math.max(height, drag ? drag.y + (heights[drag.key] ?? 0) : 0) }]}
+      style={[styles.board, { height: Math.max(height, drag && ghost ? drag.y + ghost.h : 0) }]}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
       {ghost && ghost.h > 0 ? (
@@ -415,6 +528,9 @@ export function FreeBoard({
             const entry = motionFor(widget.key);
             const lifted = drag?.key === widget.key;
             const tilt = index % 2 === 0 ? ['-0.5deg', '0.5deg'] : ['0.5deg', '-0.5deg'];
+            const isStretch = Boolean(widget.stretch);
+            const cropped = !isStretch && rect.hs < 1;
+            const content = typeof widget.node === 'function' ? widget.node({ heightScale: rect.hs }) : widget.node;
             return (
               <Animated.View
                 key={widget.key}
@@ -444,18 +560,28 @@ export function FreeBoard({
                             editing && !lifted ? wiggle.interpolate({ inputRange: [-1, 1], outputRange: tilt }) : '0deg',
                         },
                         { scale: entry.lift.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.6, 1, 1.035] }) },
-                        { scale: entry.pinch },
+                        { scaleX: entry.pinchX },
+                        { scaleY: entry.pinchY },
                       ],
                     },
                   ]}
                 >
-                  <View
-                    onLayout={(event) => {
-                      const next = Math.round(event.nativeEvent.layout.height);
-                      setHeights((current) => (current[widget.key] === next ? current : { ...current, [widget.key]: next }));
-                    }}
-                  >
-                    {widget.node}
+                  <View style={cropped ? [styles.crop, { height: rect.h }] : undefined}>
+                    <View
+                      onLayout={(event) => {
+                        const next = Math.round(event.nativeEvent.layout.height);
+                        setNatural((current) => (current[widget.key] === next ? current : { ...current, [widget.key]: next }));
+                      }}
+                    >
+                      {content}
+                    </View>
+                    {cropped ? (
+                      <LinearGradient
+                        pointerEvents="none"
+                        colors={[withAlpha(styles.fade.backgroundColor, 0), styles.fade.backgroundColor]}
+                        style={styles.fadeEdge}
+                      />
+                    ) : null}
                   </View>
                   {editing && rect.h > 0 ? (
                     <View
@@ -463,10 +589,10 @@ export function FreeBoard({
                       onStartShouldSetResponder={() => true}
                       onResponderTerminationRequest={() => !gesture.current?.lifted}
                       accessible
-                      accessibilityLabel={`${widget.label}. Hold and drag to move it. Pinch with two fingers to resize it.`}
+                      accessibilityLabel={`${widget.label}. Hold and drag to move it. Pinch sideways or up and down to resize it.`}
                     />
                   ) : null}
-                  {editing && !lifted && rect.h > 0 ? (
+                  {editing && !lifted && rect.h > 0 && widget.hideable !== false ? (
                     <Pressable
                       onPress={() => hide(widget.key)}
                       accessibilityRole="button"
@@ -496,19 +622,28 @@ export function FreeBoard({
 function resolve(
   keys: string[],
   layout: BoardLayout,
-  heights: Record<string, number>,
+  natural: Record<string, number>,
+  stretch: Set<string>,
   width: number,
   gap: number,
   drag: Drag | null,
   frozen: Record<string, Rect> | null,
 ): { rects: Record<string, Rect>; height: number } {
   const unit = width + gap;
+  const heightOf = (key: string, hs: number) => {
+    const base = natural[key] ?? 0;
+    return stretch.has(key) ? base : Math.round(base * Math.min(1, hs));
+  };
   const entries = keys.map((key, index) => {
-    const h = heights[key] ?? 0;
-    if (drag?.key === key) return { key, x: drag.x, w: drag.w, h, sort: drag.y + h / 2 };
-    const still = frozen?.[key];
-    if (still) return { key, x: still.x, w: still.w, h, sort: still.y + h / 2 };
     const saved = layout.items[key];
+    if (drag?.key === key) {
+      const h = heightOf(key, drag.hs);
+      return { key, x: drag.x, w: drag.w, h, hs: drag.hs, sort: drag.y + h / 2 };
+    }
+    const hs = saved?.hs ?? 1;
+    const h = heightOf(key, hs);
+    const still = frozen?.[key];
+    if (still) return { key, x: still.x, w: still.w, h, hs, sort: still.y + h / 2 };
     const fractionW = saved ? Math.min(1, Math.max(MIN_W, saved.w)) : 1;
     const fractionX = saved ? Math.min(Math.max(0, saved.x), 1 - fractionW) : 0;
     return {
@@ -516,7 +651,8 @@ function resolve(
       x: fractionX * unit,
       w: Math.max(0, fractionW * unit - gap),
       h,
-      sort: saved ? saved.y + h / 2 : 1e6 + index,
+      hs,
+      sort: saved ? saved.y + h / 2 : unsavedSort(keys, layout, index),
     };
   });
   entries.sort((first, second) => first.sort - second.sort || first.x - second.x);
@@ -532,9 +668,17 @@ function resolve(
       }
       height = Math.max(height, y + entry.h);
     }
-    rects[entry.key] = { key: entry.key, x: entry.x, y, w: entry.w, h: entry.h };
+    rects[entry.key] = { key: entry.key, x: entry.x, y, w: entry.w, h: entry.h, hs: entry.hs };
   }
   return { rects, height };
+}
+
+function unsavedSort(keys: string[], layout: BoardLayout, index: number): number {
+  for (let next = index + 1; next < keys.length; next += 1) {
+    const saved = layout.items[keys[next] ?? ''];
+    if (saved) return saved.y - 1 + index * 0.001;
+  }
+  return 1e6 + index;
 }
 
 function snapWidth(fraction: number): number {
@@ -572,6 +716,11 @@ function widthLabel(fraction: number): string {
   return `${Math.round(fraction * 100)}% wide`;
 }
 
+function heightLabel(scale: number): string {
+  if (scale === 1) return 'Normal height';
+  return `${Math.round(scale * 100)}% tall`;
+}
+
 function activeTouches(event: GestureResponderEvent, ending: boolean): Touch[] {
   const { touches, changedTouches, pageX, pageY } = event.nativeEvent;
   const list: Touch[] = Array.isArray(touches) ? touches : touches ? Array.from(touches as ArrayLike<Touch>) : [];
@@ -582,10 +731,6 @@ function activeTouches(event: GestureResponderEvent, ending: boolean): Touch[] {
       ? Array.from(changedTouches as ArrayLike<Touch>)
       : [];
   return list.filter((touch) => !changed.some((done) => done.identifier === touch.identifier));
-}
-
-function distance(first: Touch, second: Touch): number {
-  return Math.hypot(first.pageX - second.pageX, first.pageY - second.pageY);
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -610,6 +755,20 @@ function createStyles(theme: AppTheme) {
       shadowRadius: 18,
       shadowOffset: { width: 0, height: 10 },
       elevation: 12,
+    },
+    crop: {
+      overflow: 'hidden',
+      borderRadius: radius.lg,
+    },
+    fade: {
+      backgroundColor: theme.colors.background,
+    },
+    fadeEdge: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 28,
     },
     cover: {
       ...StyleSheet.absoluteFill,

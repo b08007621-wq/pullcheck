@@ -22,6 +22,7 @@ export type BoardItem = {
   x: number;
   y: number;
   w: number;
+  hs?: number;
 };
 
 export type BoardLayout = {
