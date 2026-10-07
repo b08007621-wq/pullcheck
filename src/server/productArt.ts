@@ -6,6 +6,7 @@ type Family = 'box' | 'flat';
 
 const KINDS = {
   bundle: { family: 'box', depth: 0.44 },
+  boosterbox: { family: 'box', depth: 0.55 },
   etb: { family: 'box', depth: 0.49 },
   pcetb: { family: 'box', depth: 0.49 },
   collection: { family: 'box', depth: 0.34 },

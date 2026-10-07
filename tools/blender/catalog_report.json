@@ -1739,5 +1739,67 @@
    305.0
   ],
   "underTarget": true
+ },
+ {
+  "product": "PokemonTCG_BoosterBox",
+  "objects": [
+   {
+    "name": "PokemonTCG_BoosterBox_Body",
+    "triangles": 108,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     142.8,
+     76.8,
+     109.8
+    ]
+   },
+   {
+    "name": "PokemonTCG_BoosterBox_Lid",
+    "triangles": 116,
+    "materials": [
+     "BoardFront",
+     "BoardBack",
+     "BoardSide",
+     "BoardTop"
+    ],
+    "nonManifoldEdges": 0,
+    "openShell": false,
+    "looseVerts": 0,
+    "duplicateVerts": 0,
+    "islands": 1,
+    "outwardNormals": true,
+    "uvInRange": true,
+    "sizeMm": [
+     146.0,
+     80.0,
+     39.2
+    ]
+   }
+  ],
+  "issues": [],
+  "triangles": 224,
+  "target": [
+   200,
+   1000
+  ],
+  "materialCount": 4,
+  "sizeMm": [
+   146.0,
+   80.0,
+   140.0
+  ],
+  "underTarget": false
  }
 ]

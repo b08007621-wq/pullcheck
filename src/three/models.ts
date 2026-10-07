@@ -3,6 +3,7 @@ import type { BufferGeometry } from 'three';
 import blisterMesh from '../../assets/models/blister.json';
 import blister2Mesh from '../../assets/models/blister2.json';
 import blister3Mesh from '../../assets/models/blister3.json';
+import boosterBoxMesh from '../../assets/models/boosterbox.json';
 import bundleMesh from '../../assets/models/bundle.json';
 import cardMesh from '../../assets/models/card.json';
 import collectionMesh from '../../assets/models/collection.json';
@@ -27,6 +28,7 @@ const MESHES = {
   blister2: blister2Mesh,
   blister3: blister3Mesh,
   bundle: bundleMesh,
+  boosterbox: boosterBoxMesh,
   etb: etbMesh,
   pcetb: pcEtbMesh,
   tin: tinMesh,
@@ -44,6 +46,7 @@ export type ArtFamily = 'box' | 'flat' | 'tin';
 
 const ART_FAMILY: Partial<Record<ModelKind, ArtFamily>> = {
   bundle: 'box',
+  boosterbox: 'box',
   etb: 'box',
   pcetb: 'box',
   collection: 'box',

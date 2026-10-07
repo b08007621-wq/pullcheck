@@ -124,6 +124,8 @@ const MODEL_KINDS: Partial<Record<SealedType, ProductModelKind>> = {
   twoPack: 'blister2',
   threePack: 'blister3',
   boosterBundle: 'bundle',
+  boosterBox: 'boosterbox',
+  halfBox: 'boosterbox',
   etb: 'etb',
   pcEtb: 'pcetb',
   tin: 'tin',

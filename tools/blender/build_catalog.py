@@ -50,6 +50,7 @@ TRIANGLE_TARGETS = {
     "PremiumCollectionBox": (2000, 5000),
     "PosterCollection": (1000, 3000),
     "LargePremiumBox": (2000, 5000),
+    "BoosterBox": (200, 1000),
 }
 
 APP_KINDS = {
@@ -69,6 +70,7 @@ APP_KINDS = {
     "PremiumCollectionBox": "premium",
     "PosterCollection": "poster",
     "LargePremiumBox": "large",
+    "BoosterBox": "boosterbox",
 }
 
 OPEN_SHELLS = {"Blister"}
@@ -1141,6 +1143,7 @@ def build_catalog():
             [("card", "PromoCard", 0.075, 0.036, 3, 3)],
         ),
         build_lidded_box("LargePremiumBox", 0.380, 0.305, 0.105, 0.06, lid_thickness=0.0016),
+        build_lidded_box("BoosterBox", 0.146, 0.140, 0.080, 0.72, lid_thickness=0.001),
     ]
 
 
