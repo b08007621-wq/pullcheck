@@ -1,11 +1,8 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-
 import { clientKey, isRateLimited } from '@/server/rateLimit';
 
 const BASE = 'https://www.pokemonpricetracker.com/api/v2/cards';
 const CACHE_MS = 3 * 24 * 60 * 60 * 1000;
-const DIRECTORY = path.join(process.cwd(), '.cache', 'pokeprice');
+const DISK = process.env.PULLCHECK_HOSTED !== '1';
 const memory = new Map<string, { at: number; body: string }>();
 let limitedUntil = 0;
 
@@ -57,8 +54,10 @@ function dailyReset(body: string): number | null {
 async function readCache(id: string): Promise<string | null> {
   const hit = memory.get(id);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.body;
+  if (!DISK) return null;
   try {
-    const file = path.join(DIRECTORY, `${id}.json`);
+    const { fs, path } = await disk();
+    const file = path.join(directory(path), `${id}.json`);
     const stat = await fs.stat(file);
     if (Date.now() - stat.mtimeMs > CACHE_MS) return null;
     const body = await fs.readFile(file, 'utf8');
@@ -71,6 +70,19 @@ async function readCache(id: string): Promise<string | null> {
 
 async function writeCache(id: string, body: string) {
   memory.set(id, { at: Date.now(), body });
-  await fs.mkdir(DIRECTORY, { recursive: true }).catch(() => {});
-  await fs.writeFile(path.join(DIRECTORY, `${id}.json`), body).catch(() => {});
+  if (!DISK) return;
+  try {
+    const { fs, path } = await disk();
+    await fs.mkdir(directory(path), { recursive: true });
+    await fs.writeFile(path.join(directory(path), `${id}.json`), body);
+  } catch {}
+}
+
+async function disk() {
+  const [fs, path] = await Promise.all([import('node:fs/promises'), import('node:path')]);
+  return { fs, path };
+}
+
+function directory(path: typeof import('node:path')): string {
+  return path.join(process.cwd(), '.cache', 'pokeprice');
 }

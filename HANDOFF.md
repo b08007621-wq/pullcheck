@@ -56,6 +56,11 @@ The four PC tasks are done except the on-iPhone checks below.
 - Flavor text that already starts with a quote isn't wrapped in another pair (`CardGameplay`).
 - In-app pass on Expo web (headless Edge at 430×932, the Chrome extension wasn't connected): Magic, Yu-Gi-Oh! and Lorcana search homes, all sets, a set page, a card, add to collection, 3D viewer, search results, Your games, Most valuable and the Game filter. No red screens or duplicate-key warnings. On web the 3D viewer can't load YGOPRODeck or Lorcast card images (no CORS headers), so those were checked with a Scryfall front and `back=ygo`/`ygoOcg`.
 
+## Going remote (EAS Hosting + EAS Update), not started yet
+Goal: the app works on the brothers' phones in Expo Go with the PC off. Expo's sites (docs.expo.dev, expo.dev, api.expo.dev) are blocked from cloud sessions, so this part has to run on the PC. Read the SDK 57 docs from `https://docs.expo.dev/llms.txt` first.
+- Done in the cloud (branch `claude/pullcheck-remote-deployment-bgd43r`): with `PULLCHECK_HOSTED=1`, `/api/pokeprice` keeps its cache in memory only (no `.cache/pokeprice`), and `/api/scan-log` returns `{ ok: false, disabled: true }` without touching disk. `node:fs` is only imported lazily on the local path. The app only sends scan logs in `__DEV__`, so published updates don't call it anyway.
+- PC steps left: `npx.cmd eas-cli@latest login`, `init`, add `eas.json`; create EAS environment variables for `POKEPRICE_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_MODEL`, `CARD_READER` (whatever `.env.local` has) plus `PULLCHECK_HOSTED=1`; export and `eas deploy` the API routes; set `EXPO_PUBLIC_API_URL` to the hosted URL for published updates (`services/apiBase.ts` already prefers it); `eas update`; open it in Expo Go on the iPhone with the dev server off; check current EAS Update/Hosting pricing; then write the "publish a new version" and "how the brothers open it" steps here.
+
 ## Still to check on the iPhone
 - Magic set symbols draw and tint in the Sets list and set header (they're react-native-svg now, so `tintColor` no longer matters).
 - 3D viewer for a Lorcana card: `three/textures.ts` downloads the AVIF to a `.png` path for expo-gl. iOS 16+ decodes AVIF, but this hasn't run on the phone.
