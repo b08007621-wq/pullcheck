@@ -2,6 +2,16 @@
 
 `main` is the current branch on GitHub (remote `pc` on the local PC). Local work happens on `expo-app` and is pushed to both.
 
+## House rules (read before changing anything)
+- The app is tested only in Expo Go on an iPhone. There's no Mac and no dev build, so never add a library with native code that Expo Go doesn't bundle. AGENTS.md's dev-build advice doesn't apply here.
+- No comments in code. One component per file, all network calls in `src/services`, and loading, empty and error states on every screen.
+- Other Claude sessions run in parallel. `git fetch` and check the `claude/*` branches before starting, and merge finished work into `main`.
+- The owner is on Windows PowerShell, which blocks .ps1 shims. Give them `npx.cmd` / `npm.cmd` commands.
+- TCGCSV rejects library user agents (`services/tcgcsv.ts` sends `PullCheck/1.0`), has no CORS, and its WAF blocks the caller's IP for about 20 minutes after bursts. Keep requests to batches of 3. Data updates once a day.
+- api.pokemontcg.io returns 5xx about half the time. `services/http.ts` retries, so don't remove that.
+- OpenRouter free vision models (the `/api/identify` server fallback) go paid or vanish without warning. If server scanning breaks, re-check the `:free` image models at `openrouter.ai/api/v1/models`.
+- Metro forces `three` to `three.module.js` because the CJS build crashes RN. Avoid `String.normalize` (Hermes Intl). RN 0.86 has no `StyleSheet.absoluteFillObject`, so use `absoluteFill`.
+
 ## Open items
 - Graded section: fixed 2026-10-06 (the key line in `.env.local` was missing its `POKEPRICE_API_KEY=` name). Check `http://localhost:8081/api/pokeprice?id=517045` if it goes blank again.
 - Daily price collector (`.github/workflows/price-history.yml` + `scripts/price-history/collect.mjs`) is on `main` since 2026-10-06 and runs nightly at 21:43 UTC. It publishes to the `price-history` branch, read by `src/services/priceHistory.ts` via jsDelivr.
