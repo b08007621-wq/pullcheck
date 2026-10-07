@@ -37,12 +37,12 @@ type PageTarget = {
 
 export type CardSearch = ReturnType<typeof useCardSearch>;
 
-export function useCardSearch(input: string, game: Game = 'pokemon') {
+export function useCardSearch(input: string, game: Game = 'pokemon', lang = 'en') {
   const pokemon = game === 'pokemon';
   const name = pokemon ? normalizeCardName(input) : normalizeOtherName(input);
   const debouncedName = useDebouncedValue(name, DEBOUNCE_MS);
   const text = name ? debouncedName : '';
-  const query = text ? `${game}|${text}` : '';
+  const query = text ? `${game}|${lang}|${text}` : '';
 
   const [results, setResults] = useState<Results | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -86,7 +86,7 @@ export function useCardSearch(input: string, game: Game = 'pokemon') {
     const controller = new AbortController();
 
     const request =
-      game === 'pokemon' ? searchCardsByName(text, page, controller.signal) : searchGameCards(game, text, page, controller.signal);
+      game === 'pokemon' ? searchCardsByName(text, page, controller.signal) : searchGameCards(game, text, page, controller.signal, lang);
     request
       .then((result) => {
         if (controller.signal.aborted) return;
@@ -115,7 +115,7 @@ export function useCardSearch(input: string, game: Game = 'pokemon') {
       });
 
     return () => controller.abort();
-  }, [query, text, game, page, attempt]);
+  }, [query, text, game, lang, page, attempt]);
 
   const isLoadingMore = current !== null && page > current.page && currentFailure === null;
   const loadMoreFailed =

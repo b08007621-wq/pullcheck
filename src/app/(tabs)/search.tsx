@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
+import { GameLanguageButton } from '@/components/GameLanguageButton';
 import { GamePicker } from '@/components/GamePicker';
 import { IconButton } from '@/components/IconButton';
 import { LanguageToggle } from '@/components/LanguageToggle';
@@ -16,9 +17,11 @@ import { useCardSearch } from '@/hooks/useCardSearch';
 import { useRecentSearches } from '@/hooks/useRecentSearches';
 import { useSealedSearch } from '@/hooks/useSealedSearch';
 import { useSettings } from '@/hooks/useSettings';
-import { spacing } from '@/theme';
+import { useTheme } from '@/hooks/useTheme';
+import { spacing, typography } from '@/theme';
 import type { Game } from '@/types/card';
 import type { Market } from '@/types/sealed';
+import { gameLanguages } from '@/services/otherGames';
 import { gameInfo } from '@/utils/game';
 
 type SearchMode = 'cards' | 'sealed';
@@ -41,9 +44,12 @@ export default function SearchScreen() {
   const cardRecent = useRecentSearches('cards');
   const sealedRecent = useRecentSearches('sealed');
   const { settings, updateSettings } = useSettings();
+  const theme = useTheme();
   const game = settings.searchGame;
   const pokemon = game === 'pokemon';
   const gameRecent = useRecentSearches(pokemon ? 'cards' : game);
+  const languages = gameLanguages(game);
+  const gameLanguage = pokemon ? 'en' : (settings.gameLanguages[game] ?? 'en');
 
   const gameRef = useRef({ game, updateSettings });
   useEffect(() => {
@@ -64,7 +70,7 @@ export default function SearchScreen() {
 
   const isCards = mode === 'cards' || !pokemon;
   const japanese = pokemon && market === 'jp';
-  const cardSearch = useCardSearch(isCards && !japanese ? cardText : '', game);
+  const cardSearch = useCardSearch(isCards && !japanese ? cardText : '', game, gameLanguage);
   const jpCardSearch = useSealedSearch(cardText, 'jp', 'singles', isCards && japanese);
   const sealedSearch = useSealedSearch(sealedText, market, 'sealed', !isCards);
   const pickGame = (next: Game) => {
@@ -92,6 +98,22 @@ export default function SearchScreen() {
               <IconButton icon="barcode-outline" accessibilityLabel="Scan a barcode" onPress={() => router.push('/barcode')} />
             )}
             <LanguageToggle value={market} onChange={setMarket} />
+          </View>
+        ) : languages.length > 1 ? (
+          <View style={styles.modeRow}>
+            <Text style={[styles.gameNote, { color: theme.colors.textMuted }]} numberOfLines={2}>
+              {gameInfo(game).label} · {game === 'yugioh' ? 'card text in your language' : 'printed in your language'}
+            </Text>
+            <GameLanguageButton
+              languages={languages}
+              value={gameLanguage}
+              note={
+                game === 'yugioh'
+                  ? 'Yu-Gi-Oh! names and card text are translated. Japanese (OCG) cards aren’t in the free database.'
+                  : 'Shows printings in that language. Many non-English printings have no US price.'
+              }
+              onChange={(lang) => updateSettings({ gameLanguages: { ...settings.gameLanguages, [game]: lang } })}
+            />
           </View>
         ) : null}
         <SearchBar
@@ -146,6 +168,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   modes: {
+    flex: 1,
+  },
+  gameNote: {
+    ...typography.caption,
     flex: 1,
   },
 });

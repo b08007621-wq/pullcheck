@@ -126,6 +126,14 @@ function sanitize(stored: Partial<Settings>): Settings {
     boards: sanitizeBoards(stored.boards),
     tourDone: stored.tourDone === true,
     searchGame: isGame(stored.searchGame) ? stored.searchGame : DEFAULT_SETTINGS.searchGame,
+    gameLanguages:
+      stored.gameLanguages && typeof stored.gameLanguages === 'object'
+        ? Object.fromEntries(
+            Object.entries(stored.gameLanguages as Record<string, unknown>).filter(
+              (entry): entry is [string, string] => typeof entry[1] === 'string',
+            ),
+          )
+        : {},
   };
 }
 

@@ -79,7 +79,10 @@ export type Card = {
   images: {
     small: string;
     large: string;
+    back?: string;
   };
+  lang?: string;
+  finishTags?: string[];
   tcgplayer?: TcgPlayer;
   cardmarket?: Cardmarket;
   supertype?: string;

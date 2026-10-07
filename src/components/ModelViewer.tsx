@@ -33,10 +33,11 @@ type Props = {
   subtitle?: string;
   finish: CardFinish;
   back: CardBack;
+  backImage?: string;
 };
 
 
-export function ModelViewer({ kind, image, productId, title, subtitle, finish, back: backKind }: Props) {
+export function ModelViewer({ kind, image, productId, title, subtitle, finish, back: backKind, backImage }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const styles = useThemedStyles(createStyles);
@@ -50,7 +51,10 @@ export function ModelViewer({ kind, image, productId, title, subtitle, finish, b
   const productArt = useProductArt(kind, productId);
   const faces = productArt.data?.faces ?? null;
   const art = useTexture(boxed ? (faces?.front ?? null) : image);
-  const back = useTexture(isCard ? CARD_BACKS[backKind] : null);
+  const remoteBack = useTexture(isCard && backImage ? backImage : null);
+  const localWanted = isCard && (!backImage || remoteBack.error);
+  const localBack = useTexture(localWanted ? CARD_BACKS[backKind] : null);
+  const back = localWanted ? localBack : remoteBack;
   const side = useTexture(boxed ? (faces?.side ?? null) : null);
   const top = useTexture(boxed ? (faces?.top ?? null) : null);
 

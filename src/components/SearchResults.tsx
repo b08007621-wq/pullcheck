@@ -15,10 +15,10 @@ import { CardListItem } from './CardListItem';
 import { DiscoverHome } from './DiscoverHome';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
+import { GameHome } from './GameHome';
 import { rowPosition } from './ListRow';
 import { LoadMoreFooter } from './LoadMoreFooter';
 import { SkeletonRows } from './SkeletonRows';
-import { SuggestionChips } from './SuggestionChips';
 
 type Props = {
   search: CardSearch;
@@ -63,15 +63,7 @@ export function SearchResults({ search, game = 'pokemon', bottomInset, onSuggest
 
   if (search.status === 'idle' && game !== 'pokemon') {
     return (
-      <EmptyState
-        icon="search"
-        title={`Search ${info.label}`}
-        message={`Prices and card details come from ${info.source}. Add any card to your collection.`}
-        bottomInset={bottomInset}
-      >
-        <SuggestionChips title="Recent" icon="time-outline" suggestions={recent} onSelect={onSuggestion} onClear={onClearRecent} />
-        <SuggestionChips title="Try" suggestions={info.suggestions} onSelect={onSuggestion} />
-      </EmptyState>
+      <GameHome game={game} bottomInset={bottomInset} recent={recent} onSuggestion={onSuggestion} onClearRecent={onClearRecent} />
     );
   }
 

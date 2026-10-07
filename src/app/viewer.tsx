@@ -20,6 +20,7 @@ type Params = {
   era?: string;
   pattern?: string;
   back?: string;
+  backImage?: string;
 };
 
 export default function ViewerScreen() {
@@ -54,6 +55,7 @@ export default function ViewerScreen() {
       subtitle={params.subtitle}
       finish={finish}
       back={parseCardBack(params.back)}
+      backImage={params.backImage && /^https:\/\//.test(params.backImage) ? params.backImage : undefined}
     />
   );
 }

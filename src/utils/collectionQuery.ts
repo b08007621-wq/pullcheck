@@ -1,4 +1,5 @@
 import { normalizeText } from '@/services/sealedQuery';
+import type { Game } from '@/types/card';
 import type {
   BinderFilter,
   ChangeBasis,
@@ -12,6 +13,7 @@ import { itemBinder } from './binder';
 import { entryVersion, versionLabel } from './cardVersion';
 import { itemChange } from './collectionChange';
 import { itemPrice, itemTitle, itemValueUsd } from './collectionValue';
+import { gameOf } from './game';
 
 export type CollectionQuery = {
   text: string;
@@ -19,6 +21,7 @@ export type CollectionQuery = {
   binder: BinderFilter;
   quick: QuickFilter | null;
   set: string | null;
+  game: Game | 'all';
   sort: CollectionSort;
   basis: ChangeBasis;
 };
@@ -58,6 +61,28 @@ export function setCounts(items: CollectionItem[]): { name: string; count: numbe
     .sort((first, second) => second.count - first.count || first.name.localeCompare(second.name));
 }
 
+export function itemGame(item: CollectionItem): Game {
+  return item.kind === 'card' ? gameOf(item.card) : 'pokemon';
+}
+
+export type GameTotal = {
+  game: Game;
+  count: number;
+  value: number;
+};
+
+export function gameTotals(items: CollectionItem[]): GameTotal[] {
+  const totals = new Map<Game, GameTotal>();
+  for (const item of items) {
+    const game = itemGame(item);
+    const total = totals.get(game) ?? { game, count: 0, value: 0 };
+    total.count += item.quantity;
+    total.value += itemValueUsd(item) ?? 0;
+    totals.set(game, total);
+  }
+  return [...totals.values()].sort((first, second) => second.value - first.value || second.count - first.count);
+}
+
 export function isNewItem(item: CollectionItem, now = Date.now()): boolean {
   return now - Date.parse(item.addedAt) < WEEK_MS;
 }
@@ -74,6 +99,7 @@ export function queryCollection(items: CollectionItem[], query: CollectionQuery,
     if (query.type !== 'all' && item.kind !== query.type) return false;
     if (usesBinders && query.binder !== 'all' && itemBinder(item) !== query.binder) return false;
     if (query.set && itemSetName(item) !== query.set) return false;
+    if (query.game !== 'all' && itemGame(item) !== query.game) return false;
     if (query.quick && !matchesQuick(item, query.quick, query.basis, now)) return false;
     if (words.length > 0) {
       const haystack = normalizeText(searchText(item));

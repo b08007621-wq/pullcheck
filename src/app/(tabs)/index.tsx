@@ -19,6 +19,8 @@ import { AppearanceButton } from '@/components/AppearanceButton';
 import { BoardControls } from '@/components/BoardEditBar';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
 import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
+import { CollectionGamesPanel } from '@/components/CollectionGamesPanel';
+import { CollectionTopCards } from '@/components/CollectionTopCards';
 import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
 import { CollectionGridItem } from '@/components/CollectionGridItem';
 import { CollectionListItem } from '@/components/CollectionListItem';
@@ -63,6 +65,7 @@ const INITIAL_QUERY: Omit<CollectionQuery, 'basis'> = {
   binder: 'all',
   quick: null,
   set: null,
+  game: 'all',
   sort: 'value',
 };
 
@@ -214,7 +217,7 @@ export default function CollectionScreen() {
   const sheets = (
     <>
       {sheet === 'filters' ? (
-        <CollectionFilterSheet query={query} sets={sets} onChange={changeQuery} onClose={() => setSheet(null)} />
+        <CollectionFilterSheet query={query} sets={sets} items={items} onChange={changeQuery} onClose={() => setSheet(null)} />
       ) : null}
       {sheet === 'customize' ? (
         <CollectionCustomizeSheet
@@ -330,6 +333,17 @@ export default function CollectionScreen() {
         />
       ),
       chart: null,
+      games: (
+        <CollectionGamesPanel
+          items={items}
+          selected={query.game}
+          onSelect={(game) => {
+            haptics.selection();
+            changeQuery({ game });
+          }}
+        />
+      ),
+      top: <CollectionTopCards items={items} onOpen={openItem} />,
       recent: <RecentlyAddedStrip items={items} onOpen={openItem} onLongPress={showActions} />,
       stats: (
         <CollectionQuickStats

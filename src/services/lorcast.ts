@@ -1,4 +1,5 @@
 import type { Card, CardPage, TcgPlayerPrice } from '@/types/card';
+import type { GameSet } from '@/types/gameSet';
 import { gameIdPrefix, priceNumber, slashDate } from '@/utils/game';
 
 import { type CachePolicy, cachedFetch } from './cache';
@@ -7,9 +8,20 @@ import { settleInBatches } from './tcgcsv';
 
 const BASE_URL = 'https://api.lorcast.com/v0';
 const PREFIX = gameIdPrefix('lorcana');
+const SET_PREFIX = `${PREFIX}set-`;
 const HOUR = 60 * 60 * 1000;
 const SEARCH_CACHE: CachePolicy = { bucket: 'lor-search', ttlMs: 6 * HOUR, maxEntries: 30 };
 const CARD_CACHE: CachePolicy = { bucket: 'lor-card', ttlMs: 6 * HOUR, maxEntries: 200 };
+const SETS_CACHE: CachePolicy = { bucket: 'lor-sets', ttlMs: 24 * HOUR, maxEntries: 1 };
+const SET_CARDS_CACHE: CachePolicy = { bucket: 'lor-set-cards', ttlMs: 12 * HOUR, maxEntries: 12 };
+
+type LorcastSet = {
+  id?: string;
+  name: string;
+  code: string;
+  released_at?: string | null;
+  prereleased_at?: string | null;
+};
 
 type LorcastCard = {
   name: string;
@@ -34,7 +46,49 @@ type LorcastCard = {
 };
 
 export function isLorcastId(id: string): boolean {
-  return id.startsWith(PREFIX);
+  return id.startsWith(PREFIX) && !id.startsWith(SET_PREFIX);
+}
+
+export async function getLorcastSets(signal?: AbortSignal): Promise<GameSet[]> {
+  const { value } = await cachedFetch('all', SETS_CACHE, async () =>
+    listOf<LorcastSet>(await getJson<unknown>(`${BASE_URL}/sets`, { signal })),
+  );
+  return value
+    .map((set) => ({
+      id: `${SET_PREFIX}${set.code}`,
+      game: 'lorcana' as const,
+      code: set.code,
+      name: set.name,
+      releaseDate: slashDate(set.released_at ?? set.prereleased_at),
+      total: 0,
+      type: /^\d+$/.test(set.code) ? 'Main set' : 'Special',
+      icon: null,
+      iconIsSymbol: false,
+    }))
+    .sort((first, second) => second.releaseDate.localeCompare(first.releaseDate));
+}
+
+export async function getLorcastSetCards(setId: string, signal?: AbortSignal): Promise<Card[]> {
+  const code = setId.slice(SET_PREFIX.length);
+  const { value } = await cachedFetch(code, SET_CARDS_CACHE, async () => {
+    const cards = listOf<LorcastCard>(
+      await getJson<unknown>(`${BASE_URL}/sets/${encodeURIComponent(code)}/cards`, { signal, timeoutMs: 20_000 }),
+    ).map(toCard);
+    if (cards.length === 0) throw new ApiError('notFound');
+    return cards.sort((first, second) => first.number.localeCompare(second.number, undefined, { numeric: true }));
+  });
+  return value;
+}
+
+export async function searchLorcastQuery(q: string, signal?: AbortSignal): Promise<Card[]> {
+  return (await searchLorcast(q, 1, signal)).cards;
+}
+
+function listOf<T>(response: unknown): T[] {
+  if (Array.isArray(response)) return response as T[];
+  const results = (response as { results?: unknown } | null)?.results;
+  if (Array.isArray(results)) return results as T[];
+  throw new ApiError('badResponse');
 }
 
 export async function searchLorcast(text: string, page: number, signal?: AbortSignal): Promise<CardPage> {
@@ -43,12 +97,8 @@ export async function searchLorcast(text: string, page: number, signal?: AbortSi
     SEARCH_CACHE,
     async () => {
       try {
-        const response = await getJson<{ results: LorcastCard[] }>(
-          `${BASE_URL}/cards/search?${toQueryString({ q: text })}`,
-          { signal },
-        );
-        if (!Array.isArray(response.results)) throw new ApiError('badResponse');
-        return response.results.map(toCard).sort((first, second) => second.set.releaseDate.localeCompare(first.set.releaseDate));
+        const response = await getJson<unknown>(`${BASE_URL}/cards/search?${toQueryString({ q: text })}`, { signal });
+        return listOf<LorcastCard>(response).map(toCard).sort((first, second) => second.set.releaseDate.localeCompare(first.set.releaseDate));
       } catch (error) {
         if (error instanceof ApiError && (error.kind === 'notFound' || error.status === 400)) return [];
         throw error;
@@ -103,6 +153,7 @@ function toCard(card: LorcastCard): Card {
     name: card.version ? `${card.name} - ${card.version}` : card.name,
     number: card.collector_number,
     rarity: card.rarity?.replace(/_/g, ' '),
+    finishTags: card.rarity ? [card.rarity.toLowerCase().replace(/_/g, ' ')] : [],
     set: {
       id: `${PREFIX}set-${card.set.code}`,
       name: card.set.name,

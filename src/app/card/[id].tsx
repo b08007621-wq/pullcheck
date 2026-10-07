@@ -176,8 +176,12 @@ function CardPage({ id, entry, place, enterFrom, onGo }: PageProps) {
             logo={card.set.images.logo}
             logoLabel={card.set.name}
             logoCaption={`#${formatCollectorNumber(card)} · ${card.set.series}`}
-            logoAction={pokemon ? (setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set') : undefined}
-            onLogoPress={pokemon ? () => router.push({ pathname: '/set/[id]', params: { id: card.set.id } }) : undefined}
+            logoAction={pokemon && setOwned > 0 ? `${setOwned} of ${setTotal} in this set` : 'See the whole set'}
+            onLogoPress={() =>
+              pokemon
+                ? router.push({ pathname: '/set/[id]', params: { id: card.set.id } })
+                : router.push({ pathname: '/tcgset/[id]', params: { id: card.set.id, name: card.set.name } })
+            }
             chips={
               <>
                 {pokemon ? null : <Chip label={gameInfo(game).short} />}

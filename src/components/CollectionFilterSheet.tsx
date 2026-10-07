@@ -5,7 +5,9 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { IconName } from '@/types/icon';
-import { type CollectionQuery, QUICK_FILTERS, SORT_OPTIONS } from '@/utils/collectionQuery';
+import type { CollectionItem } from '@/types/collection';
+import { type CollectionQuery, gameTotals, QUICK_FILTERS, SORT_OPTIONS } from '@/utils/collectionQuery';
+import { gameInfo } from '@/utils/game';
 
 import { FilterChip } from './FilterChip';
 import { SheetModal } from './SheetModal';
@@ -13,16 +15,18 @@ import { SheetModal } from './SheetModal';
 type Props = {
   query: CollectionQuery;
   sets: { name: string; count: number }[];
+  items: CollectionItem[];
   onChange: (changes: Partial<CollectionQuery>) => void;
   onClose: () => void;
 };
 
 const SET_LIMIT = 40;
 
-export function CollectionFilterSheet({ query, sets, onChange, onClose }: Props) {
+export function CollectionFilterSheet({ query, sets, items, onChange, onClose }: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
-  const active = query.quick !== null || query.set !== null || query.sort !== 'value';
+  const active = query.quick !== null || query.set !== null || query.game !== 'all' || query.sort !== 'value';
+  const games = gameTotals(items);
 
   return (
     <SheetModal onClose={onClose}>
@@ -32,7 +36,7 @@ export function CollectionFilterSheet({ query, sets, onChange, onClose }: Props)
           <Pressable
             onPress={() => {
               haptics.selection();
-              onChange({ quick: null, set: null, sort: 'value' });
+              onChange({ quick: null, set: null, game: 'all', sort: 'value' });
             }}
             hitSlop={8}
             accessibilityRole="button"
@@ -64,6 +68,24 @@ export function CollectionFilterSheet({ query, sets, onChange, onClose }: Props)
             );
           })}
         </View>
+
+        {games.length > 1 ? (
+          <>
+            <Text style={styles.label}>Game</Text>
+            <View style={styles.chips}>
+              <FilterChip label="All games" selected={query.game === 'all'} onPress={() => onChange({ game: 'all' })} />
+              {games.map((total) => (
+                <FilterChip
+                  key={total.game}
+                  label={gameInfo(total.game).short}
+                  count={total.count}
+                  selected={query.game === total.game}
+                  onPress={() => onChange({ game: query.game === total.game ? 'all' : total.game })}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Text style={styles.label}>Show only</Text>
         <View style={styles.chips}>

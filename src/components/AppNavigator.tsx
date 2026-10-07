@@ -37,6 +37,8 @@ export function AppNavigator() {
         <Stack.Screen name="barcode" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="set/[id]" />
         <Stack.Screen name="jpset/[id]" />
+        <Stack.Screen name="tcg/[game]" />
+        <Stack.Screen name="tcgset/[id]" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="binders" />
         <Stack.Screen name="binder/[id]" options={{ gestureEnabled: false }} />

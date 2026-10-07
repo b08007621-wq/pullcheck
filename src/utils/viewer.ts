@@ -21,6 +21,7 @@ export type ViewerParams = {
   era?: string;
   pattern?: string;
   back?: CardBack;
+  backImage?: string;
 };
 
 export function cardViewerParams(card: Card, variant?: string | null): ViewerParams {
@@ -35,6 +36,7 @@ export function cardViewerParams(card: Card, variant?: string | null): ViewerPar
     era: finish.era,
     pattern: finish.pattern,
     back: isOtherGame(card) ? 'plain' : 'international',
+    ...(card.images.back ? { backImage: card.images.back } : {}),
   };
 }
 

@@ -49,12 +49,13 @@ export type Settings = {
   boards: Record<string, BoardLayout>;
   tourDone: boolean;
   searchGame: Game;
+  gameLanguages: Record<string, string>;
   design: number;
 };
 
 export const DESIGN_VERSION = 3;
 
-export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'recent', 'stats', 'shortcuts'];
+export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'games', 'top', 'recent', 'stats', 'shortcuts'];
 
 export const DEFAULT_COLLECTION_LAYOUT: CollectionLayout = {
   order: COLLECTION_SECTIONS,
@@ -86,6 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   boards: {},
   tourDone: false,
   searchGame: 'pokemon',
+  gameLanguages: {},
   design: DESIGN_VERSION,
 };
 

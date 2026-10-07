@@ -1,5 +1,7 @@
 import type { Card, Game } from '@/types/card';
 
+export type OtherGame = Exclude<Game, 'pokemon'>;
+
 export type GameInfo = {
   game: Game;
   label: string;
@@ -44,7 +46,7 @@ export const GAMES: GameInfo[] = [
   },
 ];
 
-const ID_PREFIX: Record<Exclude<Game, 'pokemon'>, string> = {
+const ID_PREFIX: Record<OtherGame, string> = {
   mtg: 'mtg-',
   yugioh: 'ygo-',
   lorcana: 'lor-',
@@ -58,12 +60,12 @@ export function isGame(value: unknown): value is Game {
   return GAMES.some((entry) => entry.game === value);
 }
 
-export function gameIdPrefix(game: Exclude<Game, 'pokemon'>): string {
+export function gameIdPrefix(game: OtherGame): string {
   return ID_PREFIX[game];
 }
 
 export function gameOfId(id: string): Game {
-  for (const [game, prefix] of Object.entries(ID_PREFIX) as [Exclude<Game, 'pokemon'>, string][]) {
+  for (const [game, prefix] of Object.entries(ID_PREFIX) as [OtherGame, string][]) {
     if (id.startsWith(prefix)) return game;
   }
   return 'pokemon';
@@ -88,4 +90,23 @@ export function slashDate(value: string | null | undefined): string {
 export function priceNumber(value: string | number | null | undefined): number | null {
   const amount = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
   return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+const LANGUAGE_LABELS: Record<string, { short: string; full: string }> = {
+  en: { short: 'EN', full: 'English' },
+  jp: { short: 'JP', full: 'Japanese' },
+  ja: { short: 'JP', full: 'Japanese' },
+  de: { short: 'DE', full: 'German' },
+  fr: { short: 'FR', full: 'French' },
+  it: { short: 'IT', full: 'Italian' },
+  es: { short: 'ES', full: 'Spanish' },
+  pt: { short: 'PT', full: 'Portuguese' },
+  ko: { short: 'KO', full: 'Korean' },
+  ru: { short: 'RU', full: 'Russian' },
+  zhs: { short: '简', full: 'Simplified Chinese' },
+  zht: { short: '繁', full: 'Traditional Chinese' },
+};
+
+export function languageLabel(code: string): { short: string; full: string } {
+  return LANGUAGE_LABELS[code] ?? { short: code.toUpperCase(), full: code.toUpperCase() };
 }
