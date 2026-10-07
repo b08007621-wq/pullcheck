@@ -7,11 +7,12 @@ import { type AppTheme, radius, typography } from '@/theme';
 import type { ChangeBasis, CollectionItem } from '@/types/collection';
 import { entryVersion } from '@/utils/cardVersion';
 import { itemChange } from '@/utils/collectionChange';
-import { isNewItem } from '@/utils/collectionQuery';
+import { showsNewTag } from '@/utils/collectionQuery';
 import { itemPrice, itemTitle } from '@/utils/collectionValue';
 import { formatPrice, variantShortLabel } from '@/utils/price';
 
 import { FadeInView } from './FadeInView';
+import { NewBadge } from './NewBadge';
 import { PressableScale } from './PressableScale';
 import { PriceChange } from './PriceChange';
 import { ProductImage } from './ProductImage';
@@ -60,11 +61,7 @@ function CollectionGridItemView({ item, width, basis, details, fresh, onPress, o
           ) : (
             <ProductImage product={item.product} size={320} style={styles.image} transition={150} />
           )}
-          {fresh || isNewItem(item) ? (
-            <View style={[styles.corner, styles.topLeft, styles.newBadge]}>
-              <Text style={styles.newText}>NEW</Text>
-            </View>
-          ) : null}
+          <NewBadge visible={showsNewTag(item, fresh)} size="small" style={[styles.badgeSpot, styles.topLeft]} />
           {item.quantity > 1 ? (
             <View style={[styles.corner, styles.topRight, styles.count]}>
               <Text style={styles.countText}>{`×${item.quantity}`}</Text>
@@ -137,14 +134,9 @@ function createStyles(theme: AppTheme) {
       bottom: 4,
       left: 4,
     },
-    newBadge: {
-      backgroundColor: theme.colors.gain,
-    },
-    newText: {
-      fontSize: 9,
-      fontWeight: '800',
-      letterSpacing: 0.4,
-      color: theme.colors.background,
+    badgeSpot: {
+      position: 'absolute',
+      borderRadius: radius.sm,
     },
     count: {
       backgroundColor: theme.colors.accent,

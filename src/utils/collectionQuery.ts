@@ -62,6 +62,11 @@ export function isNewItem(item: CollectionItem, now = Date.now()): boolean {
   return now - Date.parse(item.addedAt) < WEEK_MS;
 }
 
+export function showsNewTag(item: CollectionItem, fresh = false): boolean {
+  if (!fresh && !isNewItem(item)) return false;
+  return !item.seenAt || item.seenAt < item.lastAddedAt;
+}
+
 export function queryCollection(items: CollectionItem[], query: CollectionQuery, usesBinders: boolean): CollectionItem[] {
   const words = normalizeText(query.text).split(' ').filter(Boolean);
   const now = Date.now();

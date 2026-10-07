@@ -18,6 +18,8 @@ import { GRADING_COST_RANGE } from '@/utils/centering';
 
 import { savedTheme } from './savedTheme';
 import {
+  type BoardItem,
+  type BoardLayout,
   COLLECTION_SECTIONS,
   DEFAULT_COLLECTION_LAYOUT,
   DEFAULT_SETTINGS,
@@ -120,8 +122,38 @@ function sanitize(stored: Partial<Settings>): Settings {
         ? Math.min(GRADING_COST_RANGE[1], Math.max(GRADING_COST_RANGE[0], stored.gradingCost))
         : DEFAULT_SETTINGS.gradingCost,
     setOrder: sanitizeSetOrder(stored.setOrder),
+    boards: sanitizeBoards(stored.boards),
     tourDone: stored.tourDone === true,
   };
+}
+
+function sanitizeBoards(stored: unknown): Record<string, BoardLayout> {
+  if (!stored || typeof stored !== 'object') return {};
+  const fraction = (value: unknown, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+  return Object.fromEntries(
+    Object.entries(stored as Record<string, Partial<BoardLayout>>).map(([board, layout]) => {
+      const items = layout && typeof layout.items === 'object' && layout.items ? layout.items : {};
+      return [
+        board,
+        {
+          items: Object.fromEntries(
+            Object.entries(items as Record<string, Partial<BoardItem>>)
+              .filter(([, item]) => item && typeof item === 'object')
+              .map(([key, item]) => [
+                key,
+                {
+                  x: fraction(item.x, 0),
+                  w: Math.max(0.4, fraction(item.w, 1)),
+                  y: typeof item.y === 'number' && Number.isFinite(item.y) ? Math.max(0, item.y) : 0,
+                },
+              ]),
+          ),
+          hidden: Array.isArray(layout?.hidden) ? layout.hidden.filter((key): key is string => typeof key === 'string') : [],
+        },
+      ];
+    }),
+  );
 }
 
 function sanitizeSetOrder(stored: unknown): Record<string, string[]> {

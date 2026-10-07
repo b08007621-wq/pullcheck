@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AppearanceButton } from '@/components/AppearanceButton';
+import { BoardEditBar } from '@/components/BoardEditBar';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
 import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
 import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
@@ -25,16 +26,16 @@ import { CollectionSummaryCard } from '@/components/CollectionSummaryCard';
 import { CollectionToolbar } from '@/components/CollectionToolbar';
 import { CollectionValueChart } from '@/components/CollectionValueChart';
 import { EmptyState } from '@/components/EmptyState';
+import { FreeBoard } from '@/components/FreeBoard';
 import { FreshPullPanel } from '@/components/FreshPullPanel';
 import { IconButton } from '@/components/IconButton';
 import { ItemActionsSheet } from '@/components/ItemActionsSheet';
-import { SectionDragList } from '@/components/SectionDragList';
-import { SectionHold } from '@/components/SectionHold';
 import { rowPosition } from '@/components/ListRow';
 import { MoneyEditor } from '@/components/MoneyEditor';
 import { RecentlyAddedStrip } from '@/components/RecentlyAddedStrip';
 import { Screen } from '@/components/Screen';
 import { SkeletonRows } from '@/components/SkeletonRows';
+import { useBoard } from '@/hooks/useBoard';
 import { useCelebrate } from '@/hooks/useCelebrate';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -42,12 +43,16 @@ import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
 import { setBrowseList } from '@/services/cardBrowse';
-import { radius, spacing, typography } from '@/theme';
+import { queueSeen, takeSeen } from '@/services/seen';
+import { spacing, typography } from '@/theme';
 import type { CollectionItem, CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
 import { itemBinder } from '@/utils/binder';
+import { SECTION_LABEL } from '@/utils/collectionSections';
 import { type CollectionQuery, queryCollection, setCounts } from '@/utils/collectionQuery';
 import { summarizeCollection } from '@/utils/collectionValue';
 import { itemViewerParams } from '@/utils/viewer';
+
+const EDIT_BAR_SPACE = 150;
 
 const INITIAL_QUERY: Omit<CollectionQuery, 'basis'> = {
   text: '',
@@ -63,7 +68,7 @@ export default function CollectionScreen() {
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const haptics = useHaptics();
-  const { items, meta, isLoaded, refreshing, refreshFailed, refreshPrices, setPaid } = useCollection();
+  const { items, meta, isLoaded, refreshing, refreshFailed, refreshPrices, setPaid, markSeen } = useCollection();
   const { refresh: refreshWishlist } = useWishlist();
   const { fresh, clearFresh } = useCelebrate();
   const { settings, updateSettings } = useSettings();
@@ -74,10 +79,10 @@ export default function CollectionScreen() {
   const [pulling, setPulling] = useState(false);
   const [sheet, setSheet] = useState<'filters' | 'customize' | null>(null);
   const [actionItem, setActionItem] = useState<CollectionItem | null>(null);
-  const [arranging, setArranging] = useState(false);
-  const [dragLock, setDragLock] = useState(false);
   const [paidItem, setPaidItem] = useState<CollectionItem | null>(null);
   const query = useMemo(() => ({ ...filters, basis: layout.changeBasis }), [filters, layout.changeBasis]);
+  const boardFallback = useMemo(() => ({ items: {}, hidden: layout.hidden }), [layout.hidden]);
+  const board = useBoard('collection', boardFallback);
 
   const setView = useCallback((next: CollectionView) => updateSettings({ collectionView: next }), [updateSettings]);
   const setLayout = useCallback((next: CollectionLayout) => updateSettings({ collectionLayout: next }), [updateSettings]);
@@ -91,6 +96,23 @@ export default function CollectionScreen() {
       if (isLoaded) refreshPrices(false);
       refreshWishlist(false);
     }, [isLoaded, refreshPrices, refreshWishlist]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoaded) return;
+      const keys = takeSeen();
+      if (keys.length === 0) return;
+      let done = false;
+      const timer = setTimeout(() => {
+        done = true;
+        markSeen(keys);
+      }, 450);
+      return () => {
+        clearTimeout(timer);
+        if (!done) queueSeen(keys);
+      };
+    }, [isLoaded, markSeen]),
   );
 
   const pullToRefresh = useCallback(async () => {
@@ -114,6 +136,7 @@ export default function CollectionScreen() {
   const openItem = useCallback(
     (item: CollectionItem) => {
       setActionItem(null);
+      queueSeen([item.key]);
       if (item.kind === 'card') {
         setBrowseList(
           visible.flatMap((entry) => (entry.kind === 'card' ? [{ id: entry.card.id, entry: entry.key }] : [])),
@@ -191,6 +214,13 @@ export default function CollectionScreen() {
         <CollectionCustomizeSheet
           layout={layout}
           items={items}
+          hidden={board.layout.hidden}
+          onToggleSection={board.toggle}
+          onArrange={() => {
+            setSheet(null);
+            haptics.collect();
+            board.setEditing(true);
+          }}
           onChange={setLayout}
           onBackup={() => {
             setSheet(null);
@@ -269,7 +299,7 @@ export default function CollectionScreen() {
       </EmptyState>
     );
   } else {
-    const hidden = new Set(layout.hidden);
+    const hidden = new Set(board.layout.hidden);
     const chart = <CollectionValueChart items={items} history={meta.valueHistory} onOpen={openItem} />;
     const sections: Record<CollectionSection, ReactNode> = {
       pulled: fresh ? (
@@ -290,10 +320,10 @@ export default function CollectionScreen() {
           pricesAsOf={meta.pricesAsOf ?? null}
           refreshing={refreshing}
           refreshFailed={refreshFailed}
-          chart={hidden.has('chart') ? undefined : chart}
+          chart={hidden.has('chart') ? undefined : false}
         />
       ),
-      chart: hidden.has('summary') ? chart : null,
+      chart,
       recent: <RecentlyAddedStrip items={items} onOpen={openItem} onLongPress={showActions} />,
       stats: (
         <CollectionQuickStats
@@ -319,51 +349,19 @@ export default function CollectionScreen() {
 
     const header = (
       <View style={styles.header}>
-        {arranging ? (
-          <View style={styles.arrange}>
-            <View style={styles.arrangeBar}>
-              <View style={styles.arrangeText}>
-                <Text style={[styles.arrangeTitle, { color: theme.colors.text }]}>Arrange your page</Text>
-                <Text style={[styles.arrangeHint, { color: theme.colors.textMuted }]}>
-                  Hold a section and drag it. Tap the eye to hide it.
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => {
-                  haptics.tap();
-                  setArranging(false);
-                  setDragLock(false);
-                }}
-                accessibilityRole="button"
-                style={[styles.arrangeDone, { backgroundColor: theme.colors.accent }]}
-              >
-                <Text style={[styles.arrangeDoneText, { color: theme.colors.onAccent }]}>Done</Text>
-              </Pressable>
-            </View>
-            <SectionDragList
-              order={layout.order}
-              hidden={layout.hidden}
-              liftDelay={120}
-              onChange={(next) => setLayout({ ...layout, ...next })}
-              onDragging={setDragLock}
-            />
-          </View>
-        ) : (
-          layout.order
-            .filter((section) => !hidden.has(section) && sections[section])
-            .map((section) => (
-              <SectionHold
-                key={section}
-                paused={actionItem !== null || sheet !== null}
-                onHold={() => {
-                  haptics.collect();
-                  setArranging(true);
-                }}
-              >
-                {sections[section]}
-              </SectionHold>
-            ))
-        )}
+        <FreeBoard
+          widgets={layout.order.map((section) => ({
+            key: section,
+            label: SECTION_LABEL[section].title,
+            node: sections[section],
+          }))}
+          layout={board.layout}
+          editing={board.editing}
+          paused={actionItem !== null || sheet !== null}
+          onEditingChange={board.setEditing}
+          onChange={board.save}
+          onScrollLock={board.setLocked}
+        />
         <CollectionToolbar
           query={query}
           view={view}
@@ -388,11 +386,11 @@ export default function CollectionScreen() {
     if (view === 'cover') {
       content = (
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg + (board.editing ? EDIT_BAR_SPACE : 0) }]}
           scrollIndicatorInsets={{ bottom: tabBarHeight }}
           keyboardShouldPersistTaps="handled"
           refreshControl={refresh}
-          scrollEnabled={!dragLock}
+          scrollEnabled={!board.locked}
         >
           {header}
           <View style={styles.coverStage}>
@@ -420,12 +418,12 @@ export default function CollectionScreen() {
           renderItem={view === 'grid' ? renderGridItem : renderItem}
           numColumns={view === 'grid' ? columns : 1}
           columnWrapperStyle={view === 'grid' ? styles.gridRow : undefined}
-          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg + (board.editing ? EDIT_BAR_SPACE : 0) }]}
           scrollIndicatorInsets={{ bottom: tabBarHeight }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           refreshControl={refresh}
-          scrollEnabled={!dragLock}
+          scrollEnabled={!board.locked}
           ListHeaderComponent={header}
           ListEmptyComponent={emptyText}
         />
@@ -436,6 +434,19 @@ export default function CollectionScreen() {
   return (
     <Screen title="Collection" action={headerAction}>
       {content}
+      {board.editing ? (
+        <View style={[styles.editBar, { bottom: tabBarHeight + spacing.sm }]}>
+          <BoardEditBar
+            hidden={layout.order
+              .filter((section) => board.layout.hidden.includes(section))
+              .map((section) => ({ key: section, label: SECTION_LABEL[section].title }))}
+            onShow={board.show}
+            onTidy={board.tidy}
+            onReset={board.reset}
+            onDone={board.done}
+          />
+        </View>
+      ) : null}
       {sheets}
     </Screen>
   );
@@ -453,32 +464,10 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     marginBottom: spacing.md,
   },
-  arrange: {
-    gap: spacing.md,
-  },
-  arrangeBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  arrangeText: {
-    flex: 1,
-    gap: 2,
-  },
-  arrangeTitle: {
-    ...typography.label,
-  },
-  arrangeHint: {
-    ...typography.caption,
-  },
-  arrangeDone: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-  },
-  arrangeDoneText: {
-    ...typography.label,
-    fontSize: 15,
+  editBar: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
   },
   actions: {
     flexDirection: 'row',

@@ -22,11 +22,12 @@ type Props = {
   centered?: boolean;
   topRight?: ReactNode;
   renderList?: (insets: ListInsets) => ReactNode;
+  scrollEnabled?: boolean;
 };
 
 const TOP_BAR_HEIGHT = 56;
 
-export function DetailLayout({ children, footer, centered = false, topRight, renderList }: Props) {
+export function DetailLayout({ children, footer, centered = false, topRight, renderList, scrollEnabled = true }: Props) {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -54,6 +55,7 @@ export function DetailLayout({ children, footer, centered = false, topRight, ren
             },
           ]}
           scrollIndicatorInsets={{ bottom: footerHeight }}
+          scrollEnabled={scrollEnabled}
         >
           {children}
         </ScrollView>

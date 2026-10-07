@@ -8,13 +8,14 @@ import type { ChangeBasis, CollectionItem } from '@/types/collection';
 import { formatCollectorNumber } from '@/utils/card';
 import { entryVersion, versionLabel } from '@/utils/cardVersion';
 import { CHANGE_CAPTION, itemChange } from '@/utils/collectionChange';
-import { isNewItem } from '@/utils/collectionQuery';
+import { showsNewTag } from '@/utils/collectionQuery';
 import { itemPrice, itemTitle } from '@/utils/collectionValue';
 import { formatMoney } from '@/utils/price';
 import { binderLabel, itemBinder } from '@/utils/binder';
 import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
 
 import { ListRow, type RowPosition } from './ListRow';
+import { NewBadge } from './NewBadge';
 import { PriceChange } from './PriceChange';
 import { ProductImage } from './ProductImage';
 
@@ -32,7 +33,7 @@ function CollectionListItemView({ item, position, basis = 'auto', fresh = false,
   const price = itemPrice(item);
   const change = itemChange(item, basis);
   const caption = change && (basis !== 'auto' || change.basis === 'paid') ? CHANGE_CAPTION[change.basis] : undefined;
-  const isNew = fresh || isNewItem(item);
+  const isNew = showsNewTag(item, fresh);
   const version = item.kind === 'card' ? versionLabel(item.card, entryVersion(item), 'short') : null;
   const binder = itemBinder(item);
   const graded = item.kind === 'card' && item.grading ? `${item.grading.company} ${item.grading.grade}` : null;
@@ -65,11 +66,13 @@ function CollectionListItemView({ item, position, basis = 'auto', fresh = false,
           </View>
         )}
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {isNew ? <Text style={styles.newDot}>{'● '}</Text> : null}
-            {itemTitle(item)}
-            {item.quantity > 1 ? <Text style={styles.count}>{`  ×${item.quantity}`}</Text> : null}
-          </Text>
+          <View style={styles.nameRow}>
+            <NewBadge visible={isNew} variant="dot" />
+            <Text style={[styles.name, styles.nameText]} numberOfLines={1}>
+              {itemTitle(item)}
+              {item.quantity > 1 ? <Text style={styles.count}>{`  ×${item.quantity}`}</Text> : null}
+            </Text>
+          </View>
           <Text style={styles.subtitle} numberOfLines={1}>
             {subtitle}
           </Text>
@@ -113,9 +116,13 @@ function createStyles(theme: AppTheme) {
     fresh: {
       backgroundColor: theme.colors.surfaceRaised,
     },
-    newDot: {
-      color: theme.colors.gain,
-      fontSize: 12,
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    nameText: {
+      flexShrink: 1,
     },
     cardImage: {
       width: 46,

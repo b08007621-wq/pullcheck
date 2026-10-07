@@ -6,6 +6,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import { toNavigationTheme } from '@/theme';
 
+import { UndoToast } from './UndoToast';
 import { WelcomeTour } from './WelcomeTour';
 
 export function AppNavigator() {
@@ -41,6 +42,7 @@ export function AppNavigator() {
         <Stack.Screen name="centering" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="viewer" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>
+      <UndoToast />
       {settings.tourDone ? null : <WelcomeTour onDone={() => updateSettings({ tourDone: true })} />}
       <StatusBar style={theme.mode === 'light' ? 'dark' : 'light'} />
     </ThemeProvider>

@@ -31,6 +31,7 @@ type CollectedBase = {
   priceAtAdd: MarketPrice | null;
   paid?: PaidPrice | null;
   history?: PricePoint[];
+  seenAt?: string;
 };
 
 export type GradingCompany = 'PSA' | 'BGS' | 'CGC' | 'TAG';

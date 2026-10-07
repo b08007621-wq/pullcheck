@@ -39,6 +39,8 @@ export type CollectionAction =
   | { type: 'refreshSealed'; product: SealedProduct; at: string }
   | { type: 'applyRefresh'; cards: Card[]; products: SealedProduct[]; pricesAsOf: string | null; at: string }
   | { type: 'setPaid'; key: string; paid: PaidPrice | null }
+  | { type: 'markSeen'; keys: string[]; at: string }
+  | { type: 'restore'; item: CollectionItem; index: number; at: string }
   | { type: 'setBinder'; key: string; binder: Binder }
   | { type: 'setGrading'; key: string; grading: Grading | null; at: string }
   | { type: 'replaceAll'; items: CollectionItem[]; meta: CollectionMeta }
@@ -113,6 +115,25 @@ export function collectionReducer(state: CollectionState, action: CollectionActi
         ...state,
         items: state.items.map((item) => (item.key === action.key ? { ...item, binder: action.binder } : item)),
       };
+    case 'markSeen': {
+      const keys = new Set(action.keys);
+      return {
+        ...state,
+        items: state.items.map((item) => (keys.has(item.key) ? { ...item, seenAt: action.at } : item)),
+      };
+    }
+    case 'restore': {
+      if (state.items.some((item) => item.key === action.item.key)) {
+        return withValue(
+          state,
+          state.items.map((item) => (item.key === action.item.key ? action.item : item)),
+          action.at,
+        );
+      }
+      const items = [...state.items];
+      items.splice(Math.min(Math.max(action.index, 0), items.length), 0, action.item);
+      return withValue(state, items, action.at);
+    }
     case 'setPaid':
       return {
         ...state,

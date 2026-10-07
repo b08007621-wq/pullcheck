@@ -18,10 +18,11 @@ import type { ChangeBasis, CollectionItem } from '@/types/collection';
 import { formatCollectorNumber } from '@/utils/card';
 import { entryVersion, versionLabel } from '@/utils/cardVersion';
 import { CHANGE_CAPTION, itemChange } from '@/utils/collectionChange';
-import { isNewItem } from '@/utils/collectionQuery';
+import { showsNewTag } from '@/utils/collectionQuery';
 import { itemPrice, itemProfit, itemTitle } from '@/utils/collectionValue';
 import { formatMoney, formatPrice } from '@/utils/price';
 
+import { NewBadge } from './NewBadge';
 import { PressableScale } from './PressableScale';
 import { PriceChange } from './PriceChange';
 import { ProductImage } from './ProductImage';
@@ -118,11 +119,7 @@ export function CollectionCoverflow({ items, bottomInset, basis, isFresh, onOpen
       {active ? (
         <View style={[styles.caption, { paddingBottom: bottomInset + spacing.lg }]}>
           <View style={styles.titleRow}>
-            {isFresh(active) || isNewItem(active) ? (
-              <View style={styles.newBadge}>
-                <Text style={styles.newText}>NEW</Text>
-              </View>
-            ) : null}
+            <NewBadge key={active.key} visible={showsNewTag(active, isFresh(active))} />
             <Text style={styles.title} numberOfLines={1}>
               {itemTitle(active)}
             </Text>
@@ -187,17 +184,6 @@ function createStyles(theme: AppTheme) {
       alignItems: 'center',
       gap: spacing.xs + 2,
       maxWidth: '100%',
-    },
-    newBadge: {
-      borderRadius: 6,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      backgroundColor: theme.colors.gain,
-    },
-    newText: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.colors.background,
     },
     priceRow: {
       flexDirection: 'row',

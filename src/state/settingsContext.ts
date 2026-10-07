@@ -18,6 +18,19 @@ export type SavedTheme = {
   custom: CustomThemeSettings;
 };
 
+export type BoardItem = {
+  x: number;
+  y: number;
+  w: number;
+};
+
+export type BoardLayout = {
+  items: Record<string, BoardItem>;
+  hidden: string[];
+};
+
+export const EMPTY_BOARD: BoardLayout = { items: {}, hidden: [] };
+
 export type Settings = {
   themeId: ThemeChoice;
   custom: CustomThemeSettings;
@@ -31,6 +44,7 @@ export type Settings = {
   autoScan: boolean;
   gradingCost: number;
   setOrder: Record<string, string[]>;
+  boards: Record<string, BoardLayout>;
   tourDone: boolean;
   design: number;
 };
@@ -66,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoScan: true,
   gradingCost: 30,
   setOrder: {},
+  boards: {},
   tourDone: false,
   design: DESIGN_VERSION,
 };

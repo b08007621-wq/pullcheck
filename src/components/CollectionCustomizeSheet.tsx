@@ -1,23 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { useState } from 'react';
-
 import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { CollectionItem, CollectionLayout } from '@/types/collection';
 import { CHANGE_BASIS_OPTIONS } from '@/utils/collectionChange';
 import { collectionCsv } from '@/utils/collectionQuery';
+import { SECTION_LABEL } from '@/utils/collectionSections';
 
 import { FilterChip } from './FilterChip';
-import { SectionDragList } from './SectionDragList';
 import { SegmentedControl } from './SegmentedControl';
 import { SheetModal } from './SheetModal';
 
 type Props = {
   layout: CollectionLayout;
   items: CollectionItem[];
+  hidden: string[];
+  onToggleSection: (section: string) => void;
+  onArrange: () => void;
   onChange: (layout: CollectionLayout) => void;
   onBackup: () => void;
   onClose: () => void;
@@ -29,10 +30,18 @@ const GRID_OPTIONS = [
   { value: '4', label: '4 across' },
 ] as const;
 
-export function CollectionCustomizeSheet({ layout, items, onChange, onBackup, onClose }: Props) {
+export function CollectionCustomizeSheet({
+  layout,
+  items,
+  hidden,
+  onToggleSection,
+  onArrange,
+  onChange,
+  onBackup,
+  onClose,
+}: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
-  const [dragging, setDragging] = useState(false);
 
   const exportCsv = () => {
     haptics.tap();
@@ -46,7 +55,6 @@ export function CollectionCustomizeSheet({ layout, items, onChange, onBackup, on
         style={styles.scroll}
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={!dragging}
       >
         <Text style={styles.label}>Price changes show</Text>
         <View style={styles.chips}>
@@ -62,13 +70,31 @@ export function CollectionCustomizeSheet({ layout, items, onChange, onBackup, on
         <Text style={styles.note}>Auto uses what you paid when you’ve entered it, otherwise the price when you added it.</Text>
 
         <Text style={styles.label}>Sections</Text>
-        <Text style={styles.note}>Hold a row and drag it to move it. Tap the eye to hide it.</Text>
-        <SectionDragList
-          order={layout.order}
-          hidden={layout.hidden}
-          onChange={(next) => onChange({ ...layout, ...next })}
-          onDragging={setDragging}
-        />
+        <Pressable
+          onPress={onArrange}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.export, styles.exportTight, pressed && styles.pressed]}
+        >
+          <Ionicons name="move-outline" size={18} color={styles.exportText.color} />
+          <Text style={styles.exportText}>Arrange this page</Text>
+        </Pressable>
+        <Text style={styles.note}>Or hold any section on the page. Drag it anywhere and pinch to resize it.</Text>
+        {layout.order.map((section) => (
+          <View key={section} style={styles.sectionRow}>
+            <View style={styles.sectionText}>
+              <Text style={styles.sectionTitle}>{SECTION_LABEL[section].title}</Text>
+              <Text style={styles.sectionDetail}>{SECTION_LABEL[section].detail}</Text>
+            </View>
+            <Switch
+              value={!hidden.includes(section)}
+              onValueChange={() => {
+                haptics.selection();
+                onToggleSection(section);
+              }}
+              accessibilityLabel={`Show ${SECTION_LABEL[section].title}`}
+            />
+          </View>
+        ))}
 
         <Text style={styles.label}>Grid</Text>
         <SegmentedControl

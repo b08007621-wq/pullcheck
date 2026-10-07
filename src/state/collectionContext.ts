@@ -7,6 +7,12 @@ import type { CardVersion } from '@/utils/cardVersion';
 
 import type { CardEntry, ImportEntry } from './collectionReducer';
 
+export type RemovedItem = {
+  item: CollectionItem;
+  index: number;
+  id: number;
+};
+
 export type CollectionContextValue = {
   items: CollectionItem[];
   meta: CollectionMeta;
@@ -27,6 +33,10 @@ export type CollectionContextValue = {
   replaceAll: (items: CollectionItem[], meta: CollectionMeta) => void;
   mergeItems: (items: CollectionItem[]) => void;
   importCards: (entries: ImportEntry[]) => void;
+  markSeen: (keys: string[]) => void;
+  removed: RemovedItem | null;
+  undoRemove: () => void;
+  dismissRemoved: () => void;
 };
 
 export const CollectionContext = createContext<CollectionContextValue>({
@@ -49,6 +59,10 @@ export const CollectionContext = createContext<CollectionContextValue>({
   replaceAll: () => {},
   mergeItems: () => {},
   importCards: () => {},
+  markSeen: () => {},
+  removed: null,
+  undoRemove: () => {},
+  dismissRemoved: () => {},
 });
 
 export function cardKey(id: string, version: CardVersion): string {

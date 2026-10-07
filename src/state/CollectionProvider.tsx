@@ -7,7 +7,7 @@ import type { Binder, CollectionItem, CollectionMeta, Grading, PaidPrice } from 
 import type { SealedProduct } from '@/types/sealed';
 import type { CardVersion } from '@/utils/cardVersion';
 
-import { CollectionContext } from './collectionContext';
+import { CollectionContext, type RemovedItem } from './collectionContext';
 import { type CardEntry, collectionReducer, EMPTY_META, type ImportEntry, INITIAL_COLLECTION } from './collectionReducer';
 
 type Props = {
@@ -22,6 +22,8 @@ export function CollectionProvider({ children }: Props) {
   const [refreshFailed, setRefreshFailed] = useState(false);
   const stateRef = useRef(state);
   const refreshingRef = useRef(false);
+  const [removed, setRemoved] = useState<RemovedItem | null>(null);
+  const removedId = useRef(0);
 
   useEffect(() => {
     stateRef.current = state;
@@ -58,11 +60,37 @@ export function CollectionProvider({ children }: Props) {
     (product: SealedProduct) => dispatch({ type: 'addSealed', product, at: now() }),
     [],
   );
+  const remember = useCallback((key: string) => {
+    const index = stateRef.current.items.findIndex((item) => item.key === key);
+    const item = stateRef.current.items[index];
+    if (!item) return;
+    removedId.current += 1;
+    setRemoved({ item, index, id: removedId.current });
+  }, []);
   const setQuantity = useCallback(
-    (key: string, quantity: number) => dispatch({ type: 'setQuantity', key, quantity, at: now() }),
-    [],
+    (key: string, quantity: number) => {
+      if (quantity <= 0) remember(key);
+      dispatch({ type: 'setQuantity', key, quantity, at: now() });
+    },
+    [remember],
   );
-  const remove = useCallback((key: string) => dispatch({ type: 'remove', key, at: now() }), []);
+  const remove = useCallback(
+    (key: string) => {
+      remember(key);
+      dispatch({ type: 'remove', key, at: now() });
+    },
+    [remember],
+  );
+  const markSeen = useCallback((keys: string[]) => {
+    if (keys.length > 0) dispatch({ type: 'markSeen', keys, at: now() });
+  }, []);
+  const undoRemove = useCallback(() => {
+    setRemoved((current) => {
+      if (current) dispatch({ type: 'restore', item: current.item, index: current.index, at: now() });
+      return null;
+    });
+  }, []);
+  const dismissRemoved = useCallback(() => setRemoved(null), []);
   const refreshCard = useCallback((card: Card) => dispatch({ type: 'refreshCard', card, at: now() }), []);
   const refreshSealed = useCallback(
     (product: SealedProduct) => dispatch({ type: 'refreshSealed', product, at: now() }),
@@ -138,6 +166,10 @@ export function CollectionProvider({ children }: Props) {
       replaceAll,
       mergeItems,
       importCards,
+      markSeen,
+      removed,
+      undoRemove,
+      dismissRemoved,
     }),
     [
       state,
@@ -157,6 +189,10 @@ export function CollectionProvider({ children }: Props) {
       replaceAll,
       mergeItems,
       importCards,
+      markSeen,
+      removed,
+      undoRemove,
+      dismissRemoved,
     ],
   );
 
