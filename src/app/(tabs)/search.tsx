@@ -93,7 +93,7 @@ export default function SearchScreen() {
           <View style={styles.modes}>
             <SegmentedControl options={MODES} value={mode} onChange={setMode} />
           </View>
-          {isCards ? null : (
+          {isCards || !gameInfo(game).barcodes ? null : (
             <IconButton
               icon="barcode-outline"
               accessibilityLabel="Scan a barcode"

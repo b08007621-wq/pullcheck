@@ -11,6 +11,7 @@ export type GameInfo = {
   source: string;
   sealedExample: string;
   sealedSuggestions: string[];
+  barcodes: boolean;
 };
 
 export const GAMES: GameInfo[] = [
@@ -23,6 +24,7 @@ export const GAMES: GameInfo[] = [
     source: 'Pokémon TCG API',
     sealedExample: 'Surging Sparks ETB',
     sealedSuggestions: ['Elite Trainer Box', 'Booster Bundle', 'Lumiose City Mini Tin', 'ex Box', 'Prismatic Evolutions', '151'],
+    barcodes: true,
   },
   {
     game: 'mtg',
@@ -33,6 +35,7 @@ export const GAMES: GameInfo[] = [
     source: 'Scryfall',
     sealedExample: 'Foundations Play Booster Box',
     sealedSuggestions: ['Play Booster Box', 'Collector Booster', 'Bundle', 'Commander Deck', 'Foundations', 'Final Fantasy'],
+    barcodes: true,
   },
   {
     game: 'yugioh',
@@ -43,6 +46,7 @@ export const GAMES: GameInfo[] = [
     source: 'YGOPRODeck',
     sealedExample: 'Rarity Collection 5 Booster Box',
     sealedSuggestions: ['Booster Box', 'Structure Deck', 'Tin', 'Rarity Collection', 'Quarter Century', 'Booster Pack'],
+    barcodes: true,
   },
   {
     game: 'lorcana',
@@ -53,6 +57,7 @@ export const GAMES: GameInfo[] = [
     source: 'Lorcast',
     sealedExample: 'Hyperia City Booster Box',
     sealedSuggestions: ['Booster Box', 'Illumineer’s Trove', 'Starter Deck', 'Gift Set', 'Booster Pack', 'Hyperia City'],
+    barcodes: false,
   },
 ];
 
