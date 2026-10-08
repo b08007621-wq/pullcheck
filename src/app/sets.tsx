@@ -4,6 +4,8 @@ import { Pressable, SectionList, type SectionListData, StyleSheet, Text, View } 
 
 import { DetailLayout } from '@/components/DetailLayout';
 import { EmptyState } from '@/components/EmptyState';
+import { GamePicker } from '@/components/GamePicker';
+import { GameSetList } from '@/components/GameSetList';
 import { JapaneseSetList } from '@/components/JapaneseSetList';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { ErrorState } from '@/components/ErrorState';
@@ -19,6 +21,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { normalizeText } from '@/services/sealedQuery';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
+import type { Game } from '@/types/card';
 import type { Market } from '@/types/sealed';
 import type { SetInfo } from '@/types/set';
 import { listProgress, type SetListProgress } from '@/utils/setProgress';
@@ -97,6 +100,11 @@ export default function SetsScreen() {
     [styles.sectionTitle],
   );
 
+  const game = settings.searchGame;
+  const picker = <GamePicker value={game} onChange={(next: Game) => next !== game && updateSettings({ searchGame: next })} />;
+
+  if (game !== 'pokemon') return <GameSetList game={game} leading={picker} />;
+
   if (market === 'jp') return <JapaneseSetList onMarket={setMarket} />;
 
   if (!sets) {
@@ -130,6 +138,7 @@ export default function SetsScreen() {
             windowSize={11}
             ListHeaderComponent={
               <View style={styles.header}>
+                {picker}
                 <View style={styles.titleRow}>
                   <Text style={styles.title} accessibilityRole="header">
                     Sets

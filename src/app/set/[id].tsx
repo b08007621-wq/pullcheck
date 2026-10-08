@@ -12,11 +12,13 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { SetCardTile } from '@/components/SetCardTile';
 import { SetHero } from '@/components/SetHero';
 import { SetProgressCard } from '@/components/SetProgressCard';
+import { SetSealed } from '@/components/SetSealed';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useBoard } from '@/hooks/useBoard';
 import { useCollection } from '@/hooks/useCollection';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSetCards } from '@/hooks/useSetCards';
+import { useSetSealed } from '@/hooks/useSetSealed';
 import { useSets } from '@/hooks/useSets';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -56,6 +58,7 @@ export default function SetScreen() {
     () => sets?.find((entry) => entry.id === id) ?? (cards?.[0] ? setFromCard(cards[0]) : null),
     [sets, cards, id],
   );
+  const sealed = useSetSealed(set ? { game: 'pokemon', name: set.name, code: set.ptcgoCode } : null);
   const index = useMemo(() => buildOwnedIndex(items), [items]);
   const entries = useMemo(() => (set && cards ? buildSetEntries(cards, set, mode, index) : []), [set, cards, mode, index]);
   const stats = useMemo(() => summarizeSet(entries), [entries]);
@@ -123,6 +126,11 @@ export default function SetScreen() {
           }}
         />
       ) : null,
+    },
+    {
+      key: 'sealed',
+      label: 'Sealed products',
+      node: sealed.products && sealed.products.length > 0 ? <SetSealed products={sealed.products} /> : null,
     },
     {
       key: 'filter',

@@ -158,6 +158,7 @@ export default function CollectionScreen() {
             id: String(item.product.productId),
             groupId: String(item.product.groupId),
             market: item.product.market ?? 'en',
+            ...(item.product.game ? { game: item.product.game } : {}),
           },
         });
       }

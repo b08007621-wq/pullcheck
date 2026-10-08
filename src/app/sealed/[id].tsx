@@ -28,15 +28,16 @@ import { japaneseLogoFor } from '@/services/japaneseLogos';
 import { spacing } from '@/theme';
 import type { Market } from '@/types/sealed';
 import { formatShortDate, parseDate } from '@/utils/date';
+import { isGame } from '@/utils/game';
 import { getSealedMarketPrice } from '@/utils/sealed';
 import { classifySealed, SEALED_TYPE_LABEL } from '@/utils/sealedType';
 import { productViewerParams } from '@/utils/viewer';
 
 export default function SealedDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; groupId: string; market?: string }>();
+  const params = useLocalSearchParams<{ id: string; groupId: string; market?: string; game?: string }>();
   const market: Market = params.market === 'jp' ? 'jp' : 'en';
-  const { product, owned, isFresh, error, retry } = useSealedDetail(Number(params.id), Number(params.groupId), market);
+  const { product, owned, isFresh, error, retry } = useSealedDetail(Number(params.id), Number(params.groupId), market, isGame(params.game) ? params.game : undefined);
   const { addSealed, setQuantity, remove, setPaid } = useCollection();
   const { celebrate } = useCelebrate();
   const englishVersions = useEnglishVersions(

@@ -1,16 +1,17 @@
-import type { TcgPlayerPrice } from '@/types/card';
+import type { Game, TcgPlayerPrice } from '@/types/card';
 import type { Market, SealedPrice, SealedProduct } from '@/types/sealed';
 
 import { type CachePolicy, type Cached, cachedFetch } from './cache';
 import { ApiError, getJson } from './http';
 
 const CATEGORY_IDS: Record<Market, number> = { en: 3, jp: 85 };
+const GAME_CATEGORY_IDS: Record<Exclude<Game, 'pokemon'>, number> = { mtg: 1, yugioh: 2, lorcana: 71 };
 const REQUEST_OPTIONS = {
   headers: { 'User-Agent': 'PullCheck/1.0 (iOS; Expo)' },
   maxAttempts: 6,
 };
 const HOUR = 60 * 60 * 1000;
-const GROUPS_CACHE: CachePolicy = { bucket: 'tcgcsv-groups', ttlMs: 24 * HOUR, maxEntries: 2 };
+const GROUPS_CACHE: CachePolicy = { bucket: 'tcgcsv-groups', ttlMs: 24 * HOUR, maxEntries: 6 };
 const CATALOG_CACHE: CachePolicy = { bucket: 'tcgcsv-catalog', ttlMs: 6 * HOUR, maxEntries: 16 };
 const PRODUCTS_CACHE: CachePolicy = { bucket: 'tcgcsv-products', ttlMs: 24 * HOUR, maxEntries: 30 };
 const SET_FETCH_CONCURRENCY = 3;
@@ -25,6 +26,8 @@ export type TcgcsvGroup = {
   isSupplemental: boolean;
   publishedOn: string | null;
   market: Market;
+  category?: number;
+  game?: Game;
 };
 
 export type CardListing = {
@@ -81,9 +84,24 @@ export async function loadGroups(market: Market = 'en', options: FetchOptions = 
     market,
     GROUPS_CACHE,
     async () => {
-      const response = await getJson<TcgcsvResponse<Omit<TcgcsvGroup, 'market'>>>(`${baseUrl(market)}/groups`, REQUEST_OPTIONS);
+      const response = await getJson<TcgcsvResponse<Omit<TcgcsvGroup, 'market'>>>(`${baseUrl(CATEGORY_IDS[market])}/groups`, REQUEST_OPTIONS);
       if (!Array.isArray(response.results)) throw new ApiError('badResponse');
-      return response.results.map((group) => ({ ...group, market }));
+      return response.results.map((group) => ({ ...group, market, category: CATEGORY_IDS[market], game: 'pokemon' as const }));
+    },
+    options,
+  );
+  return value;
+}
+
+export async function loadGameGroups(game: Exclude<Game, 'pokemon'>, options: FetchOptions = {}): Promise<TcgcsvGroup[]> {
+  const category = GAME_CATEGORY_IDS[game];
+  const { value } = await cachedFetch(
+    `game:${game}`,
+    GROUPS_CACHE,
+    async () => {
+      const response = await getJson<TcgcsvResponse<Omit<TcgcsvGroup, 'market'>>>(`${baseUrl(category)}/groups`, REQUEST_OPTIONS);
+      if (!Array.isArray(response.results)) throw new ApiError('badResponse');
+      return response.results.map((group) => ({ ...group, market: 'en' as const, category, game }));
     },
     options,
   );
@@ -109,9 +127,10 @@ export async function loadGroupCatalogChecked(group: TcgcsvGroup, options: Fetch
 
 async function fetchCatalog(group: TcgcsvGroup): Promise<GroupCatalog> {
   const market = group.market ?? 'en';
+  const base = baseUrl(categoryOf(group));
   const [products, prices] = await Promise.all([
-    getJson<TcgcsvResponse<TcgcsvProduct>>(`${baseUrl(market)}/${group.groupId}/products`, REQUEST_OPTIONS),
-    getJson<TcgcsvResponse<TcgcsvPrice>>(`${baseUrl(market)}/${group.groupId}/prices`, REQUEST_OPTIONS),
+    getJson<TcgcsvResponse<TcgcsvProduct>>(`${base}/${group.groupId}/products`, REQUEST_OPTIONS),
+    getJson<TcgcsvResponse<TcgcsvPrice>>(`${base}/${group.groupId}/prices`, REQUEST_OPTIONS),
   ]);
   if (!Array.isArray(products.results) || !Array.isArray(prices.results)) {
     throw new ApiError('badResponse');
@@ -144,7 +163,7 @@ export async function loadGroupProducts(group: TcgcsvGroup, options: FetchOption
     PRODUCTS_CACHE,
     async () => {
       const response = await getJson<TcgcsvResponse<TcgcsvProduct>>(
-        `${baseUrl(group.market ?? 'en')}/${group.groupId}/products`,
+        `${baseUrl(categoryOf(group))}/${group.groupId}/products`,
         REQUEST_OPTIONS,
       );
       if (!Array.isArray(response.results)) throw new ApiError('badResponse');
@@ -189,8 +208,12 @@ export function newestFirst(first: TcgcsvGroup, second: TcgcsvGroup): number {
   return second.groupId - first.groupId;
 }
 
-function baseUrl(market: Market): string {
-  return `https://tcgcsv.com/tcgplayer/${CATEGORY_IDS[market]}`;
+function baseUrl(category: number): string {
+  return `https://tcgcsv.com/tcgplayer/${category}`;
+}
+
+function categoryOf(group: TcgcsvGroup): number {
+  return group.category ?? CATEGORY_IDS[group.market ?? 'en'];
 }
 
 function extendedValue(product: TcgcsvProduct, name: string): string | null {
@@ -227,6 +250,7 @@ function toSealedProduct(product: TcgcsvProduct, group: TcgcsvGroup, price: Tcgc
     upc: extendedValue(product, 'UPC'),
     prices: price ? toSealedPrice(price) : null,
     market: group.market ?? 'en',
+    ...(group.game && group.game !== 'pokemon' ? { game: group.game } : {}),
     productReleasedOn,
     setReleasedOn,
     groupReleasedOn: group.publishedOn,

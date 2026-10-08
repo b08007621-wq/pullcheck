@@ -1,3 +1,5 @@
+import type { Game } from './card';
+
 export type Market = 'en' | 'jp';
 
 export type SealedPrice = {
@@ -21,6 +23,7 @@ export type SealedProduct = {
   upc: string | null;
   prices: SealedPrice | null;
   market?: Market;
+  game?: Game;
   productReleasedOn?: string | null;
   setReleasedOn?: string | null;
   groupReleasedOn?: string | null;

@@ -1,10 +1,13 @@
+import type { Game } from '@/types/card';
 import type { Market, SealedProduct } from '@/types/sealed';
 import { classifySealed, sealedTypeRank } from '@/utils/sealedType';
 
 import { ApiError, toApiError, withAbort } from './http';
-import { matchesAllTokens, setNameScore, toSearchTokens } from './sealedQuery';
+import { matchesAllTokens, normalizeText, setNameScore, toSearchTokens } from './sealedQuery';
 import {
+  displaySetName,
   isMainSet,
+  loadGameGroups,
   loadGroupCatalog,
   loadGroups,
   newestFirst,
@@ -56,8 +59,9 @@ export async function getSealedProduct(
   productId: number,
   signal?: AbortSignal,
   market: Market = 'en',
+  game?: Game,
 ): Promise<SealedProduct> {
-  const groups = await withAbort(loadGroups(market), signal);
+  const groups = await withAbort(game && game !== 'pokemon' ? loadGameGroups(game) : loadGroups(market), signal);
   const group = groups.find((candidate) => candidate.groupId === groupId);
   if (!group) throw new ApiError('notFound');
 
@@ -103,4 +107,56 @@ function compareSingles(first: SealedProduct, second: SealedProduct): number {
 function releaseTime(product: SealedProduct): number {
   const time = product.releasedOn ? Date.parse(product.releasedOn) : Number.NaN;
   return Number.isNaN(time) ? 0 : time;
+}
+
+export type SetSealedTarget = {
+  game: Game;
+  name: string;
+  code: string | null;
+};
+
+export async function getSetSealed(target: SetSealedTarget, signal?: AbortSignal): Promise<SealedProduct[]> {
+  const groups = await withAbort(target.game === 'pokemon' ? loadGroups('en') : loadGameGroups(target.game), signal);
+  const matched = matchSetGroups(groups, target);
+  if (matched.length === 0) return [];
+  const settled = await withAbort(settleInBatches(matched, (group) => loadGroupCatalog(group)), signal);
+
+  const products: SealedProduct[] = [];
+  let firstError: unknown = null;
+  for (const result of settled) {
+    if (result.status === 'fulfilled') products.push(...result.value.sealed);
+    else firstError ??= result.reason;
+  }
+  if (products.length === 0 && firstError) throw toApiError(firstError);
+
+  return products.sort(
+    (first, second) =>
+      sealedTypeRank(classifySealed(first.name)) - sealedTypeRank(classifySealed(second.name)) ||
+      first.name.localeCompare(second.name),
+  );
+}
+
+function matchSetGroups(groups: TcgcsvGroup[], target: SetSealedTarget): TcgcsvGroup[] {
+  const wanted = normalizeText(target.name);
+  const code = (target.code ?? '').trim().toLowerCase();
+  const candidates = groups.filter((group) => !MISC_GROUP_NAME.test(group.name));
+  const shown = (group: TcgcsvGroup) => normalizeText(target.game === 'pokemon' ? displaySetName(group) : group.name);
+
+  const exact = candidates.filter((group) => shown(group) === wanted);
+  if (exact.length > 0) return exact.sort(newestFirst).slice(0, MAX_MATCHED_SETS);
+
+  const byCode = code
+    ? candidates.filter((group) => (group.abbreviation ?? '').trim().toLowerCase() === code && !group.isSupplemental)
+    : [];
+  if (byCode.length > 0) return byCode.sort(newestFirst).slice(0, 1);
+
+  if (wanted.length < 5) return [];
+  return candidates
+    .filter((group) => {
+      const name = shown(group);
+      return name.includes(wanted) || wanted.includes(name);
+    })
+    .filter((group) => shown(group).length >= 5)
+    .sort(newestFirst)
+    .slice(0, 2);
 }

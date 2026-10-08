@@ -9,11 +9,13 @@ import { FilterChip } from '@/components/FilterChip';
 import { GameCardTile } from '@/components/GameCardTile';
 import { GameSetIcon } from '@/components/GameSetIcon';
 import { LoadingState } from '@/components/LoadingState';
+import { SetSealed } from '@/components/SetSealed';
 import { SearchBar } from '@/components/SearchBar';
 import { useCollection } from '@/hooks/useCollection';
 import { useGameSetCards } from '@/hooks/useGameSetCards';
 import { useGameSets } from '@/hooks/useGameSets';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useSetSealed } from '@/hooks/useSetSealed';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { setBrowseList } from '@/services/cardBrowse';
 import { type AppTheme, spacing, typography } from '@/theme';
@@ -58,6 +60,7 @@ export default function GameSetScreen() {
   const first = cards?.[0];
   const title = set?.name ?? first?.set.name ?? name ?? 'Set';
   const released = parseDate(set?.releaseDate ?? first?.set.releaseDate);
+  const sealed = useSetSealed(cards ? { game, name: title, code: set?.code ?? null } : null);
 
   const stats = useMemo(() => {
     const list = cards ?? [];
@@ -156,6 +159,11 @@ export default function GameSetScreen() {
                 {gameInfo(game).short}
                 {set?.code ? ` · ${set.code.toUpperCase()}` : ''}
               </Text>
+              {sealed.products && sealed.products.length > 0 ? (
+                <View style={styles.sealed}>
+                  <SetSealed products={sealed.products} />
+                </View>
+              ) : null}
               <SearchBar value={query} onChangeText={setQuery} placeholder="Find a card in this set" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
                 {SHOWS.map((option) => (
@@ -266,6 +274,9 @@ function createStyles(theme: AppTheme) {
     },
     chips: {
       gap: spacing.sm,
+    },
+    sealed: {
+      alignSelf: 'stretch',
     },
   });
 }
