@@ -265,10 +265,10 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
     Animated.timing(entry.fade, { toValue: 0, duration: 90, useNativeDriver: true }).start(() => {
       entry.shift.setValue({ x: 0, y: 0 });
       entry.lift.setValue(0);
-      LayoutAnimation.configureNext(LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+      entry.fade.setValue(1);
+      LayoutAnimation.configureNext(LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
       persist(nextOrder);
       settle();
-      Animated.timing(entry.fade, { toValue: 1, duration: 220, useNativeDriver: true }).start();
     });
   };
 
@@ -319,7 +319,7 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
     haptics.selection();
     const entry = motionFor(key);
     Animated.timing(entry.fade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
-      LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+      LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
       board.save({ ...layout, hidden: [...layout.hidden, key] });
       entry.fade.setValue(1);
     });
