@@ -42,7 +42,7 @@ export function BoardEditBar({ hidden, onShow, onTidy, onReset, onDone, onUndo, 
         <View style={styles.top}>
           <View style={styles.text}>
             <Text style={styles.title}>Editing this page</Text>
-            <Text style={styles.hint}>Hold and drag to move · Tap Full or Half to resize</Text>
+            <Text style={styles.hint}>Hold and drag to move · Drag the corner to resize</Text>
           </View>
           <Pressable
             onPress={() => {

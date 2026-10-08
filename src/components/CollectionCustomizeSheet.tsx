@@ -78,7 +78,7 @@ export function CollectionCustomizeSheet({
           <Ionicons name="move-outline" size={18} color={styles.exportText.color} />
           <Text style={styles.exportText}>Arrange this page</Text>
         </Pressable>
-        <Text style={styles.note}>Or hold any section on the page. Drag it anywhere and pinch to resize it.</Text>
+        <Text style={styles.note}>Or hold any section on the page. Drag it anywhere, and drag its corner handle to resize it.</Text>
         {layout.order.map((section) => (
           <View key={section} style={styles.sectionRow}>
             <View style={styles.sectionText}>

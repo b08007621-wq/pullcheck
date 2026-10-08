@@ -228,7 +228,7 @@ export function ArrangeDemo({ onLock }: ArrangeProps) {
   return (
     <View style={styles.demo}>
       <View style={styles.arrangeHead}>
-        <Text style={styles.demoTitle}>{editing ? 'Drag a tile to a new spot' : 'Try it: hold a tile'}</Text>
+        <Text style={styles.demoTitle}>{editing ? 'Drag a tile to a new spot' : 'Try it: hold a tile, then drag'}</Text>
         {editing ? (
           <PressableScale
             accessibilityRole="button"

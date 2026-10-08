@@ -99,7 +99,7 @@ const SLIDES: Slide[] = [
     icon: 'albums',
     eyebrow: 'Collection tab',
     title: 'Your cards, your way',
-    body: 'Every page is a board you can rearrange. Hold a tile until it wiggles, then drag it, or tap Half and Full to resize.',
+    body: 'Every page is a board you can rearrange. Hold a tile until it wiggles, then drag it. Drag the corner handle to make it wider, narrower, taller or shorter.',
     tips: [{ icon: 'hand-left-outline', text: 'Hold a card for quick actions' }],
     demo: 'arrange',
   },
