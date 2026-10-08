@@ -64,7 +64,6 @@ type Gesture = {
 type Motion = {
   shift: Animated.ValueXY;
   lift: Animated.Value;
-  fade: Animated.Value;
 };
 
 const HOLD_MS = 600;
@@ -102,7 +101,7 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
   const motionFor = (key: string): Motion => {
     let entry = motions.get(key);
     if (!entry) {
-      entry = { shift: new Animated.ValueXY({ x: 0, y: 0 }), lift: new Animated.Value(0), fade: new Animated.Value(1) };
+      entry = { shift: new Animated.ValueXY({ x: 0, y: 0 }), lift: new Animated.Value(0) };
       motions.set(key, entry);
     }
     return entry;
@@ -262,14 +261,11 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
       settle();
       return;
     }
-    Animated.timing(entry.fade, { toValue: 0, duration: 90, useNativeDriver: true }).start(() => {
-      entry.shift.setValue({ x: 0, y: 0 });
-      entry.lift.setValue(0);
-      entry.fade.setValue(1);
-      LayoutAnimation.configureNext(LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
-      persist(nextOrder);
-      settle();
-    });
+    entry.shift.setValue({ x: 0, y: 0 });
+    entry.lift.setValue(0);
+    LayoutAnimation.configureNext(LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
+    persist(nextOrder);
+    settle();
   };
 
   const touchStart = (key: string, event: GestureResponderEvent) => {
@@ -317,12 +313,8 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
 
   const hide = (key: string) => {
     haptics.selection();
-    const entry = motionFor(key);
-    Animated.timing(entry.fade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
-      LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
-      board.save({ ...layout, hidden: [...layout.hidden, key] });
-      entry.fade.setValue(1);
-    });
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
+    board.save({ ...layout, hidden: [...layout.hidden, key] });
   };
 
   const resizeTo = (key: string) => {
@@ -358,7 +350,6 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
             style={{
               width: itemWidth,
               zIndex: isLifted ? 10 : 1,
-              opacity: entry.fade,
               transform: [{ translateX: entry.shift.x }, { translateY: entry.shift.y }],
             }}
           >
