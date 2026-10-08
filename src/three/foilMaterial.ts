@@ -43,92 +43,92 @@ const BASE: Look = {
   strength: 0.8,
   etch: 0,
   etchKind: ETCH.none,
-  glitter: 0.06,
+  glitter: 0.05,
   glitterScale: 150,
   glitterTone: TONE.white,
   pastel: 0,
   tint: WHITE,
   tintMix: 0,
-  metal: 0.22,
-  rough: 0.24,
+  metal: 0.1,
+  rough: 0.3,
 };
 
 const LOOKS: Record<FoilKind, Partial<Look>> = {
   plain: { area: AREA.none },
-  window: {},
-  cosmos: { pattern: PATTERN.cosmos, glitter: 0.05 },
-  reverse: { area: AREA.outside, strength: 0.75, glitter: 0.05 },
-  full: { area: AREA.inner, strength: 0.75, glitter: 0.05 },
+  window: { strength: 0.95 },
+  cosmos: { pattern: PATTERN.cosmos, strength: 0.85, glitter: 0.04 },
+  reverse: { area: AREA.outside, strength: 0.85, glitter: 0.04 },
+  full: { area: AREA.inner, strength: 0.85, glitter: 0.05 },
   textured: {
     area: AREA.card,
-    strength: 0.55,
+    strength: 0.6,
     etch: 0.9,
     etchKind: ETCH.lines,
-    glitter: 0.04,
+    glitter: 0.03,
   },
   illustration: {
     area: AREA.card,
     pattern: PATTERN.sheen,
-    strength: 0.34,
-    etch: 0.35,
+    strength: 0.4,
+    etch: 0.5,
     etchKind: ETCH.grain,
-    glitter: 0.05,
+    glitter: 0.06,
     glitterScale: 220,
   },
   special: {
     area: AREA.card,
-    strength: 0.48,
-    etch: 1,
+    strength: 0.62,
+    etch: 0.6,
     etchKind: ETCH.contour,
-    glitter: 0.07,
-    glitterScale: 220,
+    glitter: 0.24,
+    glitterScale: 230,
     glitterTone: TONE.rainbow,
   },
   gold: {
     area: AREA.card,
     pattern: PATTERN.sheen,
-    strength: 0.6,
-    etch: 0.95,
+    strength: 0.75,
+    etch: 0.5,
     etchKind: ETCH.contour,
-    glitter: 0.32,
+    glitter: 0.25,
     glitterScale: 210,
     glitterTone: TONE.tint,
     tint: GOLD,
-    tintMix: 0.78,
-    metal: 0.55,
-    rough: 0.2,
+    tintMix: 0.9,
+    metal: 0.3,
+    rough: 0.24,
   },
   rainbow: {
     area: AREA.card,
     pattern: PATTERN.sheen,
-    strength: 0.62,
-    etch: 0.7,
+    strength: 0.75,
+    etch: 0.4,
     etchKind: ETCH.contour,
-    glitter: 0.34,
+    glitter: 0.22,
     glitterScale: 200,
     glitterTone: TONE.rainbow,
-    pastel: 0.42,
+    pastel: 0.15,
   },
   chrome: {
     area: AREA.card,
     pattern: PATTERN.chrome,
     strength: 0.7,
-    etch: 0.45,
+    etch: 0.3,
     etchKind: ETCH.contour,
     glitter: 0.02,
-    pastel: 0.3,
+    pastel: 0.15,
     tint: OPAL,
-    tintMix: 0.15,
-    metal: 0.6,
-    rough: 0.16,
+    tintMix: 0.12,
+    metal: 0.35,
+    rough: 0.2,
   },
   shiny: {
     area: AREA.card,
     pattern: PATTERN.sheen,
-    strength: 0.42,
-    etch: 0.25,
+    strength: 0.45,
+    etch: 0.2,
     etchKind: ETCH.grain,
-    glitter: 0.42,
+    glitter: 0.5,
     glitterScale: 240,
   },
   pikachu: { area: AREA.pikachu, pattern: PATTERN.swirl, glitter: 0 },
@@ -231,19 +231,14 @@ float pcSparkleField(vec2 uv, vec2 grid, float density, float sharpness, float s
 
 const MAP_HELPERS = `
 #include <map_pars_fragment>
-float pcBlurAt(vec2 uv) {
-  return dot(texture(map, uv, 1.5).rgb, vec3(0.299, 0.587, 0.114));
-}
-
 float pcReliefAt(vec2 uv) {
-  float blur = pcBlurAt(uv);
   if (pcEtchKind < 1.5) {
-    return sin((uv.x * 0.58 + uv.y) * 1150.0 + blur * 5.0) * 0.1 * pcFine + blur * 0.8;
+    return sin((uv.x * 0.58 + uv.y) * 380.0) * 0.22 * pcFine;
   }
   if (pcEtchKind < 2.5) {
-    return blur * 1.3 + sin(blur * 38.0) * 0.07 + (pcNoise(uv * vec2(150.0, 210.0)) - 0.5) * 0.1 * pcFine;
+    return (pcNoise(uv * vec2(190.0, 270.0)) - 0.5) * 0.4 * pcFine;
   }
-  return (pcNoise(uv * vec2(420.0, 590.0)) - 0.5) * 0.3 * pcFine + blur * 0.4;
+  return (pcNoise(uv * vec2(320.0, 450.0)) - 0.5) * 0.32 * pcFine;
 }
 `;
 
@@ -261,7 +256,7 @@ pcMask = pcArea < 0.5 ? 0.0
   : 1.0;
 pcBorderMask = pcArea > 4.5 ? 0.0 : (1.0 - pcInner) * pcBorder;
 pcFoil = max(pcMask, pcBorderMask);
-pcFine = pcDetail(vMapUv, 420.0);
+pcFine = pcDetail(vMapUv, 380.0);
 pcSlope = vec2(0.0);
 if (pcEtch > 0.0 && pcMask > 0.001) {
   vec2 pcStep = vec2(1.0 / 640.0, 1.0 / 900.0);
@@ -366,9 +361,10 @@ if (pcFoil > 0.001) {
   pcRainbow = mix(pcRainbow, pcTint * (0.72 + 0.4 * pcRainbow), pcTintMix);
   pcRainbow = mix(pcRainbow, pcBorderTint * (0.82 + 0.18 * pcRainbow), pcBorderMask * (1.0 - pcDots));
   float pcAmount = pcMask * pcStrength + pcBorderMask * 0.9;
-  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * (0.68 + 0.62 * pcRainbow * (0.4 + 0.6 * pcBand)), min(1.0, pcAmount));
+  float pcInk = 0.18 + 0.82 * smoothstep(0.08, 0.5, pcLum);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * (0.84 + 0.34 * pcRainbow * (0.45 + 0.55 * pcBand)), min(1.0, pcAmount));
   diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * pcTint * 1.12, pcTintMix * 0.3 * pcMask);
-  totalEmissiveRadiance += pcRainbow * pcBand * 0.14 * pcAmount + pcGlitterLight * 0.9 + vec3(pcSparkle) * 0.9;
+  totalEmissiveRadiance += (pcRainbow * pcBand * 0.3 * pcAmount + pcGlitterLight * 0.9 + vec3(pcSparkle) * 0.9) * pcInk;
 }
 `;
 
@@ -379,7 +375,7 @@ export function createFoilFrontMaterial(map: Texture, finish: CardFinish): MeshP
     map,
     roughness: 0.4,
     metalness: 0.02,
-    clearcoat: foiled ? 0.9 : 0.7,
+    clearcoat: 0.7,
     clearcoatRoughness: 0.08,
     alphaTest: 0.5,
   });
@@ -418,6 +414,6 @@ export function createFoilFrontMaterial(map: Texture, finish: CardFinish): MeshP
         .replace('#include <normal_fragment_maps>', AFTER_NORMAL)
         .replace('#include <emissivemap_fragment>', AFTER_EMISSIVE);
   };
-  material.customProgramCacheKey = () => 'pullcheck-foil-5';
+  material.customProgramCacheKey = () => 'pullcheck-foil-7';
   return material;
 }
