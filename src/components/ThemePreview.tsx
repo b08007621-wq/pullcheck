@@ -17,7 +17,7 @@ export function ThemePreview({ theme, compact = false }: Props) {
         colors={theme.aurora}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFill, { opacity: theme.auroraOpacity }]}
+        style={[StyleSheet.absoluteFill, { opacity: theme.gloss ? 1 : theme.auroraOpacity }]}
       />
       <LinearGradient
         colors={['transparent', colors.background]}
