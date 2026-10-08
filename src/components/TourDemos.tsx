@@ -215,6 +215,7 @@ export function ArrangeDemo({ onLock }: ArrangeProps) {
         key: tile.key,
         label: tile.label,
         hideable: false,
+        fit: 'none',
         node: (
           <View style={styles.tile}>
             <Ionicons name={tile.icon} size={20} color={theme.colors.accent} />

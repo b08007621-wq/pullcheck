@@ -13,7 +13,7 @@ import {
 import { sanitizeBackdrop } from '@/theme/backdrop';
 import { withAlpha } from '@/theme/color';
 
-import type { ChangeBasis, CollectionLayout, CollectionSection } from '@/types/collection';
+import type { ChangeBasis, ChartCards, CollectionLayout, CollectionSection } from '@/types/collection';
 import { GRADING_COST_RANGE } from '@/utils/centering';
 import { isGame } from '@/utils/game';
 
@@ -179,6 +179,8 @@ function sanitizeSetOrder(stored: unknown): Record<string, string[]> {
 }
 
 const BASES: ChangeBasis[] = ['auto', 'added', 'paid', 'day', 'week', 'month'];
+const CHART_CARDS: ChartCards[] = ['both', 'gainers', 'losers', 'off'];
+const CHART_RANGES = ['7d', '30d', '1y', 'all'] as const;
 
 function sanitizeLayout(stored: Partial<CollectionLayout> | undefined): CollectionLayout {
   if (!stored || typeof stored !== 'object') return DEFAULT_COLLECTION_LAYOUT;
@@ -192,5 +194,8 @@ function sanitizeLayout(stored: Partial<CollectionLayout> | undefined): Collecti
     gridColumns: stored.gridColumns === 2 || stored.gridColumns === 4 ? stored.gridColumns : 3,
     gridDetails: typeof stored.gridDetails === 'boolean' ? stored.gridDetails : true,
     changeBasis: BASES.includes(stored.changeBasis as ChangeBasis) ? (stored.changeBasis as ChangeBasis) : 'auto',
+    chartCards: CHART_CARDS.includes(stored.chartCards as ChartCards) ? (stored.chartCards as ChartCards) : 'both',
+    chartRanges: typeof stored.chartRanges === 'boolean' ? stored.chartRanges : true,
+    chartRange: CHART_RANGES.find((range) => range === stored.chartRange) ?? '30d',
   };
 }

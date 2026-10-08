@@ -382,6 +382,10 @@ export default function CollectionScreen() {
                     history={meta.valueHistory}
                     onOpen={openItem}
                     chartHeight={Math.round(110 * heightScale)}
+                    cards={layout.chartCards}
+                    showRanges={layout.chartRanges}
+                    defaultRange={layout.chartRange}
+                    onCardsChange={(next) => setLayout({ ...layout, chartCards: next })}
                   />
                 ),
               }

@@ -63,6 +63,9 @@ export const DEFAULT_COLLECTION_LAYOUT: CollectionLayout = {
   gridColumns: 3,
   gridDetails: true,
   changeBasis: 'auto',
+  chartCards: 'both',
+  chartRanges: true,
+  chartRange: '30d',
 };
 
 export type SettingsContextValue = {

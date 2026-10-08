@@ -7,7 +7,7 @@ import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
 import type { SetInfo, SetMode } from '@/types/set';
 import { formatMoney } from '@/utils/price';
-import type { SetStats } from '@/utils/setProgress';
+import type { SetStats, SetValue } from '@/utils/setProgress';
 
 import { GlassSurface } from './GlassSurface';
 import { ProgressRing } from './ProgressRing';
@@ -17,7 +17,7 @@ import { SetStat } from './SetStat';
 type Props = {
   set: SetInfo;
   stats: SetStats;
-  value: number;
+  value: SetValue | null;
   mode: SetMode;
   onModeChange: (mode: SetMode) => void;
 };
@@ -51,7 +51,15 @@ export function SetProgressCard({ set, stats, value, mode, onModeChange }: Props
           </Text>
         </ProgressRing>
         <View style={styles.stats}>
-          <SetStat label="You own" value={value > 0 ? formatMoney(value) : '—'} />
+          <SetStat
+            label="You own"
+            value={value && value.total > 0 ? formatMoney(value.total) : '—'}
+            hint={
+              value && value.sealed > 0
+                ? `Cards ${formatMoney(value.cards)} · Sealed ${formatMoney(value.sealed)}`
+                : undefined
+            }
+          />
           <SetStat
             label="To complete"
             value={complete ? 'Done!' : formatMoney(stats.missingCost)}

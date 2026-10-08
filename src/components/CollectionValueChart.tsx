@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -5,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
-import type { CollectionItem, ValuePoint } from '@/types/collection';
+import type { ChartCards, CollectionItem, ValuePoint } from '@/types/collection';
 import { itemTitle } from '@/utils/collectionValue';
 import { type ChartRange, findMovers, type Mover, RANGES, valuePointsInRange } from '@/utils/movers';
 import { formatMoney } from '@/utils/price';
@@ -17,41 +18,79 @@ type Props = {
   history: ValuePoint[];
   onOpen: (item: CollectionItem) => void;
   chartHeight?: number;
+  cards?: ChartCards;
+  showRanges?: boolean;
+  defaultRange?: ChartRange;
+  onCardsChange?: (cards: ChartCards) => void;
 };
 
-export function CollectionValueChart({ items, history, onOpen, chartHeight = 110 }: Props) {
+const CARD_CYCLE: ChartCards[] = ['both', 'gainers', 'losers', 'off'];
+const CARD_LABEL: Record<ChartCards, string> = { both: 'Cards', gainers: 'Risers', losers: 'Fallers', off: 'No cards' };
+
+export function CollectionValueChart({
+  items,
+  history,
+  onOpen,
+  chartHeight = 110,
+  cards = 'both',
+  showRanges = true,
+  defaultRange = '30d',
+  onCardsChange,
+}: Props) {
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
-  const [range, setRange] = useState<ChartRange>('30d');
+  const [range, setRange] = useState<ChartRange>(defaultRange);
   const points = useMemo(() => valuePointsInRange(history, range), [history, range]);
   const movers = useMemo(() => {
+    if (cards === 'off') return [];
     const { gainers, losers } = findMovers(items, range);
-    return [...gainers, ...losers];
-  }, [items, range]);
+    return cards === 'gainers' ? gainers : cards === 'losers' ? losers : [...gainers, ...losers];
+  }, [items, range, cards]);
 
   return (
     <View style={styles.wrap}>
       <PriceHistoryChart points={points} currency="USD" height={chartHeight} emptyMessage="Builds up daily." />
-      <View style={styles.ranges}>
-        {RANGES.map((option) => {
-          const selected = option.value === range;
-          return (
+      {showRanges || onCardsChange ? (
+        <View style={styles.controls}>
+          <View style={styles.ranges}>
+            {showRanges
+              ? RANGES.map((option) => {
+                  const selected = option.value === range;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => {
+                        haptics.selection();
+                        setRange(option.value);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      hitSlop={6}
+                      style={[styles.range, selected && styles.rangeSelected]}
+                    >
+                      <Text style={[styles.rangeText, selected && styles.rangeTextSelected]}>{option.label}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+          </View>
+          {onCardsChange ? (
             <Pressable
-              key={option.value}
               onPress={() => {
                 haptics.selection();
-                setRange(option.value);
+                onCardsChange(CARD_CYCLE[(CARD_CYCLE.indexOf(cards) + 1) % CARD_CYCLE.length] ?? 'both');
               }}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              accessibilityLabel={`Cards under the chart: ${CARD_LABEL[cards]}. Tap to change.`}
               hitSlop={6}
-              style={[styles.range, selected && styles.rangeSelected]}
+              style={styles.cardsToggle}
             >
-              <Text style={[styles.rangeText, selected && styles.rangeTextSelected]}>{option.label}</Text>
+              <Ionicons name={cards === 'off' ? 'eye-off-outline' : 'eye-outline'} size={14} color={styles.rangeText.color} />
+              <Text style={styles.rangeText}>{CARD_LABEL[cards]}</Text>
             </Pressable>
-          );
-        })}
-      </View>
+          ) : null}
+        </View>
+      ) : null}
       {movers.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.movers}>
           {movers.map((mover) => (
@@ -94,9 +133,25 @@ function createStyles(theme: AppTheme) {
       gap: spacing.sm,
       marginTop: spacing.sm,
     },
+    controls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
     ranges: {
       flexDirection: 'row',
       gap: spacing.xs,
+      flexShrink: 1,
+    },
+    cardsToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 5,
+      borderRadius: radius.pill,
+      backgroundColor: theme.colors.surface,
     },
     range: {
       paddingHorizontal: spacing.md,

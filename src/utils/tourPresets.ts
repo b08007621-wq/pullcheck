@@ -1,5 +1,5 @@
 import type { Game } from '@/types/card';
-import type { CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
+import type { ChartCards, CollectionLayout, CollectionSection, CollectionView } from '@/types/collection';
 import type { IconName } from '@/types/icon';
 
 export type TourFocus = 'scan' | 'value' | 'sets' | 'trade';
@@ -34,8 +34,8 @@ const FOCUS_SECTIONS: Record<TourFocus, CollectionSection[]> = {
 
 const ALL_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'games', 'top', 'recent', 'stats', 'shortcuts'];
 
-const LAYOUT_SETTINGS: Record<LayoutPreset, { view: CollectionView; gridColumns: 2 | 3 | 4; gridDetails: boolean }> = {
-  compact: { view: 'grid', gridColumns: 4, gridDetails: false },
+const LAYOUT_SETTINGS: Record<LayoutPreset, { view: CollectionView; gridColumns: 2 | 3 | 4; gridDetails: boolean; chartCards?: ChartCards }> = {
+  compact: { view: 'grid', gridColumns: 4, gridDetails: false, chartCards: 'off' },
   balanced: { view: 'list', gridColumns: 3, gridDetails: true },
   showcase: { view: 'cover', gridColumns: 2, gridDetails: true },
 };
@@ -71,6 +71,7 @@ export function layoutFor(
       hidden: ALL_SECTIONS.filter((section) => hidden.has(section)),
       gridColumns: preset?.gridColumns ?? base.gridColumns,
       gridDetails: preset?.gridDetails ?? base.gridDetails,
+      chartCards: preset?.chartCards ?? base.chartCards,
     },
   };
 }

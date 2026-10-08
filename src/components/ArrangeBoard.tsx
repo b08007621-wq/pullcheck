@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -15,7 +14,6 @@ import {
 import type { Board } from '@/hooks/useBoard';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useMotionEnabled } from '@/hooks/useMotionEnabled';
-import { useTheme } from '@/hooks/useTheme';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import type { BoardItem, BoardLayout } from '@/state/settingsContext';
 import { type AppTheme, radius, spacing } from '@/theme';
@@ -32,6 +30,7 @@ export type BoardWidget = {
   stretch?: boolean;
   resize?: 'both' | 'width' | 'none';
   hideable?: boolean;
+  fit?: 'scale' | 'none';
 };
 
 type Props = {
@@ -89,6 +88,8 @@ const EDIT_HOLD_MS = 90;
 const SLOP = 6;
 const HS_MIN = 0.5;
 const HS_MAX = 2;
+const HS_MIN_FIT = 0.8;
+const HALF_FIT = 0.85;
 const HS_STEP = 0.25;
 const WIDTH_SNAP = 0.16;
 const SPRING = { damping: 20, stiffness: 300, mass: 0.9, useNativeDriver: true } as const;
@@ -101,7 +102,6 @@ const DEFAULT_EDGES = { top: 120, bottom: 150 };
 
 export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg, edges = DEFAULT_EDGES, autoScroll }: Props) {
   const { layout, editing } = board;
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const haptics = useHaptics();
   const motion = useMotionEnabled();
@@ -420,11 +420,6 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
     board.save({ ...layout, hidden: [...layout.hidden, key] });
   };
 
-  const heightRange = (widget: BoardWidget | undefined): [number, number] => {
-    if (!widget || widget.resize === 'width' || widget.resize === 'none') return [1, 1];
-    return [HS_MIN, typeof widget.node === 'function' ? HS_MAX : 1];
-  };
-
   const gripStart = (key: string, event: GestureResponderEvent) => {
     const { pageX, pageY } = pointOf(event);
     const frame = frames.current[key];
@@ -501,10 +496,10 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
         const hs = resizing ? resizing.hs : heightOf(layout, widget);
         const slotWidth = width > 0 ? (fraction === 1 ? width : half) : '100%';
         const tilt = index % 2 === 0 ? ['-0.6deg', '0.6deg'] : ['0.6deg', '-0.6deg'];
-        const dynamic = typeof widget.node === 'function';
         const content = typeof widget.node === 'function' ? widget.node({ heightScale: hs }) : widget.node;
+        const fit = fitOf(widget, fraction, hs);
         const naturalHeight = natural[key];
-        const cropped = !dynamic && hs < 1 && naturalHeight !== undefined;
+        const fitted = fit < 1 && width > 0 && typeof slotWidth === 'number';
         return (
           <Animated.View
             key={key}
@@ -534,24 +529,21 @@ export function ArrangeBoard({ widgets, board, paused = false, gap = spacing.lg,
                 },
               ]}
             >
-              <View style={cropped ? { height: naturalHeight * hs, overflow: 'hidden' } : undefined}>
-                <View
-                  onLayout={(event) => {
-                    const measured = Math.round(event.nativeEvent.layout.height);
-                    if (dynamic) return;
-                    setNatural((current) => (current[key] === measured ? current : { ...current, [key]: measured }));
-                  }}
-                >
-                  {content}
+              {fitted ? (
+                <View style={{ width: slotWidth, height: naturalHeight === undefined ? undefined : naturalHeight * fit, overflow: 'hidden' }}>
+                  <View
+                    onLayout={(event) => {
+                      const measured = Math.round(event.nativeEvent.layout.height);
+                      setNatural((current) => (current[key] === measured ? current : { ...current, [key]: measured }));
+                    }}
+                    style={{ width: slotWidth / fit, transform: [{ scale: fit }], transformOrigin: 'top left' }}
+                  >
+                    {content}
+                  </View>
                 </View>
-                {cropped ? (
-                  <LinearGradient
-                    pointerEvents="none"
-                    colors={['transparent', theme.colors.background]}
-                    style={styles.cropFade}
-                  />
-                ) : null}
-              </View>
+              ) : (
+                content
+              )}
               {editing ? (
                 <View
                   style={[styles.cover, isLifted && styles.coverLifted]}
@@ -639,12 +631,23 @@ function fractionOf(layout: BoardLayout, widget: BoardWidget | undefined): numbe
   return saved && saved.w < 0.75 ? HALF : 1;
 }
 
+function heightRange(widget: BoardWidget | undefined): [number, number] {
+  if (!widget || widget.resize === 'width' || widget.resize === 'none') return [1, 1];
+  return typeof widget.node === 'function' ? [HS_MIN, HS_MAX] : [HS_MIN_FIT, 1];
+}
+
 function heightOf(layout: BoardLayout, widget: BoardWidget | undefined): number {
-  if (!widget || widget.resize === 'none' || widget.resize === 'width') return 1;
-  const saved = layout.items[widget.key]?.hs;
+  const [min, max] = heightRange(widget);
+  const saved = layout.items[widget?.key ?? '']?.hs;
   if (typeof saved !== 'number' || !Number.isFinite(saved)) return 1;
-  const max = typeof widget.node === 'function' ? HS_MAX : 1;
-  return Math.min(max, Math.max(HS_MIN, Math.round(saved / HS_STEP) * HS_STEP));
+  return Math.min(max, Math.max(min, Math.round(saved / HS_STEP) * HS_STEP));
+}
+
+function fitOf(widget: BoardWidget, fraction: number, hs: number): number {
+  if (widget.fit === 'none') return 1;
+  const sideways = fraction === 1 ? 1 : HALF_FIT;
+  const shorter = typeof widget.node === 'function' ? 1 : hs;
+  return sideways * shorter;
 }
 
 function isBefore(cx: number, cy: number, frame: Frame, width: number): boolean {
@@ -711,13 +714,6 @@ function createStyles(theme: AppTheme) {
     },
     gripIcon: {
       color: theme.colors.onAccent,
-    },
-    cropFade: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 28,
     },
   });
 }

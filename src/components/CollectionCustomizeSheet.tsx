@@ -4,8 +4,9 @@ import { Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 're
 import { useHaptics } from '@/hooks/useHaptics';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type AppTheme, radius, spacing, typography } from '@/theme';
-import type { CollectionItem, CollectionLayout } from '@/types/collection';
+import type { ChartCards, CollectionItem, CollectionLayout } from '@/types/collection';
 import { CHANGE_BASIS_OPTIONS } from '@/utils/collectionChange';
+import { RANGES } from '@/utils/movers';
 import { collectionCsv } from '@/utils/collectionQuery';
 import { SECTION_LABEL } from '@/utils/collectionSections';
 
@@ -23,6 +24,13 @@ type Props = {
   onBackup: () => void;
   onClose: () => void;
 };
+
+const CHART_CARD_OPTIONS: { value: ChartCards; label: string }[] = [
+  { value: 'both', label: 'Both' },
+  { value: 'gainers', label: 'Risers' },
+  { value: 'losers', label: 'Fallers' },
+  { value: 'off', label: 'Hidden' },
+];
 
 const GRID_OPTIONS = [
   { value: '2', label: '2 across' },
@@ -95,6 +103,34 @@ export function CollectionCustomizeSheet({
             />
           </View>
         ))}
+
+        <Text style={styles.label}>Value chart</Text>
+        <Text style={styles.sectionDetail}>Cards shown under the chart</Text>
+        <SegmentedControl
+          options={CHART_CARD_OPTIONS}
+          value={layout.chartCards}
+          onChange={(value) => onChange({ ...layout, chartCards: value })}
+        />
+        <Text style={styles.sectionDetail}>Starts on</Text>
+        <SegmentedControl
+          options={RANGES.map((option) => ({ value: option.value, label: option.label }))}
+          value={layout.chartRange}
+          onChange={(value) => onChange({ ...layout, chartRange: value })}
+        />
+        <View style={styles.sectionRow}>
+          <View style={styles.sectionText}>
+            <Text style={styles.sectionTitle}>Range buttons</Text>
+            <Text style={styles.sectionDetail}>Switch between 7 days, 30 days, a year and all time</Text>
+          </View>
+          <Switch
+            value={layout.chartRanges}
+            onValueChange={(value) => {
+              haptics.selection();
+              onChange({ ...layout, chartRanges: value });
+            }}
+            accessibilityLabel="Show chart range buttons"
+          />
+        </View>
 
         <Text style={styles.label}>Grid</Text>
         <SegmentedControl

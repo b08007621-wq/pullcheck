@@ -36,7 +36,7 @@ export function GameSetList({ game, leading }: Props) {
   const [query, setQuery] = useState('');
   const [type, setType] = useState(ALL);
 
-  const progress = useMemo(() => gameSetProgress(items), [items]);
+  const progress = useMemo(() => gameSetProgress(items, sets ?? []), [items, sets]);
   const types = useMemo(() => {
     const counts = new Map<string, number>();
     for (const set of sets ?? []) if (set.type) counts.set(set.type, (counts.get(set.type) ?? 0) + 1);

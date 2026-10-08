@@ -1,4 +1,5 @@
 import type { Condition } from '@/utils/condition';
+import type { ChartRange } from '@/utils/movers';
 import type { Currency, MarketPrice } from '@/utils/price';
 
 import type { Card } from './card';
@@ -77,10 +78,15 @@ export type QuickFilter = 'dupes' | 'graded' | 'new' | 'gainers' | 'losers' | 'u
 
 export type CollectionSection = 'pulled' | 'summary' | 'chart' | 'games' | 'top' | 'recent' | 'stats' | 'shortcuts';
 
+export type ChartCards = 'both' | 'gainers' | 'losers' | 'off';
+
 export type CollectionLayout = {
   order: CollectionSection[];
   hidden: CollectionSection[];
   gridColumns: 2 | 3 | 4;
   gridDetails: boolean;
   changeBasis: ChangeBasis;
+  chartCards: ChartCards;
+  chartRanges: boolean;
+  chartRange: ChartRange;
 };

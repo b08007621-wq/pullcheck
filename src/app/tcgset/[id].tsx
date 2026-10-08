@@ -24,6 +24,7 @@ import { ownedCardCounts } from '@/utils/collectionValue';
 import { formatDate, parseDate } from '@/utils/date';
 import { gameInfo, gameOfId } from '@/utils/game';
 import { formatMoney, getMarketPrice } from '@/utils/price';
+import { setSealedValue } from '@/utils/setSealedValue';
 
 type Show = 'all' | 'owned' | 'missing';
 type Sort = 'number' | 'price';
@@ -76,6 +77,12 @@ export default function GameSetScreen() {
     return { total: list.length, owned: ownedCards.length, value, setValue };
   }, [cards, owned]);
 
+  const ownedSealed = useMemo(
+    () => setSealedValue(items, { game, name: title, code: set?.code ?? null }),
+    [items, game, title, set?.code],
+  );
+  const yourValue = stats.value + ownedSealed.value;
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const filtered = (cards ?? []).filter((card) => {
@@ -123,7 +130,7 @@ export default function GameSetScreen() {
   const summary = [
     released ? formatDate(released) : null,
     `${stats.owned} of ${stats.total} owned`,
-    stats.value > 0 ? `${formatMoney(stats.value)} yours` : null,
+    yourValue > 0 ? `${formatMoney(yourValue)} yours${ownedSealed.value > 0 ? ' incl. sealed' : ''}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -152,7 +159,7 @@ export default function GameSetScreen() {
               <Text style={styles.subtitle}>{summary}</Text>
               <View style={styles.statRow}>
                 <Stat label="Owned" value={stats.total > 0 ? `${Math.round((stats.owned / stats.total) * 100)}%` : '—'} styles={styles} />
-                <Stat label="Your value" value={formatMoney(stats.value)} styles={styles} />
+                <Stat label="Your value" value={formatMoney(yourValue)} styles={styles} />
                 <Stat label="Whole set" value={stats.setValue > 0 ? formatMoney(stats.setValue) : '—'} styles={styles} />
               </View>
               <Text style={styles.source}>

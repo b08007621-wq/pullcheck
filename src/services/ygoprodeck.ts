@@ -163,7 +163,6 @@ export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
     const existing = byCode.get(set.set_code);
     if (existing) {
       existing.total += set.num_of_cards ?? 0;
-      existing.icon = existing.icon ?? set.set_image ?? null;
       if (releaseDate > existing.releaseDate) {
         existing.releaseDate = releaseDate;
         existing.name = set.set_name;
@@ -178,7 +177,7 @@ export async function getYgoSets(signal?: AbortSignal): Promise<GameSet[]> {
       releaseDate,
       total: set.num_of_cards ?? 0,
       type: null,
-      icon: bundledSetLogo('yugioh', set.set_code) ?? set.set_image ?? null,
+      icon: bundledSetLogo('yugioh', set.set_code),
       iconIsSymbol: false,
     });
   }

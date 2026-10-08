@@ -5,6 +5,7 @@ import type { SetFilter, SetInfo, SetMode } from '@/types/set';
 import { cardVersionPrice } from './cardVersion';
 import { itemValueUsd } from './collectionValue';
 import { defaultVariant, getMarketPrice, getVariantOptions } from './price';
+import { sealedSetIndex, setSealedValue } from './setSealedValue';
 
 export type OwnedIndex = Map<string, Map<string, number>>;
 
@@ -127,21 +128,41 @@ export function filterEntries(entries: SetEntry[], filter: SetFilter): SetEntry[
   return entries;
 }
 
-export function setValueUsd(items: CollectionItem[], setId: string): number {
-  let value = 0;
+export type SetValue = {
+  cards: number;
+  sealed: number;
+  sealedCount: number;
+  total: number;
+};
+
+export function setValue(items: CollectionItem[], set: SetInfo): SetValue {
+  let cards = 0;
   for (const item of items) {
-    if (item.kind === 'card' && item.card.set.id === setId) value += itemValueUsd(item) ?? 0;
+    if (item.kind === 'card' && item.card.set.id === set.id) cards += itemValueUsd(item) ?? 0;
   }
-  return Math.round(value * 100) / 100;
+  const sealed = setSealedValue(items, { game: 'pokemon', name: set.name, code: set.ptcgoCode });
+  const roundedCards = Math.round(cards * 100) / 100;
+  return {
+    cards: roundedCards,
+    sealed: sealed.value,
+    sealedCount: sealed.count,
+    total: Math.round((roundedCards + sealed.value) * 100) / 100,
+  };
 }
 
 export function listProgress(items: CollectionItem[], sets: SetInfo[]): Map<string, SetListProgress> {
   const byId = new Map(sets.map((set) => [set.id, set]));
   const owned = new Map<string, Set<string>>();
   const value = new Map<string, number>();
+  const sealedSet = sealedSetIndex(sets, (set) => ({ game: 'pokemon', name: set.name, code: set.ptcgoCode }));
 
   for (const item of items) {
-    if (item.kind !== 'card') continue;
+    if (item.kind === 'sealed') {
+      if ((item.product.game ?? 'pokemon') !== 'pokemon') continue;
+      const set = sealedSet(item);
+      if (set) value.set(set.id, (value.get(set.id) ?? 0) + (itemValueUsd(item) ?? 0));
+      continue;
+    }
     const set = byId.get(item.card.set.id);
     if (!set) continue;
     value.set(set.id, (value.get(set.id) ?? 0) + (itemValueUsd(item) ?? 0));
@@ -152,7 +173,7 @@ export function listProgress(items: CollectionItem[], sets: SetInfo[]): Map<stri
   }
 
   const progress = new Map<string, SetListProgress>();
-  for (const [setId, setValue] of value) {
+  for (const [setId, setTotal] of value) {
     const set = byId.get(setId);
     if (!set) continue;
     const count = owned.get(setId)?.size ?? 0;
@@ -160,7 +181,7 @@ export function listProgress(items: CollectionItem[], sets: SetInfo[]): Map<stri
       owned: count,
       total: set.printedTotal,
       percent: set.printedTotal > 0 ? Math.min(1, count / set.printedTotal) : 0,
-      value: Math.round(setValue * 100) / 100,
+      value: Math.round(setTotal * 100) / 100,
     });
   }
   return progress;

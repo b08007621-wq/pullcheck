@@ -31,7 +31,7 @@ import {
   buildSetEntries,
   filterEntries,
   type SetEntry,
-  setValueUsd,
+  setValue,
   summarizeSet,
 } from '@/utils/setProgress';
 
@@ -63,7 +63,7 @@ export default function SetScreen() {
   const entries = useMemo(() => (set && cards ? buildSetEntries(cards, set, mode, index) : []), [set, cards, mode, index]);
   const stats = useMemo(() => summarizeSet(entries), [entries]);
   const visible = useMemo(() => filterEntries(entries, filter), [entries, filter]);
-  const value = useMemo(() => setValueUsd(items, id), [items, id]);
+  const value = useMemo(() => (set ? setValue(items, set) : null), [items, set]);
   const tileWidth = Math.floor((Math.min(width, 640) - spacing.lg * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
 
   const openCard = useCallback(
