@@ -75,7 +75,7 @@ export type ChangeBasis = 'auto' | 'added' | 'paid' | 'day' | 'week' | 'month';
 
 export type QuickFilter = 'dupes' | 'graded' | 'new' | 'gainers' | 'losers' | 'unpriced';
 
-export type CollectionSection = 'pulled' | 'summary' | 'chart' | 'games' | 'top' | 'recent' | 'stats' | 'shortcuts';
+export type CollectionSection = 'pulled' | 'summary' | 'chart' | 'games' | 'sets' | 'top' | 'recent' | 'stats' | 'shortcuts';
 
 export type CollectionLayout = {
   order: CollectionSection[];

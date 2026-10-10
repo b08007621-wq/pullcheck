@@ -20,6 +20,7 @@ import { BoardControls } from '@/components/BoardEditBar';
 import { CollectionCoverflow } from '@/components/CollectionCoverflow';
 import { CollectionCustomizeSheet } from '@/components/CollectionCustomizeSheet';
 import { CollectionGamesPanel } from '@/components/CollectionGamesPanel';
+import { CollectionSetsPanel } from '@/components/CollectionSetsPanel';
 import { CollectionTopCards } from '@/components/CollectionTopCards';
 import { CollectionFilterSheet } from '@/components/CollectionFilterSheet';
 import { CollectionGridItem } from '@/components/CollectionGridItem';
@@ -340,6 +341,16 @@ export default function CollectionScreen() {
           onSelect={(game) => {
             haptics.selection();
             changeQuery({ game });
+          }}
+        />
+      ),
+      sets: (
+        <CollectionSetsPanel
+          items={items}
+          selected={query.set}
+          onSelect={(set) => {
+            haptics.selection();
+            changeQuery({ set });
           }}
         />
       ),

@@ -61,6 +61,33 @@ export function setCounts(items: CollectionItem[]): { name: string; count: numbe
     .sort((first, second) => second.count - first.count || first.name.localeCompare(second.name));
 }
 
+export type SetTotal = {
+  name: string;
+  count: number;
+  value: number;
+  share: number;
+};
+
+export function setTotals(items: CollectionItem[], limit = 6): SetTotal[] {
+  const totals = new Map<string, SetTotal>();
+  let all = 0;
+  for (const item of items) {
+    const name = itemSetName(item);
+    if (!name) continue;
+    const value = itemValueUsd(item) ?? 0;
+    const total = totals.get(name) ?? { name, count: 0, value: 0, share: 0 };
+    total.count += item.quantity;
+    total.value += value;
+    totals.set(name, total);
+    all += value;
+  }
+  return [...totals.values()]
+    .filter((total) => total.value > 0)
+    .map((total) => ({ ...total, share: all > 0 ? total.value / all : 0 }))
+    .sort((first, second) => second.value - first.value || second.count - first.count)
+    .slice(0, limit);
+}
+
 export function itemGame(item: CollectionItem): Game {
   return item.kind === 'card' ? gameOf(item.card) : 'pokemon';
 }

@@ -55,7 +55,7 @@ export type Settings = {
 
 export const DESIGN_VERSION = 3;
 
-export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'games', 'top', 'recent', 'stats', 'shortcuts'];
+export const COLLECTION_SECTIONS: CollectionSection[] = ['pulled', 'summary', 'chart', 'games', 'sets', 'top', 'recent', 'stats', 'shortcuts'];
 
 export const DEFAULT_COLLECTION_LAYOUT: CollectionLayout = {
   order: COLLECTION_SECTIONS,
